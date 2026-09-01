@@ -29,9 +29,9 @@ CC.renderToday = function () {
     if (d && d.getFullYear() === year && d.getMonth() === month) encMois += +f.montant || 0;
   });
   const fy = CC.stats.forYear(S.factures, year);
-  // Impayes = factures EMISES non payees (avec n°). Les previsionnelles sont a part.
-  const impayes = fy.filter((f) => !CC.stats.isPaid(f) && CC.stats.isInvoiced(f));
-  const previsionnelles = fy.filter((f) => CC.stats.statut(f, settings) === 'prevu');
+  // Impayes = factures reellement emises et non payees. Les previsionnelles sont a part.
+  const impayes = fy.filter((f) => !CC.stats.isPaid(f) && !CC.stats.isPrevu(f));
+  const previsionnelles = fy.filter((f) => CC.stats.isPrevu(f));
   const totalImp = impayes.reduce((a, f) => a + (+f.montant || 0), 0);
   const totalPrev = previsionnelles.reduce((a, f) => a + (+f.montant || 0), 0);
   const next = CC.stats.urssafSchedule(S.factures, settings).find((e) => e.statut === 'a-venir' && e.urssaf > 0);

@@ -18,8 +18,6 @@ CC.storage = {
     if (!obj || typeof obj !== 'object') throw new Error('Fichier invalide');
     const s = Object.assign(CC.defaultSettings(), obj.settings || {});
     if (obj.settings && obj.settings.urssafRates) s.urssafRates = obj.settings.urssafRates;
-    // Corrige la coquille "Anhit" -> "Anahit" sur une adresse de départ déjà enregistrée.
-    if (s.adresseDepart) s.adresseDepart = s.adresseDepart.replace(/Anhit/g, 'Anahit');
     CC.state.settings = s;
     CC.state.declarations = obj.declarations || {};
     CC.state.factures = Array.isArray(obj.factures) ? obj.factures.map(normalize) : [];
@@ -37,7 +35,7 @@ CC.storage = {
     CC.state.dirty = false;
     CC.state.filePath = res.filePath;
     window.api.setFile(res.filePath);
-    window.api.recoveryClear();
+    CC.storage.clearRecovery();
     CC.updateDirtyUI();
     CC.toast('Enregistré : ' + fileName(res.filePath), 'ok');
     return true;
@@ -53,7 +51,7 @@ CC.storage = {
       CC.state.filePath = res.filePath;
       CC.state.dirty = false;
       window.api.setFile(res.filePath);
-      window.api.recoveryClear();
+      CC.storage.clearRecovery();
       CC.refreshYears();
       CC.renderSettings();
       CC.render();
@@ -73,7 +71,7 @@ CC.storage = {
     CC.state.filePath = null;
     CC.state.dirty = false;
     window.api.setFile(null);
-    window.api.recoveryClear();
+    CC.storage.clearRecovery();
     CC.refreshYears();
     CC.renderSettings();
     CC.render();
@@ -145,6 +143,17 @@ CC.storage = {
     CC._recoveryTimer = setTimeout(() => {
       window.api.recoveryWrite(CC.storage.serialize());
     }, 1500);
+  },
+
+  // Eteindre le filet de securite.
+  //
+  // Supprimer le fichier ne suffit pas : une ecriture differee peut encore etre
+  // en vol (scheduleRecovery attend 1,5 s) et le recreer juste apres l'effacement.
+  // L'app reclamait alors une recuperation au lancement suivant alors que tout
+  // etait deja enregistre. On annule donc la minuterie AVANT d'effacer.
+  clearRecovery() {
+    clearTimeout(CC._recoveryTimer);
+    window.api.recoveryClear();
   }
 };
 

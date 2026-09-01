@@ -4,14 +4,25 @@ window.CC = window.CC || {};
 // Modele facture :
 //   { id, libelle, montant, modePaiement, numFacture,
 //     dateEncaissement (""=non paye), annee, trimestre,
-//     dateEnvoi, dateEcheance, notes }
+//     dateEnvoi, dateEcheance, notes,
+//     previsionnel (true = vente prevue, pas encore facturee) }
 
 CC.stats = {
   isPaid(f) { return !!f.dateEncaissement; },
 
   // Une facture est "emise" (reellement facturee/envoyee) si elle a un numero.
-  // Sans numero => pas encore envoyee => previsionnel (jamais "en retard").
   isInvoiced(f) { return !!(f.numFacture && String(f.numFacture).trim()); },
+
+  // Previsionnel = vente prevue, pas encore facturee. C'est l'interrupteur
+  // "Facture previsionnelle" de la fiche qui fait foi (champ `previsionnel`).
+  // Fiches anterieures a cet interrupteur (champ absent) : on garde l'ancienne
+  // regle, pas de numero = pas encore emise = previsionnel.
+  // Une facture encaissee n'est jamais previsionnelle, quoi qu'il arrive.
+  isPrevu(f) {
+    if (f.dateEncaissement) return false;
+    if (typeof f.previsionnel === 'boolean') return f.previsionnel;
+    return !CC.stats.isInvoiced(f);
+  },
 
   // Periode de reference (annee/trimestre) : la feuille Excel fait foi ;
   // pour une facture payee sans periode explicite, on prend la date d'encaissement.
@@ -35,11 +46,11 @@ CC.stats = {
   yearOf(f) { return CC.stats._periodOf(f).y; },
   trimOf(f) { return CC.stats._periodOf(f).t; },
 
-  // Statut : 'recue' (paye) | 'prevu' (pas encore emise, sans n°) | 'attente' | 'retard'
+  // Statut : 'recue' (paye) | 'prevu' (pas encore emise) | 'attente' | 'retard'
   statut(f, settings, today = new Date()) {
     if (f.dateEncaissement) return 'recue';
-    // Pas encore facturee/envoyee (aucun numero) -> previsionnel, jamais en retard
-    if (!CC.stats.isInvoiced(f)) return 'prevu';
+    // Pas encore facturee/envoyee -> previsionnel, jamais en retard
+    if (CC.stats.isPrevu(f)) return 'prevu';
     if (f.dateEcheance) {
       const ech = CC.util.parseDate(f.dateEcheance);
       if (ech && today > ech) return 'retard';
@@ -172,11 +183,19 @@ CC.stats = {
     return arr;
   },
 
-  // En attente par trimestre (non paye) selon la periode
-  attenteByTrim(factures, year) {
+  // Non paye par trimestre selon la periode. `kind` :
+  //   'emis'  -> seulement les factures deja emises (attente + retard)
+  //   'prevu' -> seulement les previsionnelles
+  //   absent  -> tout le non paye (comportement historique)
+  attenteByTrim(factures, year, kind) {
     const arr = [0, 0, 0, 0];
     factures.forEach((f) => {
       if (CC.stats.isPaid(f)) return;
+      if (kind) {
+        const p = CC.stats.isPrevu(f);
+        if (kind === 'emis' && p) return;
+        if (kind === 'prevu' && !p) return;
+      }
       if (CC.stats.yearOf(f) !== year) return;
       const t = CC.stats.trimOf(f);
       if (t) arr[t - 1] += +f.montant || 0;
@@ -237,12 +256,116 @@ CC.stats = {
     return { cur, prev, pct: ((cur - prev) / prev) * 100, isCurrent };
   },
 
+  // -------------------------------------------------------------------------
+  // IMPOT SUR LE REVENU — bareme reel, pas « tranche x base »
+  //
+  // Appliquer la TMI a toute la base surestime lourdement l'impot : les premiers
+  // euros sont taxes a 0 %, puis a 11 %, etc. Et pour les revenus modestes la
+  // DECOTE retranche encore plusieurs centaines d'euros. D'ou ce calcul complet.
+  //
+  // Limites assumees : pas de plafonnement du quotient familial (il ne mord
+  // qu'a des revenus eleves avec enfants), pas de reductions ni credits d'impot.
+  impotIR(baseTotale, opts) {
+    const parts = Math.max(1, +opts.parts || 1);
+    const tranches = CC.baremeIR(opts.year);
+    const D = CC.DECOTE_IR;
+
+    // 1. Bareme applique au quotient familial, puis remultiplie par les parts.
+    const q = Math.max(0, baseTotale) / parts;
+    let parPart = 0, bas = 0;
+    for (const t of tranches) {
+      if (q > bas) parPart += (Math.min(q, t.jusqua) - bas) * t.taux / 100;
+      bas = t.jusqua;
+      if (q <= bas) break;
+    }
+    const brut = parPart * parts;
+
+    // 2. Decote : seuil et forfait dependent du fait d'etre en couple ou non,
+    //    pas du nombre de parts (un parent isole reste « personne seule »).
+    const couple = !!opts.couple;
+    const plafond = couple ? D.plafondCouple : D.plafondSeul;
+    const forfait = couple ? D.couple : D.seul;
+    const decote = (brut > 0 && brut <= plafond)
+      ? Math.max(0, Math.min(brut, forfait - brut * D.taux / 100))
+      : 0;
+
+    // 3. L'impot n'est pas recouvre en dessous de 61 EUR.
+    const net = Math.max(0, brut - decote);
+    return { brut, decote, net, recouvre: net >= 61 ? net : 0, parts, quotient: q };
+  },
+
+  // -------------------------------------------------------------------------
+  // FRANCHISE EN BASE DE TVA
+  //
+  // Deux differences de fond avec le reste de l'app, d'ou une fonction a part :
+  //
+  //  1. On raisonne en ANNEE CIVILE D'ENCAISSEMENT, pas en periode declaree
+  //     URSSAF. Un virement du 5 janvier compte pour l'annee ou il tombe, meme
+  //     si la facture se rattache au trimestre precedent.
+  //  2. C'est le seuil MAJORE qui coupe la franchise, pas le seuil de base.
+  //     Depasser le seuil de base n'a aucun effet immediat : on entre juste dans
+  //     une bande de tolerance ou la franchise est maintenue.
+  //
+  // Regles (regime en vigueur depuis 2025) :
+  //   CA(N-1) <= base            -> franchise en N
+  //   base < CA(N-1) <= majore   -> franchise MAINTENUE en N (tolerance)
+  //   CA(N-1) > majore           -> TVA des le 1er janvier N
+  //   CA(N) franchit le majore   -> TVA des LE JOUR du franchissement, en N
+  //
+  // L'annee N-2 n'intervient pas : c'est l'ancien regime, abandonne.
+  tva(factures, year, settings, today = new Date()) {
+    const base = +settings.seuilTvaBase || 0;
+    const majore = +settings.seuilTvaMajore || 0;
+
+    const ofYear = (y) => factures.filter((f) => f.dateEncaissement && CC.util.yearOf(f.dateEncaissement) === y);
+    const somme = (l) => l.reduce((a, f) => a + (+f.montant || 0), 0);
+    const payees = ofYear(year);
+    const enc = somme(payees);
+    const encPrec = somme(ofYear(year - 1));
+
+    // Jour exact du franchissement : on rejoue les encaissements dans l'ordre.
+    let cumul = 0, franchi = null;
+    payees.slice().sort((a, b) => a.dateEncaissement.localeCompare(b.dateEncaissement))
+      .forEach((f) => { cumul += +f.montant || 0; if (!franchi && majore && cumul > majore) franchi = f.dateEncaissement; });
+
+    // Projection de fin d'annee, sur la meme base civile. On retient la plus
+    // prudente des deux lectures : le rythme constate, ou le carnet deja saisi.
+    const isCurrent = (year === today.getFullYear());
+    const start = new Date(year, 0, 1), end = new Date(year, 11, 31);
+    const totalDays = CC.util.daysBetween(start, end) + 1;
+    const dayOfYear = isCurrent ? CC.util.daysBetween(start, today) + 1 : totalDays;
+    const aVenir = CC.stats.attenteByTrim(factures, year, 'emis').reduce((a, b) => a + b, 0);
+    const prevu = CC.stats.attenteByTrim(factures, year, 'prevu').reduce((a, b) => a + b, 0);
+    const rythme = (isCurrent && dayOfYear > 0) ? (enc / dayOfYear) * totalDays : enc;
+    const carnet = enc + aVenir + prevu;
+    const projete = isCurrent ? Math.max(rythme, carnet) : enc;
+
+    // Verdict au 1er janvier de l'annee suivante : c'est le CA de cette annee-la
+    // qui decide. On classe deux fois — sur l'encaisse acquise (elle fait foi
+    // pour une annee close) et sur la projection (seule lecture honnete tant
+    // que l'annee court).
+    const classe = (ca) => (majore && ca > majore) ? 'tva' : (base && ca > base) ? 'tolerance' : 'franchise';
+    const suivant = classe(enc);
+    const suivantProj = classe(projete);
+
+    return {
+      year, base, majore, enc, encPrec, franchi, suivant, suivantProj, isCurrent,
+      aVenir, prevu, rythme, carnet, projete,
+      reste: majore - enc,             // encore encaissable avant de basculer
+      margeProj: majore - projete,     // marge si le rythme se confirme
+      jours: totalDays - dayOfYear     // jours restants dans l'annee
+    };
+  },
+
   // Previsionnel annee en cours
   forecast(factures, year, settings) {
     const today = new Date();
     const isCurrent = (year === today.getFullYear());
     const encaisse = CC.stats.encaisseYear(factures, year);
-    const aVenir = CC.stats.attenteByTrim(factures, year).reduce((a, b) => a + b, 0);
+    // On separe ce qui est deja facture de ce qui n'est que prevu : les deux
+    // nourrissent la projection, mais l'utilisateur doit voir la part "promesse".
+    const aVenir = CC.stats.attenteByTrim(factures, year, 'emis').reduce((a, b) => a + b, 0);
+    const prevu = CC.stats.attenteByTrim(factures, year, 'prevu').reduce((a, b) => a + b, 0);
 
     const start = new Date(year, 0, 1), end = new Date(year, 11, 31);
     const dayOfYear = isCurrent ? CC.util.daysBetween(start, today) + 1 : 366;
@@ -250,7 +373,7 @@ CC.stats = {
 
     let projete = encaisse;
     if (isCurrent && dayOfYear > 0) {
-      projete = Math.max((encaisse / dayOfYear) * totalDays, encaisse + aVenir);
+      projete = Math.max((encaisse / dayOfYear) * totalDays, encaisse + aVenir + prevu);
     }
     // URSSAF projetee : on applique le taux moyen connu de l'annee a la projection
     const trims = CC.stats.urssafByTrim(factures, year);
@@ -263,6 +386,6 @@ CC.stats = {
     const histAvg = yearsPrev.length
       ? yearsPrev.reduce((a, y) => a + CC.stats.encaisseYear(factures, y), 0) / yearsPrev.length : null;
 
-    return { isCurrent, encaisse, aVenir, projete, dayOfYear, totalDays, urssafProj, netProj, histAvg };
+    return { isCurrent, encaisse, aVenir, prevu, projete, dayOfYear, totalDays, urssafProj, netProj, histAvg };
   }
 };

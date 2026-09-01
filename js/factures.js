@@ -83,6 +83,7 @@ CC.facturesView = {
     const now = new Date();
     document.getElementById('f_annee').value = e.annee || now.getFullYear();
     document.getElementById('f_trimestre').value = e.trimestre || (Math.floor(now.getMonth() / 3) + 1);
+    document.getElementById('f_previsionnel').checked = isEdit ? CC.stats.isPrevu(e) : false;
     document.getElementById('f_recue').checked = !!e.dateEncaissement;
     CC.dp.set(CC.dp.byInput('f_dateEncaissement'), e.dateEncaissement || '');
     CC.dp.set(CC.dp.byInput('f_dateEnvoi'), e.dateEnvoi || '');
@@ -91,6 +92,7 @@ CC.facturesView = {
     CC.facturesView.setPj(e.fichier || '');
     document.getElementById('btnDeleteFacture').classList.toggle('hidden', !isEdit);
     document.getElementById('modalFacture').classList.remove('hidden');
+    syncPrevisionnel();
     document.getElementById('f_libelle').focus();
   },
 
@@ -143,6 +145,8 @@ CC.facturesView = {
     if (!libelle || isNaN(montant)) { CC.toast('Libellé et montant sont obligatoires.', 'err'); return; }
 
     const recue = document.getElementById('f_recue').checked;
+    // Un encaissement l'emporte toujours : une facture payee ne peut pas rester previsionnelle.
+    const previsionnel = !recue && document.getElementById('f_previsionnel').checked;
     let dateEnc = document.getElementById('f_dateEncaissement').value;
     if (recue && !dateEnc) dateEnc = CC.util.toISO(new Date());
     if (!recue) dateEnc = '';
@@ -158,6 +162,7 @@ CC.facturesView = {
       numFacture: document.getElementById('f_numFacture').value.trim(),
       modePaiement: document.getElementById('f_modePaiement').value,
       categorie: document.getElementById('f_categorie').value,
+      previsionnel,
       dateEncaissement: dateEnc,
       annee, trimestre: trim,
       dateEnvoi: document.getElementById('f_dateEnvoi').value,
@@ -190,7 +195,8 @@ CC.facturesView = {
     const f = CC.state.factures.find((x) => x.id === id);
     if (!f) return;
     // Mémorise l'état d'avant pour permettre une annulation exacte (clic par erreur).
-    f._avantRecue = { dateEncaissement: f.dateEncaissement || '', annee: f.annee || null, trimestre: f.trimestre || null };
+    f._avantRecue = { dateEncaissement: f.dateEncaissement || '', annee: f.annee || null, trimestre: f.trimestre || null, previsionnel: f.previsionnel };
+    f.previsionnel = false;
     f.dateEncaissement = CC.util.toISO(new Date());
     f.annee = CC.util.yearOf(f.dateEncaissement);
     f.trimestre = CC.util.trimestreOfDate(f.dateEncaissement);
@@ -204,7 +210,7 @@ CC.facturesView = {
     if (!f) return;
     const prev = f._avantRecue;
     f.dateEncaissement = prev ? prev.dateEncaissement : '';
-    if (prev) { f.annee = prev.annee; f.trimestre = prev.trimestre; delete f._avantRecue; }
+    if (prev) { f.annee = prev.annee; f.trimestre = prev.trimestre; f.previsionnel = prev.previsionnel; delete f._avantRecue; }
     CC.markDirty(); CC.refreshYears(); CC.render();
     CC.toast('Encaissement annulé — facture remise en attente.');
   },
@@ -234,16 +240,30 @@ CC.facturesView = {
     document.getElementById('formFacture').addEventListener('submit', (e) => { e.preventDefault(); CC.facturesView.save(); });
     document.getElementById('modalFacture').addEventListener('click', (e) => { if (e.target.id === 'modalFacture') CC.facturesView.closeModal(); });
 
+    // « Prévisionnel » et « paiement reçu » s'excluent : une vente encaissée est réelle.
+    document.getElementById('f_previsionnel').addEventListener('change', (e) => {
+      if (e.target.checked && document.getElementById('f_recue').checked) {
+        document.getElementById('f_recue').checked = false;
+        CC.dp.set(CC.dp.byInput('f_dateEncaissement'), '');
+      }
+      syncPrevisionnel();
+    });
+
     // Cocher "reçu" pré-remplit la date du jour ; la date ajuste la période
     document.getElementById('f_recue').addEventListener('change', (e) => {
       const w = CC.dp.byInput('f_dateEncaissement');
       const cur = document.getElementById('f_dateEncaissement').value;
       if (e.target.checked && !cur) CC.dp.set(w, CC.util.toISO(new Date()));
       else if (!e.target.checked) CC.dp.set(w, '');
+      if (e.target.checked) document.getElementById('f_previsionnel').checked = false;
+      syncPrevisionnel();
       syncPeriode();
     });
     document.getElementById('f_dateEncaissement').addEventListener('change', () => {
-      document.getElementById('f_recue').checked = !!document.getElementById('f_dateEncaissement').value;
+      const paye = !!document.getElementById('f_dateEncaissement').value;
+      document.getElementById('f_recue').checked = paye;
+      if (paye) document.getElementById('f_previsionnel').checked = false;
+      syncPrevisionnel();
       syncPeriode();
     });
 
@@ -270,11 +290,31 @@ CC.facturesView = {
       else if (btn.dataset.act === 'pj') { const f = CC.state.factures.find((x) => x.id === btn.dataset.id); if (f) CC.openPj(f.fichier); }
       else if (btn.dataset.act === 'emise') {
         const f = CC.state.factures.find((x) => x.id === btn.dataset.id);
-        if (f) { CC.facturesView.openModal(f); document.getElementById('f_numFacture').focus(); }
+        if (f) {
+          CC.facturesView.openModal(f);
+          // Passer en « émise » = ce n'est plus du prévisionnel ; il reste à saisir le n°.
+          document.getElementById('f_previsionnel').checked = false;
+          syncPrevisionnel();
+          document.getElementById('f_numFacture').focus();
+        }
       }
     });
   }
 };
+
+// Le formulaire dit ce que la ligne va devenir : en prévisionnel, le bloc
+// « Paiement » n'a plus de sens tant que rien n'est encaissé.
+function syncPrevisionnel() {
+  const on = document.getElementById('f_previsionnel').checked;
+  const card = document.getElementById('prevCard');
+  if (card) card.classList.toggle('on', on);
+  const pay = document.getElementById('f_recue').closest('fieldset');
+  if (pay) pay.classList.toggle('dim', on);
+  const hint = document.getElementById('prevHint');
+  if (hint) hint.textContent = on
+    ? 'Vente prévue, pas encore facturée : comptée dans le prévisionnel, jamais dans le CA encaissé ni l’URSSAF. Elle sortira du prévisionnel dès que vous la marquerez « Émise ».'
+    : 'Vente prévue, pas encore facturée : comptée dans le prévisionnel, jamais dans le CA encaissé ni l’URSSAF, et jamais « en retard ».';
+}
 
 function syncPeriode() {
   const d = document.getElementById('f_dateEncaissement').value;

@@ -112,7 +112,6 @@ CC.renderFiscal = function () {
   // ---------- Seuils ----------
   const enc = cot.encaisse;
   const plafond = CC.effPlafond(year);
-  const base = settings.seuilTvaBase, majore = settings.seuilTvaMajore;
   function gauge(label, val, max, extra) {
     const ratio = Math.min(100, (val / max) * 100);
     const cls = ratio > 95 ? 'danger' : ratio > 80 ? 'warn' : '';
@@ -121,40 +120,148 @@ CC.renderFiscal = function () {
       <div class="lbl"><span>${CC.util.eur0(val)}</span><span>${extra || CC.util.eur0(max)}</span></div></div>`;
   }
   document.getElementById('fiscalSeuils').innerHTML =
-    `<div class="seuil">${gauge('Franchise TVA (base ' + CC.util.eur0(base) + ')', enc, base)}</div>` +
     `<div class="seuil">${gauge('Plafond micro ' + year, enc, plafond)}</div>`;
 
-  // ---------- Alerte seuil TVA ----------
-  const restant = base - enc;
-  let alert = '';
-  if (enc > majore) {
-    alert = `<div class="alert danger"><span class="ai">!</span><div><b>Seuil de TVA majoré dépassé (${CC.util.eur0(majore)}).</b> La TVA devient applicable. Pense à facturer la TVA et à te rapprocher de l'URSSAF / ton comptable.</div></div>`;
-  } else if (enc > base) {
-    alert = `<div class="alert warn"><span class="ai">!</span><div><b>Seuil de TVA de base dépassé (${CC.util.eur0(base)}).</b> Tu restes en franchise cette année, mais si tu repasses au-dessus l'an prochain (ou dépasses ${CC.util.eur0(majore)}), la TVA s'applique. À surveiller.</div></div>`;
-  } else if (restant <= base * 0.1) {
-    alert = `<div class="alert warn"><span class="ai">~</span><div><b>Tu approches du seuil de TVA :</b> il te reste <b>${CC.util.eur0(restant)}</b> avant ${CC.util.eur0(base)} pour ${year}.</div></div>`;
-  } else {
-    alert = `<div class="alert ok"><span class="ai">✓</span><div>Sous le seuil de TVA pour ${year} : ${CC.util.eur0(enc)} encaissé, marge de ${CC.util.eur0(restant)} avant ${CC.util.eur0(base)}.</div></div>`;
-  }
-  document.getElementById('seuilAlert').innerHTML = alert;
+  // ---------- Franchise de TVA ----------
+  // Une question fermée, une réponse, et de quoi la vérifier.
+  //
+  // Choix de lecture : l'échelle de la règle s'arrête au SEUIL MAJORÉ, celui qui
+  // coupe réellement la franchise. Sur une échelle partant de zéro, les deux
+  // seuils ne sont séparés que de 9 % de la largeur et leurs étiquettes se
+  // chevauchent. En faisant du seuil majoré le bout de la piste, la barre se lit
+  // comme un remplissage vers un mur — ce qui est exactement la question posée.
+  // Le seuil de base n'est plus qu'un repère, placé au-dessus de la piste pour
+  // qu'il ne puisse jamais entrer en collision avec l'étiquette du mur.
+  (function renderTva() {
+    const box = document.getElementById('fiscalTva');
+    if (!box) return;
+    const t = CC.stats.tva(S.factures, year, settings, today);
+    if (!t.base || !t.majore) {
+      box.innerHTML = '<p class="muted">Renseigne les seuils de franchise de TVA dans Paramètres pour activer ce suivi.</p>';
+      return;
+    }
+    const eur = CC.util.eur0;
+    const suiv = year + 1;
+    const niveau = t.isCurrent ? t.suivantProj : t.suivant;
+
+    // --- Verdict : une phrase de réponse, une phrase de raison. ---
+    const fin = t.isCurrent
+      ? `Tu finirais ${year} à <b>${eur(t.projete)}</b>`
+      : `Tu as encaissé <b>${eur(t.enc)}</b> en ${year}`;
+    let cls, rep, pourquoi;
+    if (t.franchi) {
+      cls = 'danger';
+      rep = 'Oui — TVA due depuis le ' + CC.util.frDate(t.franchi);
+      pourquoi = `Le seuil majoré a été franchi le ${CC.util.frDate(t.franchi)}. La franchise tombe ce jour-là, pas au 1er janvier.`;
+    } else if (niveau === 'tva') {
+      cls = 'danger';
+      rep = t.isCurrent ? 'Oui, si ton rythme se confirme' : 'Oui — TVA au 1er janvier ' + suiv;
+      pourquoi = t.isCurrent
+        ? `${fin}, au-dessus du seuil majoré. Tu basculerais dès le jour du franchissement, en ${year}.`
+        : `${fin}, au-dessus du seuil majoré : la franchise ne peut pas être reconduite.`;
+    } else if (niveau === 'tolerance') {
+      cls = 'warn';
+      rep = 'Non — franchise maintenue au 1er janvier ' + suiv;
+      pourquoi = `${fin} : au-dessus du seuil de base, mais dans la bande de tolérance. ${suiv} démarre en sursis — franchir le seuil majoré en cours d’année déclenche la TVA le jour même.`;
+    } else {
+      cls = 'ok';
+      rep = 'Non — tu restes en franchise en ' + suiv;
+      pourquoi = `${fin}, sous le seuil de base. Rien ne change au 1er janvier.`;
+    }
+
+    // --- La règle graduée : 0 -> seuil majoré ---
+    const pc = (v) => Math.max(0, Math.min(100, (v / t.majore) * 100));
+    const pEnc = pc(t.enc), pBase = pc(t.base), pProj = pc(t.projete);
+    const depasse = t.projete > t.majore;
+    const proj = (t.isCurrent && pProj > pEnc)
+      ? `<div class="ts-proj${depasse ? ' over' : ''}" style="width:${pProj}%"></div>` : '';
+    const legProj = t.isCurrent ? `<span><i class="sw proj"></i>projection ${eur(t.projete)}</span>` : '';
+
+    const ruler = `
+      <div class="tva-scale">
+        <div class="ts-top"><span class="ts-lab" style="left:${pBase}%"><b>${eur(t.base)}</b><i>seuil de base</i></span></div>
+        <div class="ts-track">
+          ${proj}
+          <div class="ts-enc" style="width:${pEnc}%"></div>
+          <div class="ts-tick" style="left:${pBase}%"></div>
+          <div class="ts-tol" style="left:${pBase}%"></div>
+        </div>
+        <div class="ts-foot">
+          <span class="ts-zero">0</span>
+          <span class="ts-max"><b>${eur(t.majore)}</b><i>seuil majoré — TVA au-delà</i></span>
+        </div>
+        <div class="ts-key"><span><i class="sw enc"></i>encaissé ${eur(t.enc)}</span>${legProj}<span><i class="sw tol"></i>bande de tolérance</span></div>
+      </div>`;
+
+    // --- Les chiffres. La marge porte la couleur : c'est elle qui décide. ---
+    const figs = [{
+      t: 'Encaissé ' + year, v: eur(t.enc),
+      d: t.isCurrent ? 'au ' + CC.util.frDate(CC.util.toISO(today)) : 'année complète'
+    }];
+    if (t.isCurrent && !t.franchi) {
+      const serre = t.margeProj >= 0 && t.margeProj < t.majore * 0.05;
+      figs.push({ t: 'Encore encaissable', v: eur(t.reste), d: `avant ${eur(t.majore)} · ${t.jours} j restants` });
+      figs.push({ t: 'Projection fin d’année', v: eur(t.projete), d: t.carnet > t.rythme ? 'carnet saisi' : 'au rythme constaté' });
+      figs.push({
+        t: 'Marge sur la projection',
+        v: (t.margeProj >= 0 ? '' : '− ') + eur(Math.abs(t.margeProj)),
+        d: t.margeProj < 0 ? 'au-dessus du seuil majoré'
+          : serre ? `${eur(t.margeProj / Math.max(1, t.jours / 30.4))} par mois seulement` : 'sous le seuil majoré',
+        cls: t.margeProj < 0 ? 'neg' : (serre ? 'tight' : '')
+      });
+    }
+    const etat = t.encPrec > t.majore ? 'au-dessus du seuil majoré'
+      : t.encPrec > t.base ? 'dans la bande de tolérance' : 'sous le seuil de base';
+
+    box.innerHTML = `
+      <div class="tva-head ${cls}">
+        <span class="tva-dot"></span>
+        <div class="tva-txt">
+          <div class="tva-a">${rep}</div>
+          <div class="tva-w">${pourquoi}</div>
+        </div>
+      </div>
+      ${ruler}
+      <div class="tva-figs">` + figs.map((f) =>
+        `<div class="fc"><div class="t">${f.t}</div><div class="v ${f.cls || ''}">${f.v}</div><div class="d">${f.d}</div></div>`
+      ).join('') + `</div>
+      <p class="tva-rappel">Rappel : ${eur(t.encPrec)} encaissés en ${year - 1}, ${etat}.</p>`;
+  })();
 
   // ---------- Estimation IR ----------
+  // On applique le vrai barème progressif, pas la tranche marginale à toute la
+  // base : cette dernière surestime largement, et la décote finit d'éloigner
+  // le résultat de l'avis réel.
   const ab = settings.abattementBNC || 34;
   const baseImp = enc * (1 - ab / 100);
+  const autres = +settings.autresRevenus || 0;
+  const baseTotale = baseImp + autres;
+
   let irBlocks = [
     { t: 'CA encaissé ' + year, v: CC.util.eur0(enc), d: '' },
     { t: `Abattement ${ab}%`, v: '− ' + CC.util.eur0(enc * ab / 100), d: 'forfaitaire micro-BNC' },
-    { t: 'Base imposable', v: CC.util.eur0(baseImp), d: 'à ajouter aux revenus du foyer' }
+    { t: 'Base imposable', v: CC.util.eur0(baseImp), d: autres ? 'de ton activité' : 'à ajouter aux revenus du foyer' }
   ];
+  if (autres) irBlocks.push({ t: 'Autres revenus du foyer', v: '+ ' + CC.util.eur0(autres), d: 'saisis dans Paramètres' });
+
   if (settings.versementActif) {
     irBlocks.push({ t: 'Impôt (versement libératoire)', v: CC.util.eur0(enc * (settings.tauxImpot || 0) / 100), d: `${CC.util.pct(settings.tauxImpot)} du CA` });
-  } else if (settings.tmi > 0) {
-    irBlocks.push({ t: 'Impôt estimé', v: '≈ ' + CC.util.eur0(baseImp * settings.tmi / 100), d: `à ta tranche de ${CC.util.pct(settings.tmi, 0)}` });
   } else {
-    irBlocks.push({ t: 'Impôt estimé', v: '—', d: 'renseigne ta tranche dans Paramètres' });
+    const ir = CC.stats.impotIR(baseTotale, {
+      parts: settings.parts, couple: settings.coupleFiscal, year: year + 1
+    });
+    irBlocks.push({ t: 'Impôt brut', v: CC.util.eur0(ir.brut), d: `barème par tranches · ${String(ir.parts).replace('.', ',')} part${ir.parts > 1 ? 's' : ''}` });
+    if (ir.decote > 0) irBlocks.push({ t: 'Décote', v: '− ' + CC.util.eur0(ir.decote), d: 'appliquée automatiquement' });
+    irBlocks.push({
+      t: 'Impôt estimé',
+      v: ir.recouvre === 0 && ir.net > 0 ? '0 €' : CC.util.eur0(ir.net),
+      d: ir.net === 0 ? 'non imposable' : (ir.recouvre === 0 ? 'non recouvré (< 61 €)' : 'sur le foyer entier')
+    });
   }
   document.getElementById('fiscalIR').innerHTML =
-    `<div class="ir-grid">` + irBlocks.map((b) => `<div class="fc"><div class="t">${b.t}</div><div class="v">${b.v}</div><div class="d">${b.d}</div></div>`).join('') + `</div>`;
+    `<div class="ir-grid">` + irBlocks.map((b) => `<div class="fc"><div class="t">${b.t}</div><div class="v">${b.v}</div><div class="d">${b.d}</div></div>`).join('') + `</div>` +
+    (settings.versementActif ? '' :
+      `<p class="ir-note">Estimation sur le barème ${year + 1} (revenus ${year}).${autres ? '' : ' <b>Si ton foyer a d\u2019autres revenus</b>, renseigne-les dans Paramètres : sans eux, l\u2019impôt est sous-estimé.'} Ni réductions ni crédits d\u2019impôt ne sont pris en compte.</p>`);
 
   // ---------- Calendrier fiscal ----------
   const events = [];

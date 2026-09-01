@@ -85,7 +85,10 @@ CC.defaultSettings = function () {
     versementActif: false,
     tauxImpot: 2.2,
     abattementBNC: 34,         // abattement forfaitaire micro-BNC
-    tmi: 0,                    // tranche marginale d'imposition (optionnel)
+    tmi: 0,                    // tranche marginale d'imposition (indicatif, affiche)
+    parts: 1,                  // nombre de parts du foyer (quotient familial)
+    coupleFiscal: false,       // marie/pacse : change le plafond de la decote
+    autresRevenus: 0,          // autres revenus imposables du foyer (net imposable)
     seuilTvaBase: 37500,       // franchise TVA prestations de services 2025/2026
     seuilTvaMajore: 41250,
     delaiPaiement: 30,
@@ -96,7 +99,8 @@ CC.defaultSettings = function () {
     mailSignature: '',         // signature ajoutee aux mails generes
     mailTon: 'cordial',        // ton par defaut : pro | cordial | ferme
     // --- Frais kilometriques ---
-    adresseDepart: '3 impasse Anahit 06200 Nice',   // depart pre-rempli dans Trajets
+    adresseDepart: '',         // depart des trajets, a renseigner dans Parametres
+                               // (jamais d'adresse en dur : web/ part sur un depot public)
     chevauxFiscaux: 5,         // puissance fiscale (determine le tarif par defaut)
     tarifKm: 0.636,            // bareme kilometrique (EUR/km) editable
     vehicleType: '2AxlesAuto', // type vehicule TollGuru (voiture) | 2AxlesMotorcycle (moto)
@@ -113,6 +117,33 @@ CC.baremeKm = function (cv) {
   const c = Math.max(3, Math.min(7, parseInt(cv, 10) || 5));
   return CC.BAREME_KM[c];
 };
+
+// ---------------------------------------------------------------------------
+// IMPOT SUR LE REVENU
+//
+// Bareme par part, applique au quotient familial. Les bornes sont indexees
+// chaque annee : a remettre a jour au 1er janvier. Celles-ci sont le bareme
+// 2026 (revenus 2025).
+CC.BAREME_IR = {
+  2026: [
+    { jusqua: 11600, taux: 0 },
+    { jusqua: 29579, taux: 11 },
+    { jusqua: 84577, taux: 30 },
+    { jusqua: 181917, taux: 41 },
+    { jusqua: Infinity, taux: 45 }
+  ]
+};
+CC.baremeIR = function (year) {
+  const dispo = Object.keys(CC.BAREME_IR).map(Number).sort((a, b) => a - b);
+  // A defaut du bareme de l'annee demandee, on prend le plus recent connu.
+  const y = CC.BAREME_IR[year] ? year : dispo[dispo.length - 1];
+  return CC.BAREME_IR[y];
+};
+
+// Decote : elle efface une partie de l'impot des revenus modestes, et c'est
+// souvent elle qui explique l'ecart entre un calcul « tranche x base » et
+// l'avis reel. Parametres 2026.
+CC.DECOTE_IR = { seul: 897, couple: 1483, taux: 45.25, plafondSeul: 1982, plafondCouple: 3277 };
 
 // Plafond micro-BNC : 77 700 jusqu'en 2025, 83 600 a partir de 2026
 CC.plafondMicro = function (year) { return year >= 2026 ? 83600 : 77700; };
@@ -159,6 +190,10 @@ CC.renderSettings = function () {
   document.getElementById('setTauxImpot').value = s.tauxImpot;
   document.getElementById('setAbattement').value = s.abattementBNC;
   document.getElementById('setTmi').value = s.tmi || '';
+  document.getElementById('setParts').value = s.parts || 1;
+  document.getElementById('setCoupleFiscal').checked = !!s.coupleFiscal;
+  document.getElementById('setAutresRevenus').value = s.autresRevenus || '';
+  if (typeof syncVersement === 'function') syncVersement();
   document.getElementById('setSeuilTvaBase').value = s.seuilTvaBase;
   document.getElementById('setSeuilTvaMajore').value = s.seuilTvaMajore;
   document.getElementById('setDelai').value = s.delaiPaiement;
@@ -206,6 +241,8 @@ CC.bindSettings = function () {
     setTauxImpot: ['tauxImpot', 'num'],
     setAbattement: ['abattementBNC', 'num'],
     setTmi: ['tmi', 'num'],
+    setParts: ['parts', 'num'],
+    setAutresRevenus: ['autresRevenus', 'num'],
     setSeuilTvaBase: ['seuilTvaBase', 'num'],
     setSeuilTvaMajore: ['seuilTvaMajore', 'num'],
     setDelai: ['delaiPaiement', 'int'],
@@ -224,9 +261,28 @@ CC.bindSettings = function () {
       CC.render();
     });
   });
-  document.getElementById('setVersementActif').addEventListener('change', (e) => {
-    CC.state.settings.versementActif = e.target.checked;
+  document.getElementById('setCoupleFiscal').addEventListener('change', (e) => {
+    CC.state.settings.coupleFiscal = e.target.checked;
     CC.markDirty();
     CC.render();
   });
+  document.getElementById('setVersementActif').addEventListener('change', (e) => {
+    CC.state.settings.versementActif = e.target.checked;
+    CC.markDirty();
+    syncVersement();
+    CC.render();
+  });
+  syncVersement();
 };
+
+// Sans option pour le versement libératoire, le taux ne sert à rien : on le
+// neutralise plutôt que de le laisser suggérer qu'il faut le remplir.
+function syncVersement() {
+  const on = document.getElementById('setVersementActif').checked;
+  const input = document.getElementById('setTauxImpot');
+  const hint = document.getElementById('hintTauxImpot');
+  if (input) { input.disabled = !on; input.classList.toggle('is-off', !on); }
+  if (hint) hint.textContent = on
+    ? 'Taux du prélèvement libératoire (2,2 % en BNC).'
+    : 'Sans objet : tu n\u2019as pas opté pour le versement libératoire. Ton impôt se calcule sur la tranche ci-dessous.';
+}

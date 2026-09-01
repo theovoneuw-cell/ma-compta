@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mry0vtpt" />
+  <link rel="stylesheet" href="css/styles.css?b=mtiqa0k5" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mry0vtpt"></script>
+  <script src="js/theme.js?b=mtiqa0k5"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -196,7 +196,7 @@
             <option value="recue">Reçues</option>
             <option value="attente">En attente</option>
             <option value="retard">En retard</option>
-            <option value="prevu">Prévisionnel (non émises)</option>
+            <option value="prevu">Prévisionnel</option>
           </select>
           <select id="filterTrimestre">
             <option value="all">Tous les trimestres</option>
@@ -239,7 +239,12 @@
       <!-- ---- Sous-onglet : Fiscal ---- -->
       <div class="subpanel" id="sub-fiscal">
         <div class="card urssaf-now" id="urssafNow"></div>
-        <div id="seuilAlert"></div>
+
+        <div class="card tva-card">
+          <h3>Franchise de TVA</h3>
+          <p class="card-sub">Où tu en es des deux seuils, et ce qui t'attend au 1er janvier.</p>
+          <div id="fiscalTva"></div>
+        </div>
 
         <div class="card">
           <h3>Déclarations URSSAF</h3>
@@ -249,8 +254,8 @@
 
         <div class="card-grid">
           <div class="card">
-            <h3>Seuils à surveiller</h3>
-            <p class="card-sub">Franchise de TVA et plafond du régime micro.</p>
+            <h3>Plafond du régime micro</h3>
+            <p class="card-sub">Le plafond au-delà duquel tu sors du régime micro-BNC.</p>
             <div id="fiscalSeuils"></div>
           </div>
           <div class="card">
@@ -525,7 +530,7 @@
             <div class="field">
               <label class="check"><input type="checkbox" id="setVersementActif" /> Versement libératoire de l'impôt</label>
               <input type="number" id="setTauxImpot" step="0.1" min="0" max="10" class="input mask-amount" style="max-width:140px" />
-              <small>Taux du prélèvement libératoire si vous avez opté (ex. 2,2 % en BNC).</small>
+              <small id="hintTauxImpot">Taux du prélèvement libératoire si vous avez opté (ex. 2,2 % en BNC).</small>
             </div>
             <div class="field-row">
               <div class="field">
@@ -534,9 +539,27 @@
                 <small>Forfaitaire : 34 % en BNC.</small>
               </div>
               <div class="field">
+                <label>Nombre de parts</label>
+                <input type="number" id="setParts" step="0.5" min="1" max="10" class="input mask-amount" />
+                <small>1 si tu vis seul, 2 en couple, +0,5 par enfant (les deux premiers).</small>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Autres revenus imposables du foyer (€)</label>
+                <input type="number" id="setAutresRevenus" step="100" min="0" class="input mask-amount" placeholder="0" />
+                <small>Salaires, pensions… nets imposables. L'impôt étant progressif, sans eux l'estimation est fausse.</small>
+              </div>
+              <div class="field">
+                <label class="check"><input type="checkbox" id="setCoupleFiscal" /> Marié ou pacsé</label>
+                <small>Change le plafond de la décote (1 483 € au lieu de 897 €).</small>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
                 <label>Votre tranche d'imposition (%)</label>
                 <input type="number" id="setTmi" step="1" min="0" max="45" class="input mask-amount" placeholder="ex. 11" />
-                <small>Optionnel, pour estimer l'impôt.</small>
+                <small>Ton <b>TMI</b> : 0, 11, 30, 41 ou 45. Il est écrit sur ton avis d'imposition, encadré «&nbsp;votre taux marginal d'imposition&nbsp;». À ne pas confondre avec ton taux de prélèvement à la source.</small>
               </div>
             </div>
           </div>
@@ -646,7 +669,7 @@
               </div>
               <div class="field">
                 <label>Adresse de départ par défaut</label>
-                <input type="text" id="setAdresseDepart" class="input" placeholder="ex. 3 impasse Anahit 06200 Nice" />
+                <input type="text" id="setAdresseDepart" class="input" placeholder="ex. 14 avenue Jean Médecin 06000 Nice" />
                 <small>Pré-remplie comme point de départ dans l'onglet Trajets.</small>
               </div>
             </div>
@@ -766,6 +789,11 @@
           <input type="file" id="pjInput" accept="application/pdf" class="hidden" />
         </div>
 
+        <div class="field full switch-card" id="prevCard">
+          <label class="check"><input type="checkbox" id="f_previsionnel" /> Facture prévisionnelle</label>
+          <small id="prevHint">Vente prévue, pas encore facturée : comptée dans le prévisionnel, jamais dans le CA encaissé ni l'URSSAF, et jamais « en retard ».</small>
+        </div>
+
         <div class="form-grid">
           <div class="field full">
             <label>Client + nature de la vente *</label>
@@ -861,27 +889,27 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mry0vtpt"></script>
-  <script src="js/drive-store.js?b=mry0vtpt"></script>
-  <script src="js/api-web.js?b=mry0vtpt"></script>
-  <script src="js/settings.js?b=mry0vtpt"></script>
-  <script src="js/datepicker.js?b=mry0vtpt"></script>
-  <script src="js/stats.js?b=mry0vtpt"></script>
-  <script src="js/charts.js?b=mry0vtpt"></script>
-  <script src="js/import.js?b=mry0vtpt"></script>
-  <script src="js/pdfimport.js?b=mry0vtpt"></script>
-  <script src="js/factures.js?b=mry0vtpt"></script>
-  <script src="js/fiscal.js?b=mry0vtpt"></script>
-  <script src="js/bilan.js?b=mry0vtpt"></script>
-  <script src="js/ai.js?b=mry0vtpt"></script>
-  <script src="js/connections.js?b=mry0vtpt"></script>
-  <script src="js/agenda.js?b=mry0vtpt"></script>
-  <script src="js/mailbox.js?b=mry0vtpt"></script>
-  <script src="js/trajets.js?b=mry0vtpt"></script>
-  <script src="js/notes.js?b=mry0vtpt"></script>
-  <script src="js/today.js?b=mry0vtpt"></script>
-  <script src="js/privacy.js?b=mry0vtpt"></script>
-  <script src="js/storage.js?b=mry0vtpt"></script>
-  <script src="js/app.js?b=mry0vtpt"></script>
+  <script src="js/google-auth-web.js?b=mtiqa0k5"></script>
+  <script src="js/drive-store.js?b=mtiqa0k5"></script>
+  <script src="js/api-web.js?b=mtiqa0k5"></script>
+  <script src="js/settings.js?b=mtiqa0k5"></script>
+  <script src="js/datepicker.js?b=mtiqa0k5"></script>
+  <script src="js/stats.js?b=mtiqa0k5"></script>
+  <script src="js/charts.js?b=mtiqa0k5"></script>
+  <script src="js/import.js?b=mtiqa0k5"></script>
+  <script src="js/pdfimport.js?b=mtiqa0k5"></script>
+  <script src="js/factures.js?b=mtiqa0k5"></script>
+  <script src="js/fiscal.js?b=mtiqa0k5"></script>
+  <script src="js/bilan.js?b=mtiqa0k5"></script>
+  <script src="js/ai.js?b=mtiqa0k5"></script>
+  <script src="js/connections.js?b=mtiqa0k5"></script>
+  <script src="js/agenda.js?b=mtiqa0k5"></script>
+  <script src="js/mailbox.js?b=mtiqa0k5"></script>
+  <script src="js/trajets.js?b=mtiqa0k5"></script>
+  <script src="js/notes.js?b=mtiqa0k5"></script>
+  <script src="js/today.js?b=mtiqa0k5"></script>
+  <script src="js/privacy.js?b=mtiqa0k5"></script>
+  <script src="js/storage.js?b=mtiqa0k5"></script>
+  <script src="js/app.js?b=mtiqa0k5"></script>
 </body>
 </html>

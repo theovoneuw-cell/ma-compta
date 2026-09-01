@@ -587,7 +587,7 @@ async function checkRecovery() {
     const res = await window.api.recoveryRead();
     if (!res || !res.content) return;
     const obj = JSON.parse(res.content);
-    if (!obj.factures || !obj.factures.length) { window.api.recoveryClear(); return; }
+    if (!obj.factures || !obj.factures.length) { CC.storage.clearRecovery(); return; }
     const choix = await CC.dialog({
       type: 'question',
       buttons: ['Récupérer', 'Ignorer'],
@@ -605,7 +605,7 @@ async function checkRecovery() {
       CC.updateDirtyUI();
       CC.toast('Données récupérées. Pensez à enregistrer (Ctrl+S).', 'ok');
     } else {
-      window.api.recoveryClear();
+      CC.storage.clearRecovery();
     }
   } catch (_) { /* ignore */ }
 }

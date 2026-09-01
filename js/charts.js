@@ -93,8 +93,8 @@ CC.renderDashboard = function () {
 
   // ---------- KPIs ----------
   const recues = fy.filter(CC.stats.isPaid).length;
-  const impayes = fy.filter((f) => !CC.stats.isPaid(f) && CC.stats.isInvoiced(f)).length;
-  const prevus = fy.filter((f) => !CC.stats.isPaid(f) && !CC.stats.isInvoiced(f)).length;
+  const impayes = fy.filter((f) => !CC.stats.isPaid(f) && !CC.stats.isPrevu(f)).length;
+  const prevus = fy.filter((f) => CC.stats.isPrevu(f)).length;
   const yoy = (year !== 'all') ? CC.stats.yoyRealtime(all, year) : null;
   const yoyTxt = (!yoy || yoy.pct == null) ? '—' : (yoy.pct >= 0 ? '+' : '') + CC.util.pct(yoy.pct);
   const yoyCls = (!yoy || yoy.pct == null) ? '' : (yoy.pct >= 0 ? 'pos' : 'neg');
@@ -264,9 +264,10 @@ CC.renderForecast = function (year) {
   const fc = CC.stats.forecast(CC.state.factures, year, CC.state.settings);
   const cards = [];
   cards.push({ t: 'Encaissé à ce jour', v: CC.util.eur0(fc.encaisse), d: fc.isCurrent ? `jour ${fc.dayOfYear} / ${fc.totalDays}` : 'année complète' });
-  cards.push({ t: 'En attente', v: CC.util.eur0(fc.aVenir), d: 'factures non encore payées' });
+  cards.push({ t: 'En attente', v: CC.util.eur0(fc.aVenir), d: 'factures émises, non payées' });
+  if (fc.prevu > 0) cards.push({ t: 'Prévisionnel', v: CC.util.eur0(fc.prevu), d: 'ventes prévues, pas encore facturées' });
   if (fc.isCurrent) {
-    cards.push({ t: 'Projection fin d\'année', v: CC.util.eur0(fc.projete), d: 'au rythme actuel + en attente' });
+    cards.push({ t: 'Projection fin d\'année', v: CC.util.eur0(fc.projete), d: 'au rythme actuel + en attente + prévisionnel' });
     cards.push({ t: 'URSSAF projetée', v: CC.util.eur0(fc.urssafProj), d: 'sur la projection' });
     cards.push({ t: 'Net projeté', v: CC.util.eur0(fc.netProj), d: 'après cotisations' });
   }
@@ -293,8 +294,10 @@ CC.renderBonus = function (fy, year) {
   let recordVal = 0, recordLib = '';
   fy.forEach((f) => { if ((+f.montant || 0) > recordVal) { recordVal = +f.montant; recordLib = CC.util.clientKey(f.libelle); } });
 
-  const impayes = fy.filter((f) => !CC.stats.isPaid(f));
+  const impayes = fy.filter((f) => !CC.stats.isPaid(f) && !CC.stats.isPrevu(f));
   const totalImp = impayes.reduce((a, f) => a + (+f.montant || 0), 0);
+  const prevList = fy.filter((f) => CC.stats.isPrevu(f));
+  const totalPrev = prevList.reduce((a, f) => a + (+f.montant || 0), 0);
 
   const rows = [];
   rows.push(['Nombre de factures', fy.length]);
@@ -303,6 +306,7 @@ CC.renderBonus = function (fy, year) {
   if (year !== 'all') rows.push(['Meilleur mois', bestMonth === '—' ? '—' : `${bestMonth} (${CC.util.eur0(bestVal)})`]);
   rows.push(['Plus grosse facture', recordVal ? `${CC.util.eur0(recordVal)} — ${recordLib}` : '—']);
   rows.push(['Impayés en cours', impayes.length ? `${impayes.length} (${CC.util.eur0(totalImp)})` : 'aucun']);
+  if (prevList.length) rows.push(['Prévisionnel', `${prevList.length} (${CC.util.eur0(totalPrev)})`]);
 
   const encaisse = CC.stats.sums(fy, settings).encaisse;
   let gauges = '';
