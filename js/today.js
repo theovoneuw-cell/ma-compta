@@ -78,9 +78,55 @@ function renderRelances(impayes, settings) {
         <div class="ck-t">${esc(CC.util.clientKey(f.libelle))} <span class="badge ${cls}">${st === 'retard' ? 'retard' : 'attente'}</span></div>
         <div class="ck-s">${f.numFacture ? 'n°' + esc(f.numFacture) + ' · ' : ''}${CC.util.eur(+f.montant || 0)}${f.dateEcheance ? ' · éch. ' + CC.util.frDate(f.dateEcheance) : ''}</div>
       </div>
+      <button type="button" class="btn btn-ghost ck-relancer" data-relance="${esc(f.id)}" title="Ouvrir un mail de relance prérempli">Relancer</button>
     </div>`;
   }).join('');
+  // Delegation posee une seule fois : la liste est reconstruite a chaque rendu.
+  if (!box._relanceBound) {
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-relance]');
+      if (b) CC.relancerFacture(b.dataset.relance);
+    });
+    box._relanceBound = true;
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Relance d'une facture impayee.
+//
+// La liste des impayes de l'accueil ne servait qu'a regarder : il fallait ouvrir
+// Mails, retrouver le client, retaper le numero et le montant. Ce bouton ouvre le
+// composeur avec l'objet et le corps deja ecrits — il reste a choisir le
+// destinataire (le carnet Google propose la saisie) et a relire.
+//
+// Le mail n'est JAMAIS envoye d'ici : c'est un brouillon ouvert a l'ecran.
+CC.relancerFacture = function (id) {
+  const f = (CC.state.factures || []).find((x) => x.id === id);
+  if (!f) { CC.toast('Facture introuvable.', 'err'); return; }
+  if (!CC.mailbox) { CC.toast('La boîte mail n\'est pas disponible.', 'err'); return; }
+
+  const client = CC.util.clientKey(f.libelle);
+  const montant = CC.util.eur(+f.montant || 0);
+  const num = (f.numFacture || '').trim();
+  const ech = CC.rappels ? CC.rappels.echeanceDe(f, CC.state.settings) : null;
+  const retard = ech ? CC.util.daysBetween(ech, new Date()) : 0;
+  const sig = (CC.state.settings.mailSignature || '').trim();
+
+  const designation = num ? 'la facture n° ' + num : 'la facture « ' + (f.libelle || '') + ' »';
+  const subject = num ? `Relance — facture n° ${num} (${montant})` : `Relance — facture ${montant}`;
+
+  let corps = 'Bonjour,\n\n';
+  corps += `Sauf erreur de ma part, ${designation}, d'un montant de ${montant}`;
+  if (ech) corps += `, échue le ${CC.util.frDate(CC.util.toISO(ech))}`;
+  corps += ', n\'a pas encore été réglée';
+  corps += (ech && retard > 0) ? ` (${retard} jour${retard > 1 ? 's' : ''} de retard).\n\n` : '.\n\n';
+  corps += 'Pourriez-vous m\'indiquer où en est son traitement ? Si le règlement est déjà parti, merci de ne pas tenir compte de ce message.\n\n';
+  corps += 'Bien cordialement,\n';
+  if (sig) corps += sig;
+
+  CC.switchTab('mails');
+  CC.mailbox._openCompose({ titre: 'Relance — ' + client, subject, body: corps });
+};
 
 function renderUrssaf(next) {
   const box = document.getElementById('todayUrssaf');

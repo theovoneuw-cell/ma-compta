@@ -11,7 +11,7 @@
 // Version du cache : à incrémenter à chaque refonte visuelle. L'ancien cache est
 // purgé à l'activation, ce qui évite de servir un mélange d'anciens et de
 // nouveaux fichiers après une mise à jour importante.
-const CACHE = 'macompta-mtiqa0k5';
+const CACHE = 'macompta-mtk0clel';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
@@ -24,7 +24,7 @@ const SHELL = [
   'js/settings.js', 'js/datepicker.js', 'js/stats.js', 'js/charts.js', 'js/import.js', 'js/pdfimport.js',
   'js/factures.js', 'js/fiscal.js', 'js/bilan.js', 'js/ai.js', 'js/connections.js',
   'js/agenda.js', 'js/mailbox.js', 'js/trajets.js', 'js/notes.js', 'js/today.js',
-  'js/privacy.js', 'js/storage.js', 'js/app.js', 'js/theme.js',
+  'js/privacy.js', 'js/storage.js', 'js/rappels.js', 'js/notifs.js', 'js/app.js', 'js/theme.js',
   'js/google-auth-web.js', 'js/drive-store.js', 'js/api-web.js'
 ];
 
@@ -74,4 +74,38 @@ self.addEventListener('fetch', (e) => {
       caches.match(req, { ignoreSearch: true }).then((c) => c || caches.match('index.html'))
     )
   );
+});
+
+// ---------------------------------------------------------------------------
+// Web Push (iPhone). C'est le SEUL moyen d'etre prevenu app fermee : iOS ne
+// programme aucune notification locale. Le contenu arrive tout redige du Worker
+// (le service worker ne connait pas la comptabilite).
+//
+// iOS impose userVisibleOnly : chaque push DOIT afficher une notification,
+// sinon Safari finit par revoquer l'abonnement. On affiche donc toujours.
+// ---------------------------------------------------------------------------
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; }
+  catch (_) { d = { titre: 'Ma Compta', corps: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.titre || 'Ma Compta', {
+    body: d.corps || '',
+    icon: 'assets/icon-192.png',
+    badge: 'assets/icon-32.png',
+    tag: d.id || 'macompta',
+    data: { onglet: d.onglet || 'today' }
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const onglet = (e.notification.data && e.notification.data.onglet) || 'today';
+  e.waitUntil((async () => {
+    const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of fenetres) {
+      if ('focus' in c) { c.postMessage({ type: 'notif-clic', onglet }); return c.focus(); }
+    }
+    // App fermee : on l'ouvre sur le bon onglet.
+    if (self.clients.openWindow) return self.clients.openWindow('index.html?onglet=' + encodeURIComponent(onglet));
+  })());
 });

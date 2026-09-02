@@ -19,6 +19,10 @@ CC.storage = {
     const s = Object.assign(CC.defaultSettings(), obj.settings || {});
     if (obj.settings && obj.settings.urssafRates) s.urssafRates = obj.settings.urssafRates;
     CC.state.settings = s;
+    // 0 EUR/km n'est pas un tarif, c'est un champ vide enregistre par erreur. On le
+    // remplace par le bareme de la puissance fiscale des le chargement, sinon le
+    // reglage reste faux dans le fichier meme si les calculs, eux, s'en sortent.
+    if (!(+s.tarifKm > 0)) s.tarifKm = CC.baremeKm(s.chevauxFiscaux);
     CC.state.declarations = obj.declarations || {};
     CC.state.factures = Array.isArray(obj.factures) ? obj.factures.map(normalize) : [];
     CC.state.trajets = Array.isArray(obj.trajets) ? obj.trajets : [];
@@ -27,8 +31,13 @@ CC.storage = {
     if (Array.isArray(obj.notes) && obj.notes.length) CC.state._notesSeed = obj.notes;
   },
 
-  async save(forceDialog) {
-    if (CC.state.readOnly) { CC.toast('Lecture seule : rebranche le disque externe pour enregistrer.', 'err'); return false; }
+  // `discret` : pas de fenetre, pas de message de reussite. Utilise par
+  // l'enregistrement automatique, qui ne doit jamais interrompre la saisie.
+  async save(forceDialog, discret) {
+    if (CC.state.readOnly) {
+      if (!discret) CC.toast('Lecture seule : rebranche le disque externe pour enregistrer.', 'err');
+      return false;
+    }
     const res = await window.api.save(CC.storage.serialize(), !!forceDialog);
     if (res.canceled) return false;
     if (res.error) { CC.toast('Erreur d\'enregistrement : ' + res.error, 'err'); return false; }
@@ -37,8 +46,45 @@ CC.storage = {
     window.api.setFile(res.filePath);
     CC.storage.clearRecovery();
     CC.updateDirtyUI();
-    CC.toast('Enregistré : ' + fileName(res.filePath), 'ok');
+    if (discret) CC.storage._flashAuto();
+    else CC.toast('Enregistré : ' + fileName(res.filePath), 'ok');
     return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Enregistrement automatique.
+  //
+  // La sauvegarde de recuperation (scheduleRecovery) protege d'un plantage ;
+  // elle ne protege pas d'un « j'ai oublie de cliquer sur Enregistrer » suivi
+  // d'une fermeture rapide. Toutes les 2 minutes, si le document a change et
+  // qu'il possede deja un fichier, on l'ecrit — sans un mot, sans fenetre.
+  // Un document jamais enregistre est laisse tranquille : ouvrir une boite
+  // « Enregistrer sous » tout seul serait pire que le probleme.
+  AUTOSAVE_MS: 120000,
+
+  startAutosave() {
+    clearInterval(CC._autosaveTimer);
+    CC._autosaveTimer = setInterval(() => CC.storage.autosaveTick(), CC.storage.AUTOSAVE_MS);
+  },
+
+  async autosaveTick() {
+    const S = CC.state;
+    if (!S.dirty || S.readOnly || !S.filePath) return;
+    if (CC._autosaveBusy) return;                     // un enregistrement est deja en vol
+    CC._autosaveBusy = true;
+    try { await CC.storage.save(false, true); }
+    catch (_) { /* on retentera dans 2 minutes */ }
+    finally { CC._autosaveBusy = false; }
+  },
+
+  // Retour visuel discret : le bouton confirme une seconde, sans toast.
+  _flashAuto() {
+    const btn = document.getElementById('btnSave');
+    if (!btn) return;
+    btn.textContent = 'Enregistré ✓';
+    btn.classList.add('saved-auto');
+    clearTimeout(CC._autosaveFlash);
+    CC._autosaveFlash = setTimeout(() => { btn.classList.remove('saved-auto'); CC.updateDirtyUI(); }, 1600);
   },
 
   async open() {
@@ -177,7 +223,15 @@ function normalize(f) {
     dateEnvoi: f.dateEnvoi || '',
     dateEcheance: f.dateEcheance || '',
     notes: f.notes || '',
-    fichier: f.fichier || ''
+    fichier: f.fichier || '',
+    // Drapeau explicite « facture previsionnelle » : il fait foi sur l'heuristique
+    // "pas de numero = pas encore emise" (voir CC.stats.isPrevu). Sans cette ligne,
+    // une facture EMISE marquee previsionnelle redevenait « en attente » au simple
+    // rechargement du fichier — et changeait de colonne dans le previsionnel et la TVA.
+    ...(typeof f.previsionnel === 'boolean' ? { previsionnel: f.previsionnel } : {}),
+    // Etat d'avant encaissement : sans lui, « Annuler l'encaissement » ne sait plus
+    // quoi restaurer apres un redemarrage.
+    ...(f._avantRecue ? { _avantRecue: f._avantRecue } : {})
   };
 }
 function fileName(p) { return p ? p.split(/[\\/]/).pop() : ''; }

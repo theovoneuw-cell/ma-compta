@@ -328,8 +328,10 @@ CC.stats = {
     payees.slice().sort((a, b) => a.dateEncaissement.localeCompare(b.dateEncaissement))
       .forEach((f) => { cumul += +f.montant || 0; if (!franchi && majore && cumul > majore) franchi = f.dateEncaissement; });
 
-    // Projection de fin d'annee, sur la meme base civile. On retient la plus
-    // prudente des deux lectures : le rythme constate, ou le carnet deja saisi.
+    // Fin d'annee attendue, sur la meme base civile. Pour la TVA on ne
+    // s'appuie QUE sur ce qui est engage : encaisse + factures emises non payees
+    // + ventes prevues. Pas d'extrapolation du rythme : le franchissement d'un
+    // seuil fiscal ne se decide pas sur une tendance, il se constate.
     const isCurrent = (year === today.getFullYear());
     const start = new Date(year, 0, 1), end = new Date(year, 11, 31);
     const totalDays = CC.util.daysBetween(start, end) + 1;
@@ -338,7 +340,7 @@ CC.stats = {
     const prevu = CC.stats.attenteByTrim(factures, year, 'prevu').reduce((a, b) => a + b, 0);
     const rythme = (isCurrent && dayOfYear > 0) ? (enc / dayOfYear) * totalDays : enc;
     const carnet = enc + aVenir + prevu;
-    const projete = isCurrent ? Math.max(rythme, carnet) : enc;
+    const projete = isCurrent ? carnet : enc;
 
     // Verdict au 1er janvier de l'annee suivante : c'est le CA de cette annee-la
     // qui decide. On classe deux fois — sur l'encaisse acquise (elle fait foi
@@ -371,10 +373,12 @@ CC.stats = {
     const dayOfYear = isCurrent ? CC.util.daysBetween(start, today) + 1 : 366;
     const totalDays = CC.util.daysBetween(start, end) + 1;
 
-    let projete = encaisse;
-    if (isCurrent && dayOfYear > 0) {
-      projete = Math.max((encaisse / dayOfYear) * totalDays, encaisse + aVenir + prevu);
-    }
+    // Deux lectures possibles de la fin d'annee : l'extrapolation du rythme
+    // constate, et le carnet deja engage. On retient la plus haute — et on
+    // renvoie les deux, pour que l'ecran puisse dire laquelle il montre.
+    const rythme = (isCurrent && dayOfYear > 0) ? (encaisse / dayOfYear) * totalDays : encaisse;
+    const carnet = encaisse + aVenir + prevu;
+    const projete = isCurrent ? Math.max(rythme, carnet) : encaisse;
     // URSSAF projetee : on applique le taux moyen connu de l'annee a la projection
     const trims = CC.stats.urssafByTrim(factures, year);
     const tauxMoyen = (trims.reduce((a, t) => a + t.taux, 0) / 4) / 100;
@@ -386,6 +390,6 @@ CC.stats = {
     const histAvg = yearsPrev.length
       ? yearsPrev.reduce((a, y) => a + CC.stats.encaisseYear(factures, y), 0) / yearsPrev.length : null;
 
-    return { isCurrent, encaisse, aVenir, prevu, projete, dayOfYear, totalDays, urssafProj, netProj, histAvg };
+    return { isCurrent, encaisse, aVenir, prevu, rythme, carnet, projete, dayOfYear, totalDays, urssafProj, netProj, histAvg };
   }
 };

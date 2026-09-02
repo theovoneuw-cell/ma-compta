@@ -68,7 +68,7 @@ CC.trajets = {
     if (tolls) tolls.checked = (s.calcTolls !== false);
     const box = document.getElementById('tj_rateInfo');
     if (!box) return;
-    const tarif = (s.tarifKm != null ? s.tarifKm : 0.636);
+    const tarif = CC.tarifKmEffectif();
     const toll = CC._tollReady ? 'péages TollGuru actifs' : 'péages non configurés (Paramètres → Connexions)';
     box.textContent = `Barème : ${tarif.toString().replace('.', ',')} €/km · ${s.chevauxFiscaux || 5} CV · ${toll} · Carte © OSM/CARTO`;
   },
@@ -154,7 +154,7 @@ CC.trajets = {
 
       const kmOneWay = rt.distance / 1000;
       const km = kmOneWay * mult;
-      const tarif = (CC.state.settings.tarifKm != null ? CC.state.settings.tarifKm : 0.636);
+      const tarif = CC.tarifKmEffectif();
       const indemnite = km * tarif;
 
       // Estimation du coût carburant réel (informatif, non ajouté au total déductible)

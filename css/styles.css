@@ -185,6 +185,8 @@ body {
 #ddBanner .dd-ic { display: inline-flex; align-items: center; flex-shrink: 0; color: var(--coral-strong); }
 #ddBanner button { margin-left: auto; flex-shrink: 0; }
 body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
+/* Enregistrement automatique : confirmation d'une seconde sur le bouton, pas de toast. */
+#btnSave.saved-auto { color: var(--green); border-color: var(--green); }
 
 /* ===================== TOPBAR ===================== */
 .topbar {
@@ -1359,6 +1361,27 @@ body:has(#tab-mails.active) main { overflow: hidden; display: flex; flex-directi
 .ac-item.sel { background: var(--accent-soft); }
 button.lnk { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 12px; padding: 0; white-space: nowrap; }
 .mc-attach-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* Bandeau « images distantes bloquées » : sobre, au-dessus du corps du message.
+   Il n'alarme pas, il explique et laisse le choix. */
+.seuil-note { margin: 10px 0 0; font-size: 12px; color: var(--amber); line-height: 1.45; }
+
+/* Carte « Barèmes utilisés » : un état des lieux, pas une alarme. */
+/* Bouton « Relancer » des impayés de l'accueil : discret, il apparaît en clair
+   au survol de la ligne pour ne pas alourdir la lecture. */
+.ck-row .ck-relancer { flex-shrink: 0; font-size: 12px; padding: 5px 11px; opacity: .55; transition: opacity .12s ease; }
+.ck-row:hover .ck-relancer, .ck-row .ck-relancer:focus-visible { opacity: 1; }
+@media (hover: none) { .ck-row .ck-relancer { opacity: 1; } }
+.bar-alerte { font-size: 12.5px; color: var(--amber); background: var(--surface-2);
+  border: 1px solid var(--border); border-left: 3px solid var(--amber);
+  border-radius: var(--r-xs); padding: 8px 11px; margin-bottom: 10px; line-height: 1.45; }
+.bar-ok { font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.bar-val { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.sd-row.bar-vieux .bar-val { color: var(--amber); }
+.mail-imgbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px; padding: 9px 12px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-xs); }
+.mail-imgbar-txt { flex: 1 1 220px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.mail-imgbar-btn { flex-shrink: 0; font-size: 12px; padding: 5px 11px; }
 .mail-attach-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 .mail-att { cursor: pointer; }
 .mail-att:hover { border-color: var(--accent); background: var(--surface); }
@@ -2082,3 +2105,9 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   .sp-now-center { flex: 1 1 100%; order: -1; }
   .sp-device { max-width: 130px; }
 }
+
+/* Groupe de cases a cocher empilees (carte Notifications) : en ligne, les
+   libelles longs se coupent au milieu d une option. */
+.check-list { display: flex; flex-direction: column; gap: 7px; margin: 8px 0 4px; }
+.check-list .check { margin: 0; }
+.check-list .check small { color: var(--muted); font-size: 11.5px; }

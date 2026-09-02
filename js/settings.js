@@ -113,9 +113,23 @@ CC.defaultSettings = function () {
 // Bareme kilometrique forfaitaire simplifie (EUR/km, 1re tranche <= 5000 km).
 // Voiture, bareme 2024. Sert a pre-remplir le tarif selon les chevaux fiscaux.
 CC.BAREME_KM = { 3: 0.529, 4: 0.606, 5: 0.636, 6: 0.665, 7: 0.697 };
+CC.BAREME_KM_ANNEE = 2024;   // edition du bareme ci-dessus (controlee par CC.baremesUtilises)
 CC.baremeKm = function (cv) {
   const c = Math.max(3, Math.min(7, parseInt(cv, 10) || 5));
   return CC.BAREME_KM[c];
+};
+
+
+// Tarif kilometrique reellement applique.
+//
+// Un champ laisse vide enregistre 0 dans les reglages, et le test `!= null`
+// laissait passer ce 0 : toute indemnite tombait a 0 EUR sans un mot. On retombe
+// donc sur le bareme correspondant a la puissance fiscale des que la valeur
+// saisie n'est pas exploitable.
+CC.tarifKmEffectif = function () {
+  const s = (CC.state && CC.state.settings) ? CC.state.settings : {};
+  const t = +s.tarifKm;
+  return (t > 0) ? t : CC.baremeKm(s.chevauxFiscaux);
 };
 
 // ---------------------------------------------------------------------------
@@ -145,11 +159,78 @@ CC.baremeIR = function (year) {
 // l'avis reel. Parametres 2026.
 CC.DECOTE_IR = { seul: 897, couple: 1483, taux: 45.25, plafondSeul: 1982, plafondCouple: 3277 };
 
+// Abattement forfaitaire minimum du micro-BNC (le fisc ne retient jamais moins).
+CC.ABATTEMENT_MINI = 305;
+
 // Plafond micro-BNC : 77 700 jusqu'en 2025, 83 600 a partir de 2026
 CC.plafondMicro = function (year) { return year >= 2026 ? 83600 : 77700; };
 CC.effPlafond = function (year) {
   const o = CC.state && CC.state.settings ? CC.state.settings.plafond : 0;
   return (o && o > 0) ? o : CC.plafondMicro(year);
+};
+
+// ---------------------------------------------------------------------------
+// BAREMES UTILISES — controle de fraicheur
+//
+// Tous les chiffres officiels de l'app sont ecrits en dur : bareme de l'impot,
+// decote, taux URSSAF, seuils de franchise de TVA, bareme kilometrique. Ils
+// changent au 1er janvier, et RIEN dans le logiciel ne le remarque : il continue
+// de calculer avec les valeurs de l'an dernier, sans le dire. Cette fonction rend
+// la chose visible — quelle valeur sert, pour quelle annee, et laquelle manque.
+//
+// `perime: true` = la valeur affichee n'est pas celle de l'annee demandee.
+CC.baremesUtilises = function (year) {
+  const s = CC.state.settings;
+  const out = [];
+
+  // Impot : le bareme applique aux revenus de `year` est celui de `year + 1`.
+  const irAttendu = year + 1;
+  const irDispo = Object.keys(CC.BAREME_IR).map(Number).sort((a, b) => a - b);
+  const irUtilise = CC.BAREME_IR[irAttendu] ? irAttendu : irDispo[irDispo.length - 1];
+  out.push({
+    quoi: 'Barème de l\'impôt sur le revenu',
+    valeur: irUtilise === irAttendu ? 'barème ' + irAttendu : 'barème ' + irUtilise + ' faute de mieux',
+    perime: irUtilise !== irAttendu,
+    ou: 'settings.js — CC.BAREME_IR'
+  });
+
+  // Taux URSSAF : renseignes trimestre par trimestre dans les reglages.
+  const row = (s.urssafRates || {})[year];
+  const complet = Array.isArray(row) && row.length === 4 && row.every((t) => t != null && !isNaN(t));
+  out.push({
+    quoi: 'Taux de cotisations URSSAF ' + year,
+    valeur: complet ? row.map((t) => String(t).replace('.', ',') + ' %').join(' · ')
+                    : 'taux par défaut ' + String(s.defaultUrssafRate).replace('.', ',') + ' % sur les trimestres manquants',
+    perime: !complet,
+    ou: 'Paramètres — Taux URSSAF'
+  });
+
+  // Seuils de TVA : impossibles a deviner, on affiche ce qui est saisi.
+  out.push({
+    quoi: 'Seuils de franchise de TVA',
+    valeur: CC.util.eur0(s.seuilTvaBase) + ' / ' + CC.util.eur0(s.seuilTvaMajore),
+    perime: false,
+    ou: 'Paramètres — Seuils TVA'
+  });
+
+  // Plafond du regime micro.
+  out.push({
+    quoi: 'Plafond du régime micro-BNC ' + year,
+    valeur: CC.util.eur0(CC.effPlafond(year)),
+    perime: false,
+    ou: 'settings.js — CC.plafondMicro'
+  });
+
+  // Bareme kilometrique : fige a l'edition 2024.
+  out.push({
+    quoi: 'Barème kilométrique',
+    valeur: 'édition ' + CC.BAREME_KM_ANNEE + ' · ' + String(CC.tarifKmEffectif()).replace('.', ',') + ' €/km'
+      + ((+s.tarifKm > 0) ? '' : ' (barème ' + (s.chevauxFiscaux || 5) + ' CV — aucun tarif saisi)'),
+    perime: CC.BAREME_KM_ANNEE < year,
+    ou: 'Paramètres — Frais kilométriques'
+  });
+
+  return out;
 };
 
 // Categories d'activite + classement automatique par mots-cles du libelle
@@ -203,6 +284,7 @@ CC.renderSettings = function () {
   const fa = document.getElementById('setFraisAnnexes');
   if (fa) fa.value = (s.tauxFraisAnnexes != null ? s.tauxFraisAnnexes : 0.155);
   CC.renderUrssafTable();
+  if (CC.notifs) CC.notifs.render();
 };
 
 // Tableau editable des taux URSSAF par trimestre

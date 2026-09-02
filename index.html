@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mtiqa0k5" />
+  <link rel="stylesheet" href="css/styles.css?b=mtk0clel" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mtiqa0k5"></script>
+  <script src="js/theme.js?b=mtk0clel"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -266,6 +266,12 @@
         </div>
 
         <div class="card">
+          <h3>Barèmes utilisés</h3>
+          <p class="card-sub">Les chiffres officiels sur lesquels reposent les calculs, et leur année. À revoir chaque 1er janvier.</p>
+          <div id="fiscalBaremes" class="qsched"></div>
+        </div>
+
+        <div class="card">
           <h3>Calendrier fiscal</h3>
           <p class="card-sub">Prochaines échéances (URSSAF, CFE, déclaration de revenus).</p>
           <div id="fiscalCalendar" class="qsched"></div>
@@ -291,6 +297,13 @@
             <button id="btnImportExcel" class="btn">Importer un Excel…</button>
             <button id="btnExportCsv" class="btn">Exporter en CSV…</button>
             <button id="btnExportPdf" class="btn">Bilan PDF…</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Sauvegardes automatiques</h3>
+          <p class="muted" style="font-size:12px">Le fichier est enregistré tout seul toutes les 2&nbsp;minutes s'il a changé, et il est écrit d'un bloc : une coupure ne peut plus l'abîmer. Chaque jour, l'état d'avant vos modifications est mis de côté — les 30&nbsp;derniers jours sont conservés, puis un instantané par mois.</p>
+          <div class="btn-row">
+            <button id="btnOpenHistory" class="btn">Ouvrir le dossier des sauvegardes…</button>
           </div>
         </div>
       </div>
@@ -717,6 +730,73 @@
               <label class="check"><input type="checkbox" id="privStartup" /> Démarrer en mode discret (chiffres masqués à l'ouverture)</label>
             </div>
           </div>
+
+          <div class="card">
+            <h3>Notifications <span id="notifEtat" class="pill">inactif</span></h3>
+            <p class="card-sub">Rappels d'échéance URSSAF, factures échues et bilan du lundi. Sur le PC ils s'affichent à l'ouverture de l'app&nbsp;; sur l'iPhone ils arrivent <b>même app fermée</b>, envoyés par le serveur de rappels.</p>
+
+            <div class="conn-block">
+              <div class="conn-title"><span>Cet appareil</span></div>
+              <p class="muted conn-help">L'autorisation se demande appareil par appareil. Sur iPhone, Ma Compta doit d'abord être ajoutée à l'écran d'accueil : iOS refuse les notifications depuis un simple onglet Safari.</p>
+              <div class="field-row">
+                <div class="field" style="align-self:flex-end">
+                  <button id="notifActiver" class="btn btn-primary">Activer sur cet appareil</button>
+                  <button id="notifDesactiver" class="btn">Désactiver</button>
+                </div>
+                <div class="field">
+                  <label>Heure des rappels</label>
+                  <input type="number" id="notifHeure" class="input" min="0" max="23" step="1" style="max-width:110px" />
+                  <small>Heure locale à laquelle partent les rappels du jour.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="conn-block" id="notifBlocPc">
+              <div class="conn-title"><span>Sur ce PC, à l'ouverture</span></div>
+              <div class="check-list">
+                <label class="check"><input type="checkbox" id="notifPcUrssaf" /> Échéances URSSAF (J-7 et J-1)</label>
+                <label class="check"><input type="checkbox" id="notifPcRetard" /> Factures échues non payées</label>
+                <label class="check"><input type="checkbox" id="notifPcAgenda" /> Rendez-vous du jour</label>
+                <label class="check"><input type="checkbox" id="notifPcMail" /> Mails non lus</label>
+              </div>
+            </div>
+
+            <div class="conn-block">
+              <div class="conn-title"><span>Sur l'iPhone (push)</span></div>
+              <p class="muted conn-help">iOS n'autorise aucun rappel programmé en local : une app fermée ne peut pas se réveiller seule. L'app dépose donc à l'avance sur le serveur les rappels <b>déjà rédigés</b> avec leur heure d'envoi — jamais tes factures ni ton fichier.</p>
+              <div class="check-list">
+                <label class="check"><input type="checkbox" id="notifPushUrssaf" /> Échéances URSSAF (J-7 et J-1)</label>
+                <label class="check"><input type="checkbox" id="notifPushRetard" /> Facture passée en retard</label>
+                <label class="check"><input type="checkbox" id="notifPushHebdo" /> Bilan du lundi matin</label>
+                <label class="check"><input type="checkbox" id="notifPushMail" /> Mails de clients <small>(le serveur interroge Gmail en métadonnées)</small></label>
+              </div>
+              <div class="field-row">
+                <div class="field" style="flex:1">
+                  <label>Adresse du serveur de rappels</label>
+                  <input type="url" id="notifServeur" class="input" placeholder="https://ma-compta-rappels.xxx.workers.dev" autocomplete="off" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field" style="flex:1">
+                  <label>Clé publique VAPID</label>
+                  <input type="text" id="notifVapid" class="input" placeholder="B…" autocomplete="off" />
+                </div>
+                <div class="field" style="flex:1">
+                  <label>Clé partagée</label>
+                  <input type="password" id="notifCle" class="input" placeholder="le secret défini sur le Worker" autocomplete="off" />
+                </div>
+              </div>
+              <div class="field">
+                <button id="notifSync" class="btn">Renvoyer les rappels au serveur</button>
+                <button id="notifTest" class="btn">Notification de test</button>
+              </div>
+            </div>
+
+            <div class="conn-block">
+              <div class="conn-title"><span>Prochains rappels programmés</span></div>
+              <div id="notifApercu" class="cockpit-list"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -889,27 +969,29 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mtiqa0k5"></script>
-  <script src="js/drive-store.js?b=mtiqa0k5"></script>
-  <script src="js/api-web.js?b=mtiqa0k5"></script>
-  <script src="js/settings.js?b=mtiqa0k5"></script>
-  <script src="js/datepicker.js?b=mtiqa0k5"></script>
-  <script src="js/stats.js?b=mtiqa0k5"></script>
-  <script src="js/charts.js?b=mtiqa0k5"></script>
-  <script src="js/import.js?b=mtiqa0k5"></script>
-  <script src="js/pdfimport.js?b=mtiqa0k5"></script>
-  <script src="js/factures.js?b=mtiqa0k5"></script>
-  <script src="js/fiscal.js?b=mtiqa0k5"></script>
-  <script src="js/bilan.js?b=mtiqa0k5"></script>
-  <script src="js/ai.js?b=mtiqa0k5"></script>
-  <script src="js/connections.js?b=mtiqa0k5"></script>
-  <script src="js/agenda.js?b=mtiqa0k5"></script>
-  <script src="js/mailbox.js?b=mtiqa0k5"></script>
-  <script src="js/trajets.js?b=mtiqa0k5"></script>
-  <script src="js/notes.js?b=mtiqa0k5"></script>
-  <script src="js/today.js?b=mtiqa0k5"></script>
-  <script src="js/privacy.js?b=mtiqa0k5"></script>
-  <script src="js/storage.js?b=mtiqa0k5"></script>
-  <script src="js/app.js?b=mtiqa0k5"></script>
+  <script src="js/google-auth-web.js?b=mtk0clel"></script>
+  <script src="js/drive-store.js?b=mtk0clel"></script>
+  <script src="js/api-web.js?b=mtk0clel"></script>
+  <script src="js/settings.js?b=mtk0clel"></script>
+  <script src="js/datepicker.js?b=mtk0clel"></script>
+  <script src="js/stats.js?b=mtk0clel"></script>
+  <script src="js/charts.js?b=mtk0clel"></script>
+  <script src="js/import.js?b=mtk0clel"></script>
+  <script src="js/pdfimport.js?b=mtk0clel"></script>
+  <script src="js/factures.js?b=mtk0clel"></script>
+  <script src="js/fiscal.js?b=mtk0clel"></script>
+  <script src="js/bilan.js?b=mtk0clel"></script>
+  <script src="js/ai.js?b=mtk0clel"></script>
+  <script src="js/connections.js?b=mtk0clel"></script>
+  <script src="js/agenda.js?b=mtk0clel"></script>
+  <script src="js/mailbox.js?b=mtk0clel"></script>
+  <script src="js/trajets.js?b=mtk0clel"></script>
+  <script src="js/notes.js?b=mtk0clel"></script>
+  <script src="js/today.js?b=mtk0clel"></script>
+  <script src="js/privacy.js?b=mtk0clel"></script>
+  <script src="js/storage.js?b=mtk0clel"></script>
+  <script src="js/rappels.js?b=mtk0clel"></script>
+  <script src="js/notifs.js?b=mtk0clel"></script>
+  <script src="js/app.js?b=mtk0clel"></script>
 </body>
 </html>

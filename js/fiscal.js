@@ -112,6 +112,7 @@ CC.renderFiscal = function () {
   // ---------- Seuils ----------
   const enc = cot.encaisse;
   const plafond = CC.effPlafond(year);
+  const plafondLegal = CC.plafondMicro(year);
   function gauge(label, val, max, extra) {
     const ratio = Math.min(100, (val / max) * 100);
     const cls = ratio > 95 ? 'danger' : ratio > 80 ? 'warn' : '';
@@ -119,8 +120,14 @@ CC.renderFiscal = function () {
       <div class="bar"><div class="fill ${cls}" style="width:${ratio}%"></div></div>
       <div class="lbl"><span>${CC.util.eur0(val)}</span><span>${extra || CC.util.eur0(max)}</span></div></div>`;
   }
+  // Un plafond saisi a la main dans les Parametres remplace le plafond legal, en
+  // silence. S'il en differe, la jauge le dit : sinon on lit une marge qui n'existe
+  // pas (ou l'inverse) sans jamais savoir d'ou vient le chiffre.
+  const noteePlafond = (plafond !== plafondLegal)
+    ? `<p class="seuil-note">Plafond saisi à la main dans Paramètres. Le plafond légal ${year} est de ${CC.util.eur0(plafondLegal)} — videz le champ pour le suivre automatiquement.</p>`
+    : '';
   document.getElementById('fiscalSeuils').innerHTML =
-    `<div class="seuil">${gauge('Plafond micro ' + year, enc, plafond)}</div>`;
+    `<div class="seuil">${gauge('Plafond micro ' + year, enc, plafond)}</div>` + noteePlafond;
 
   // ---------- Franchise de TVA ----------
   // Une question fermée, une réponse, et de quoi la vérifier.
@@ -146,7 +153,7 @@ CC.renderFiscal = function () {
 
     // --- Verdict : une phrase de réponse, une phrase de raison. ---
     const fin = t.isCurrent
-      ? `Tu finirais ${year} à <b>${eur(t.projete)}</b>`
+      ? `Avec tout ce qui est engagé, tu finirais ${year} à <b>${eur(t.projete)}</b>`
       : `Tu as encaissé <b>${eur(t.enc)}</b> en ${year}`;
     let cls, rep, pourquoi;
     if (t.franchi) {
@@ -155,7 +162,7 @@ CC.renderFiscal = function () {
       pourquoi = `Le seuil majoré a été franchi le ${CC.util.frDate(t.franchi)}. La franchise tombe ce jour-là, pas au 1er janvier.`;
     } else if (niveau === 'tva') {
       cls = 'danger';
-      rep = t.isCurrent ? 'Oui, si ton rythme se confirme' : 'Oui — TVA au 1er janvier ' + suiv;
+      rep = t.isCurrent ? 'Oui, si tout ce qui est engagé est encaissé' : 'Oui — TVA au 1er janvier ' + suiv;
       pourquoi = t.isCurrent
         ? `${fin}, au-dessus du seuil majoré. Tu basculerais dès le jour du franchissement, en ${year}.`
         : `${fin}, au-dessus du seuil majoré : la franchise ne peut pas être reconduite.`;
@@ -175,7 +182,7 @@ CC.renderFiscal = function () {
     const depasse = t.projete > t.majore;
     const proj = (t.isCurrent && pProj > pEnc)
       ? `<div class="ts-proj${depasse ? ' over' : ''}" style="width:${pProj}%"></div>` : '';
-    const legProj = t.isCurrent ? `<span><i class="sw proj"></i>projection ${eur(t.projete)}</span>` : '';
+    const legProj = t.isCurrent ? `<span><i class="sw proj"></i>engagé ${eur(t.projete)}</span>` : '';
 
     const ruler = `
       <div class="tva-scale">
@@ -201,9 +208,9 @@ CC.renderFiscal = function () {
     if (t.isCurrent && !t.franchi) {
       const serre = t.margeProj >= 0 && t.margeProj < t.majore * 0.05;
       figs.push({ t: 'Encore encaissable', v: eur(t.reste), d: `avant ${eur(t.majore)} · ${t.jours} j restants` });
-      figs.push({ t: 'Projection fin d’année', v: eur(t.projete), d: t.carnet > t.rythme ? 'carnet saisi' : 'au rythme constaté' });
+      figs.push({ t: 'Fin d’année engagée', v: eur(t.projete), d: 'encaissé + en attente + prévisionnel' });
       figs.push({
-        t: 'Marge sur la projection',
+        t: 'Marge sur l’engagé',
         v: (t.margeProj >= 0 ? '' : '− ') + eur(Math.abs(t.margeProj)),
         d: t.margeProj < 0 ? 'au-dessus du seuil majoré'
           : serre ? `${eur(t.margeProj / Math.max(1, t.jours / 30.4))} par mois seulement` : 'sous le seuil majoré',
@@ -232,14 +239,18 @@ CC.renderFiscal = function () {
   // On applique le vrai barème progressif, pas la tranche marginale à toute la
   // base : cette dernière surestime largement, et la décote finit d'éloigner
   // le résultat de l'avis réel.
+  // Abattement forfaitaire micro-BNC : 34 % du CA, avec un PLANCHER de 305 €.
+  // Le plancher ne mord qu'en dessous d'environ 900 € de recettes, mais sans lui
+  // un tout petit CA ressortait avec une base imposable trop haute.
   const ab = settings.abattementBNC || 34;
-  const baseImp = enc * (1 - ab / 100);
+  const abattement = Math.min(enc, Math.max(enc * ab / 100, CC.ABATTEMENT_MINI));
+  const baseImp = Math.max(0, enc - abattement);
   const autres = +settings.autresRevenus || 0;
   const baseTotale = baseImp + autres;
 
   let irBlocks = [
     { t: 'CA encaissé ' + year, v: CC.util.eur0(enc), d: '' },
-    { t: `Abattement ${ab}%`, v: '− ' + CC.util.eur0(enc * ab / 100), d: 'forfaitaire micro-BNC' },
+    { t: `Abattement ${ab}%`, v: '− ' + CC.util.eur0(abattement), d: abattement > enc * ab / 100 ? 'forfaitaire micro-BNC · plancher ' + CC.util.eur0(CC.ABATTEMENT_MINI) : 'forfaitaire micro-BNC' },
     { t: 'Base imposable', v: CC.util.eur0(baseImp), d: autres ? 'de ton activité' : 'à ajouter aux revenus du foyer' }
   ];
   if (autres) irBlocks.push({ t: 'Autres revenus du foyer', v: '+ ' + CC.util.eur0(autres), d: 'saisis dans Paramètres' });
@@ -262,6 +273,25 @@ CC.renderFiscal = function () {
     `<div class="ir-grid">` + irBlocks.map((b) => `<div class="fc"><div class="t">${b.t}</div><div class="v">${b.v}</div><div class="d">${b.d}</div></div>`).join('') + `</div>` +
     (settings.versementActif ? '' :
       `<p class="ir-note">Estimation sur le barème ${year + 1} (revenus ${year}).${autres ? '' : ' <b>Si ton foyer a d\u2019autres revenus</b>, renseigne-les dans Paramètres : sans eux, l\u2019impôt est sous-estimé.'} Ni réductions ni crédits d\u2019impôt ne sont pris en compte.</p>`);
+
+  // ---------- Barèmes utilisés ----------
+  // Rien ne prévient quand un barème officiel change au 1er janvier : cette carte
+  // le rend visible plutôt que de laisser l'app calculer en silence sur l'an dernier.
+  (function renderBaremes() {
+    const box = document.getElementById('fiscalBaremes');
+    if (!box || !CC.baremesUtilises) return;
+    const lignes = CC.baremesUtilises(year);
+    const perimes = lignes.filter((l) => l.perime).length;
+    box.innerHTML =
+      (perimes
+        ? `<div class="bar-alerte">${perimes} barème${perimes > 1 ? 's' : ''} à mettre à jour pour ${year} — les calculs ci-dessus utilisent en attendant la dernière valeur connue.</div>`
+        : `<div class="bar-ok">Tous les barèmes sont à jour pour ${year}.</div>`) +
+      lignes.map((l) => `<div class="sd-row${l.perime ? ' bar-vieux' : ''}">
+        <span class="sd-src">${l.quoi}</span>
+        <span class="sd-amt bar-val">${l.valeur}</span>
+        <span class="sd-tag ${l.perime ? '' : 'past'}">${l.perime ? 'à revoir' : l.ou}</span>
+      </div>`).join('');
+  })();
 
   // ---------- Calendrier fiscal ----------
   const events = [];

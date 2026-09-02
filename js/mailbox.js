@@ -287,6 +287,7 @@ CC.mailbox = {
     // Reporte l'état « Favori » depuis la ligne de liste (Gmail ne le renvoie pas ici).
     m.favori = item ? !!item.favori : false;
     this._current = m;
+    this._currentItem = item || null;
     const atts = m.attachments || [];
 
     // Images inline (signatures) : remplace les src="cid:..." par des data-URI.
@@ -303,9 +304,22 @@ CC.mailbox = {
         } catch (_) {}
       }
     }
+    // Images distantes : neutralisees par defaut (pixels espions). L'autorisation
+    // vaut pour CE message et pour cette session seulement.
     let body;
-    if (html) body = `<div class="mail-body">${sanitize(html)}</div>`;
-    else body = `<div class="mail-body mail-body-text">${esc(m.text || '(message vide)')}</div>`;
+    const imagesOk = (this._imagesOk === m.id);
+    let bloquees = 0;
+    if (html) {
+      const r = imagesOk ? { html, count: 0 } : bloquerImagesDistantes(html);
+      bloquees = r.count;
+      body = `<div class="mail-body">${sanitize(r.html)}</div>`;
+    } else {
+      body = `<div class="mail-body mail-body-text">${esc(m.text || '(message vide)')}</div>`;
+    }
+    const imgBar = bloquees ? `<div class="mail-imgbar">
+      <span class="mail-imgbar-txt">${bloquees} image${bloquees > 1 ? 's' : ''} distante${bloquees > 1 ? 's' : ''} bloquée${bloquees > 1 ? 's' : ''} — les afficher prévient l'expéditeur que tu as ouvert ce message.</span>
+      <button type="button" class="btn btn-ghost mail-imgbar-btn" data-mact="images">Afficher les images</button>
+    </div>` : '';
 
     // Barre des pièces jointes (téléchargeables), hors images inline.
     const files = atts.filter((a) => !a.inline && a.attachmentId);
@@ -334,6 +348,7 @@ CC.mailbox = {
           <span class="mail-from-date">${esc(longDate(m.date))}</span>
         </div>
       </div>
+      ${imgBar}
       ${body}
       ${attBar}
       <div class="mail-foot-actions">
@@ -757,10 +772,19 @@ CC.mailbox = {
       else if (act.dataset.mact === 'forward') this._forward();
       else if (act.dataset.mact === 'trash' && this._current) this._del(this._current.id, '');
       else if (act.dataset.mact === 'star' && this._current) this._applyStar(this._current.id, !act.classList.contains('on'));
+      else if (act.dataset.mact === 'images' && this._current) this._showImages();
       return;
     }
     const a = e.target.closest('a[href]');
     if (a) { e.preventDefault(); const h = a.getAttribute('href'); if (h && /^https?:/i.test(h)) window.api.openUrl(h); }
+  },
+
+  // Autorise les images distantes pour ce message, puis le reaffiche.
+  // L'autorisation n'est pas memorisee sur le disque : elle disparait avec la
+  // session, pour qu'un mail rouvert demain reparte protege.
+  _showImages() {
+    this._imagesOk = this._current.id;
+    this._open(this._current.id, this._currentItem);
   },
 
   // Ouvre (affiche) la modale de lecture et renvoie son conteneur de contenu.
@@ -858,6 +882,37 @@ function longDate(iso) {
   if (isNaN(d.getTime())) return iso || '';
   return cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
+// ---------------------------------------------------------------------------
+// Images distantes : bloquees par defaut.
+//
+// Un mail HTML peut appeler une image hebergee chez l'expediteur. La charger lui
+// apprend QUAND le message a ete ouvert, combien de fois, et depuis quelle adresse
+// IP : c'est le principe du pixel espion, le procede de pistage le plus courant
+// dans les mails commerciaux. Gmail masque cela derriere son proxy d'images ; ici
+// la requete partirait directement de la machine. On neutralise donc les sources
+// distantes, et on laisse le choix message par message.
+//
+// Les images deja converties en data: (signatures inline, substituees a partir des
+// pieces jointes cid:) ne sortent pas de la machine : elles restent affichees.
+const PIXEL_VIDE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+function bloquerImagesDistantes(html) {
+  let n = 0;
+  let s = String(html);
+  // src="http…" — guillemets doubles, simples, ou absents
+  s = s.replace(/\ssrc\s*=\s*(?:"https?:\/\/[^"]*"|'https?:\/\/[^']*'|https?:\/\/[^\s>]+)/gi,
+    () => { n++; return ' src="' + PIXEL_VIDE + '"'; });
+  // srcset : une liste de sources, distantes pour au moins l'une d'elles
+  s = s.replace(/\ssrcset\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
+    (m) => (/https?:\/\//i.test(m) ? (n++, ' ') : m));
+  // background="http…" : les vieux mails en tableaux passent par la
+  s = s.replace(/\sbackground\s*=\s*(?:"https?:\/\/[^"]*"|'https?:\/\/[^']*'|https?:\/\/[^\s>]+)/gi,
+    () => { n++; return ' '; });
+  // url(http…) dans un attribut style
+  s = s.replace(/url\(\s*['"]?https?:\/\/[^)]*\)/gi, () => { n++; return 'none'; });
+  return { html: s, count: n };
+}
+
 // Nettoie le HTML d'un mail avant affichage (le CSP bloque déjà les scripts ; les
 // images data:/https sont autorisées pour afficher les signatures)
 function sanitize(html) {

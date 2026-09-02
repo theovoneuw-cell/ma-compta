@@ -201,7 +201,7 @@ CC.switchTab = function (name, dir) {
   if (name === 'mails' && CC.mailbox) CC.mailbox.render();
   if (name === 'redaction' && CC.ai) CC.ai.render();
   if (name === 'trajets' && CC.trajets) CC.trajets.render();
-  if (name === 'settings' && CC.connections) CC.connections.render();
+  if (name === 'settings') { if (CC.connections) CC.connections.render(); if (CC.notifs) CC.notifs.render(); }
 };
 
 // Sous-onglets de la partie Compta
@@ -391,6 +391,12 @@ async function init() {
   document.getElementById('btnImportExcel').addEventListener('click', () => CC.storage.importExcel());
   document.getElementById('btnExportCsv').addEventListener('click', () => CC.storage.exportCsv());
   document.getElementById('btnExportPdf').addEventListener('click', () => CC.storage.exportPdf());
+  const btnHist = document.getElementById('btnOpenHistory');
+  if (btnHist) btnHist.addEventListener('click', async () => {
+    const r = await window.api.openHistory();
+    if (r && r.error) { CC.toast('Dossier introuvable : ' + r.error, 'err'); return; }
+    CC.toast(r && r.count ? r.count + " sauvegarde(s) dans le dossier." : "Dossier ouvert — aucune sauvegarde pour l'instant.", "ok");
+  });
 
   // Bilan annuel : sélecteur d'année + export PDF
   const bilanYear = document.getElementById('bilanYear');
@@ -407,6 +413,7 @@ async function init() {
   if (CC.trajets) CC.trajets.bind();
   if (CC.notes) CC.notes.bind();
   if (CC.privacy) CC.privacy.bind();
+  if (CC.notifs) CC.notifs.bind();
   CC.installReadOnlyGuard();
 
   // Actions du menu (process principal)
@@ -428,6 +435,11 @@ async function init() {
     }
   });
 
+  // Clic sur une notification Windows : on ouvre l'onglet concerné.
+  if (window.api.notify && window.api.notify.onClick) {
+    window.api.notify.onClick((onglet) => CC.switchTab(onglet || 'today'));
+  }
+
   // Raccourci clavier Echap pour fermer la modale facture
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') CC.facturesView.closeModal();
@@ -444,12 +456,19 @@ async function init() {
   CC.renderToday();          // cockpit d'accueil (onglet par defaut)
   if (CC.privacy) CC.privacy.afterLoad();   // icône œil + statut carte "Mode discret"
 
+  // Enregistrement automatique (toutes les 2 min si le document a changé)
+  CC.storage.startAutosave();
+
   // Badge des mails non lus : au démarrage puis toutes les 2 minutes
   CC.updateMailBadge();
   setInterval(() => CC.updateMailBadge(), 120000);
 
   // Pense-bête : récupère la version Drive (synchro PC ↔ iPhone)
   if (CC.notes) CC.notes.pull();
+
+  // Rappels : notifications du jour sur le PC, puis dépôt des rappels à venir
+  // sur le serveur pour que l'iPhone soit prévenu même app fermée.
+  if (CC.notifs) CC.notifs.demarrage();
 
   // Proposer la recuperation si une sauvegarde de secours existe
   checkRecovery();

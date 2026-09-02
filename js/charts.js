@@ -267,7 +267,15 @@ CC.renderForecast = function (year) {
   cards.push({ t: 'En attente', v: CC.util.eur0(fc.aVenir), d: 'factures émises, non payées' });
   if (fc.prevu > 0) cards.push({ t: 'Prévisionnel', v: CC.util.eur0(fc.prevu), d: 'ventes prévues, pas encore facturées' });
   if (fc.isCurrent) {
-    cards.push({ t: 'Projection fin d\'année', v: CC.util.eur0(fc.projete), d: 'au rythme actuel + en attente + prévisionnel' });
+    // La projection est un MAX, pas une somme : le sous-titre dit laquelle des
+    // deux lectures est affichee, et rappelle le montant de l'autre.
+    const parCarnet = fc.carnet >= fc.rythme;
+    cards.push({
+      t: "Projection fin d'année", v: CC.util.eur0(fc.projete),
+      d: parCarnet
+        ? 'encaissé + en attente + prévisionnel'
+        : 'au rythme actuel · carnet engagé : ' + CC.util.eur0(fc.carnet)
+    });
     cards.push({ t: 'URSSAF projetée', v: CC.util.eur0(fc.urssafProj), d: 'sur la projection' });
     cards.push({ t: 'Net projeté', v: CC.util.eur0(fc.netProj), d: 'après cotisations' });
   }

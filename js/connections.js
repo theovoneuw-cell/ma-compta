@@ -30,7 +30,8 @@ CC.connections = {
     const cv = document.getElementById('setCv');
     const tarif = document.getElementById('setTarifKm');
     if (cv) cv.value = String(s.chevauxFiscaux || 5);
-    if (tarif) tarif.value = (s.tarifKm != null ? s.tarifKm : 0.636);
+    // Meme regle qu au calcul : 0 signifie « pas de tarif saisi », pas « 0 EUR/km ».
+    if (tarif) tarif.value = CC.tarifKmEffectif();
     const adr = document.getElementById('setAdresseDepart');
     if (adr) adr.value = s.adresseDepart || '';
     CC.connections.refreshStatus();
@@ -139,8 +140,13 @@ CC.connections = {
       CC.markDirty();
     });
     $('setTarifKm') && $('setTarifKm').addEventListener('change', (e) => {
-      let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
-      CC.state.settings.tarifKm = v; CC.markDirty();
+      // Un champ vide (ou une valeur absurde) enregistrait 0 : toutes les indemnites
+      // tombaient a 0 EUR sans un mot. Vider le champ veut dire « reprends le bareme »,
+      // pas « zero euro du kilometre ».
+      const v = parseFloat(e.target.value);
+      CC.state.settings.tarifKm = (isNaN(v) || v <= 0) ? CC.baremeKm(CC.state.settings.chevauxFiscaux) : v;
+      e.target.value = CC.state.settings.tarifKm;
+      CC.markDirty();
     });
 
     // Ton & signature -> settings
