@@ -297,22 +297,24 @@ CC.stats = {
   // -------------------------------------------------------------------------
   // FRANCHISE EN BASE DE TVA
   //
-  // Deux differences de fond avec le reste de l'app, d'ou une fonction a part :
+  // Regime en vigueur depuis 2025 (prestations de services). TROIS cas, et non
+  // deux — c'est la nuance qui change tout :
   //
-  //  1. On raisonne en ANNEE CIVILE D'ENCAISSEMENT, pas en periode declaree
-  //     URSSAF. Un virement du 5 janvier compte pour l'annee ou il tombe, meme
-  //     si la facture se rattache au trimestre precedent.
-  //  2. C'est le seuil MAJORE qui coupe la franchise, pas le seuil de base.
-  //     Depasser le seuil de base n'a aucun effet immediat : on entre juste dans
-  //     une bande de tolerance ou la franchise est maintenue.
+  //   CA(N) <= base            -> franchise ; rien ne change au 1er janvier N+1
+  //   base < CA(N) <= majore   -> franchise jusqu'au 31 decembre N, puis
+  //                               REDEVABLE DE LA TVA AU 1er JANVIER N+1
+  //   CA(N) > majore           -> franchise perdue IMMEDIATEMENT, des la
+  //                               premiere facture emise apres le depassement
   //
-  // Regles (regime en vigueur depuis 2025) :
-  //   CA(N-1) <= base            -> franchise en N
-  //   base < CA(N-1) <= majore   -> franchise MAINTENUE en N (tolerance)
-  //   CA(N-1) > majore           -> TVA des le 1er janvier N
-  //   CA(N) franchit le majore   -> TVA des LE JOUR du franchissement, en N
+  // Le seuil majore ne protege donc RIEN. Il n'ouvre pas une bande de tolerance
+  // qui reconduirait la franchise — ca, c'etait l'ANCIEN regime, celui ou
+  // l'annee N-2 intervenait. Il decide seulement de la DATE de bascule : au
+  // 1er janvier suivant, ou le jour meme.
   //
-  // L'annee N-2 n'intervient pas : c'est l'ancien regime, abandonne.
+  // Autre particularite, inchangee : on raisonne en ANNEE CIVILE
+  // D'ENCAISSEMENT, pas en periode declaree URSSAF. Un virement du 5 janvier
+  // compte pour l'annee ou il tombe, meme si la facture se rattache au
+  // trimestre precedent.
   tva(factures, year, settings, today = new Date()) {
     const base = +settings.seuilTvaBase || 0;
     const majore = +settings.seuilTvaMajore || 0;
@@ -323,15 +325,16 @@ CC.stats = {
     const enc = somme(payees);
     const encPrec = somme(ofYear(year - 1));
 
-    // Jour exact du franchissement : on rejoue les encaissements dans l'ordre.
+    // Jour exact du franchissement du seuil MAJORE : on rejoue les encaissements
+    // dans l'ordre. C'est le seul depassement qui coupe la franchise sur-le-champ.
     let cumul = 0, franchi = null;
     payees.slice().sort((a, b) => a.dateEncaissement.localeCompare(b.dateEncaissement))
       .forEach((f) => { cumul += +f.montant || 0; if (!franchi && majore && cumul > majore) franchi = f.dateEncaissement; });
 
-    // Fin d'annee attendue, sur la meme base civile. Pour la TVA on ne
-    // s'appuie QUE sur ce qui est engage : encaisse + factures emises non payees
-    // + ventes prevues. Pas d'extrapolation du rythme : le franchissement d'un
-    // seuil fiscal ne se decide pas sur une tendance, il se constate.
+    // Fin d'annee attendue, sur la meme base civile. Pour la TVA on ne s'appuie
+    // QUE sur ce qui est engage : encaisse + factures emises non payees + ventes
+    // prevues. Pas d'extrapolation du rythme : le franchissement d'un seuil
+    // fiscal ne se decide pas sur une tendance, il se constate.
     const isCurrent = (year === today.getFullYear());
     const start = new Date(year, 0, 1), end = new Date(year, 11, 31);
     const totalDays = CC.util.daysBetween(start, end) + 1;
@@ -342,20 +345,26 @@ CC.stats = {
     const carnet = enc + aVenir + prevu;
     const projete = isCurrent ? carnet : enc;
 
-    // Verdict au 1er janvier de l'annee suivante : c'est le CA de cette annee-la
-    // qui decide. On classe deux fois — sur l'encaisse acquise (elle fait foi
-    // pour une annee close) et sur la projection (seule lecture honnete tant
-    // que l'annee court).
-    const classe = (ca) => (majore && ca > majore) ? 'tva' : (base && ca > base) ? 'tolerance' : 'franchise';
+    // Trois issues possibles, dans l'ordre de gravite. On classe deux fois :
+    // sur l'encaisse acquise (elle fait foi pour une annee close) et sur
+    // l'engage (seule lecture honnete tant que l'annee court).
+    const classe = (ca) => {
+      if (majore && ca > majore) return 'tva-immediate';   // bascule en cours d'annee
+      if (base && ca > base) return 'tva-janvier';         // bascule au 1er janvier suivant
+      return 'franchise';
+    };
     const suivant = classe(enc);
     const suivantProj = classe(projete);
 
     return {
       year, base, majore, enc, encPrec, franchi, suivant, suivantProj, isCurrent,
       aVenir, prevu, rythme, carnet, projete,
-      reste: majore - enc,             // encore encaissable avant de basculer
-      margeProj: majore - projete,     // marge si le rythme se confirme
-      jours: totalDays - dayOfYear     // jours restants dans l'annee
+      // Deux seuils, deux consequences, donc deux marges a suivre.
+      resteBase: base - enc,          // encore encaissable en restant en franchise l'an prochain
+      resteMajore: majore - enc,      // encore encaissable avant la bascule immediate
+      margeBase: base - projete,      // la meme chose, sur l'engage
+      margeMajore: majore - projete,
+      jours: totalDays - dayOfYear    // jours restants dans l'annee
     };
   },
 

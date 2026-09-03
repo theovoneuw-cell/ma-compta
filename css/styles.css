@@ -664,12 +664,12 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
   position: relative; height: 16px; border-radius: var(--r-pill);
   background: var(--paper); border: 1px solid var(--border); overflow: hidden;
 }
-/* Bande de tolérance : teinte de fond, jamais par-dessus les barres. */
+/* Zone « TVA au 1er janvier » (du seuil de base au seuil majoré). */
 .ts-proj { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); opacity: .28; }
 .ts-proj.over { background: var(--red); opacity: .38; }
 .ts-enc { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); border-radius: var(--r-pill) 0 0 var(--r-pill); }
 .ts-tick { position: absolute; top: -1px; bottom: -1px; width: 2px; background: var(--ink); opacity: .55; }
-/* Bande de tolerance : posee PAR-DESSUS les barres. En simple teinte de fond
+/* Zone « TVA au 1er janvier » : posee PAR-DESSUS les barres. En simple teinte de fond
    elle disparaissait sous la projection ; en hachures ambrees translucides
    elle reste lisible aussi bien sur la barre pleine que sur la piste vide,
    et dans les deux themes. */

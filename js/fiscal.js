@@ -159,24 +159,24 @@ CC.renderFiscal = function () {
     if (t.franchi) {
       cls = 'danger';
       rep = 'Oui — TVA due depuis le ' + CC.util.frDate(t.franchi);
-      pourquoi = `Le seuil majoré a été franchi le ${CC.util.frDate(t.franchi)}. La franchise tombe ce jour-là, pas au 1er janvier.`;
-    } else if (niveau === 'tva') {
+      pourquoi = `Le seuil majoré a été franchi le ${CC.util.frDate(t.franchi)}. La franchise tombe à cette date, dès la facture suivante — pas au 1er janvier.`;
+    } else if (niveau === 'tva-immediate') {
       cls = 'danger';
-      rep = t.isCurrent ? 'Oui, si tout ce qui est engagé est encaissé' : 'Oui — TVA au 1er janvier ' + suiv;
-      pourquoi = t.isCurrent
-        ? `${fin}, au-dessus du seuil majoré. Tu basculerais dès le jour du franchissement, en ${year}.`
-        : `${fin}, au-dessus du seuil majoré : la franchise ne peut pas être reconduite.`;
-    } else if (niveau === 'tolerance') {
+      rep = t.isCurrent ? 'Oui — et dès cette année' : 'Oui — TVA en cours d’année ' + year;
+      pourquoi = `${fin}, au-dessus du seuil majoré. Au-delà de ${eur(t.majore)} la franchise tombe le jour même, dès la facture suivante.`;
+    } else if (niveau === 'tva-janvier') {
       cls = 'warn';
-      rep = 'Non — franchise maintenue au 1er janvier ' + suiv;
-      pourquoi = `${fin} : au-dessus du seuil de base, mais dans la bande de tolérance. ${suiv} démarre en sursis — franchir le seuil majoré en cours d’année déclenche la TVA le jour même.`;
+      rep = 'Oui — TVA au 1er janvier ' + suiv;
+      pourquoi = `${fin}, au-dessus du seuil de base. Tu gardes la franchise jusqu’au 31 décembre ${year}, puis tu deviens redevable de la TVA au 1er janvier ${suiv}. Dépasser ${eur(t.majore)} avant la fin de l’année avancerait la bascule au jour même.`;
     } else {
       cls = 'ok';
       rep = 'Non — tu restes en franchise en ' + suiv;
-      pourquoi = `${fin}, sous le seuil de base. Rien ne change au 1er janvier.`;
+      pourquoi = `${fin}, sous le seuil de base. Rien ne change au 1er janvier ${suiv}.`;
     }
 
     // --- La règle graduée : 0 -> seuil majoré ---
+    // Deux murs, pas un : le seuil de base décide de l'an prochain, le seuil
+    // majoré décide du jour même.
     const pc = (v) => Math.max(0, Math.min(100, (v / t.majore) * 100));
     const pEnc = pc(t.enc), pBase = pc(t.base), pProj = pc(t.projete);
     const depasse = t.projete > t.majore;
@@ -195,9 +195,9 @@ CC.renderFiscal = function () {
         </div>
         <div class="ts-foot">
           <span class="ts-zero">0</span>
-          <span class="ts-max"><b>${eur(t.majore)}</b><i>seuil majoré — TVA au-delà</i></span>
+          <span class="ts-max"><b>${eur(t.majore)}</b><i>seuil majoré — TVA le jour même</i></span>
         </div>
-        <div class="ts-key"><span><i class="sw enc"></i>encaissé ${eur(t.enc)}</span>${legProj}<span><i class="sw tol"></i>bande de tolérance</span></div>
+        <div class="ts-key"><span><i class="sw enc"></i>encaissé ${eur(t.enc)}</span>${legProj}<span><i class="sw tol"></i>TVA au 1<sup>er</sup> janvier ${suiv}</span></div>
       </div>`;
 
     // --- Les chiffres. La marge porte la couleur : c'est elle qui décide. ---
@@ -206,19 +206,35 @@ CC.renderFiscal = function () {
       d: t.isCurrent ? 'au ' + CC.util.frDate(CC.util.toISO(today)) : 'année complète'
     }];
     if (t.isCurrent && !t.franchi) {
-      const serre = t.margeProj >= 0 && t.margeProj < t.majore * 0.05;
-      figs.push({ t: 'Encore encaissable', v: eur(t.reste), d: `avant ${eur(t.majore)} · ${t.jours} j restants` });
+      // Le chiffre qui compte en premier : ce qu'on peut encore encaisser en
+      // restant en franchise l'an prochain.
+      figs.push({
+        t: 'Encaissable en franchise', v: (t.resteBase >= 0 ? '' : '− ') + eur(Math.abs(t.resteBase)),
+        d: t.resteBase >= 0 ? `avant ${eur(t.base)} · ${t.jours} j restants` : `seuil de base déjà dépassé`,
+        cls: t.resteBase < 0 ? 'neg' : ''
+      });
       figs.push({ t: 'Fin d’année engagée', v: eur(t.projete), d: 'encaissé + en attente + prévisionnel' });
+      const serre = t.margeBase >= 0 && t.margeBase < t.base * 0.05;
       figs.push({
         t: 'Marge sur l’engagé',
-        v: (t.margeProj >= 0 ? '' : '− ') + eur(Math.abs(t.margeProj)),
-        d: t.margeProj < 0 ? 'au-dessus du seuil majoré'
-          : serre ? `${eur(t.margeProj / Math.max(1, t.jours / 30.4))} par mois seulement` : 'sous le seuil majoré',
-        cls: t.margeProj < 0 ? 'neg' : (serre ? 'tight' : '')
+        v: (t.margeBase >= 0 ? '' : '− ') + eur(Math.abs(t.margeBase)),
+        d: t.margeBase < 0 ? `au-dessus du seuil de base — TVA au 1er janvier ${suiv}`
+          : serre ? `${eur(t.margeBase / Math.max(1, t.jours / 30.4))} par mois seulement` : 'sous le seuil de base',
+        cls: t.margeBase < 0 ? 'neg' : (serre ? 'tight' : '')
       });
+      // Le second mur ne s'affiche que s'il est en jeu : inutile d'alarmer
+      // quelqu'un qui est loin du seuil de base.
+      if (t.margeBase < 0 || t.margeMajore < t.majore * 0.1) {
+        figs.push({
+          t: 'Avant la bascule immédiate',
+          v: (t.margeMajore >= 0 ? '' : '− ') + eur(Math.abs(t.margeMajore)),
+          d: t.margeMajore < 0 ? `au-dessus de ${eur(t.majore)} — TVA dès la facture suivante` : `avant ${eur(t.majore)}, où la TVA s’applique le jour même`,
+          cls: t.margeMajore < 0 ? 'neg' : 'tight'
+        });
+      }
     }
     const etat = t.encPrec > t.majore ? 'au-dessus du seuil majoré'
-      : t.encPrec > t.base ? 'dans la bande de tolérance' : 'sous le seuil de base';
+      : t.encPrec > t.base ? 'au-dessus du seuil de base' : 'sous le seuil de base';
 
     box.innerHTML = `
       <div class="tva-head ${cls}">
