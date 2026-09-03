@@ -89,6 +89,15 @@ CC.defaultSettings = function () {
     parts: 1,                  // nombre de parts du foyer (quotient familial)
     coupleFiscal: false,       // marie/pacse : change le plafond de la decote
     autresRevenus: 0,          // autres revenus imposables du foyer (net imposable)
+    // --- Assujettissement a la TVA ---
+    // Interrupteur manuel : tant que tvaActive est faux, les factures sont
+    // reputees en franchise (HT = TTC) et AUCUN calcul ne change. Le jour du
+    // basculement, on coche, on donne la date, et les factures encaissees a
+    // partir de cette date se saisissent avec un taux.
+    tvaActive: false,
+    tvaDepuis: '',          // date ISO de debut d assujettissement (AAAA-MM-JJ)
+    tauxTvaDefaut: 20,       // taux propose a la saisie (modifiable par facture)
+
     seuilTvaBase: 37500,       // franchise TVA prestations de services 2025/2026
     seuilTvaMajore: 41250,
     delaiPaiement: 30,
@@ -275,6 +284,10 @@ CC.renderSettings = function () {
   document.getElementById('setCoupleFiscal').checked = !!s.coupleFiscal;
   document.getElementById('setAutresRevenus').value = s.autresRevenus || '';
   if (typeof syncVersement === 'function') syncVersement();
+  document.getElementById('setTvaActive').checked = !!s.tvaActive;
+  if (CC.dp) CC.dp.set(CC.dp.byInput('setTvaDepuis'), s.tvaDepuis || '');
+  document.getElementById('setTauxTvaDefaut').value = s.tauxTvaDefaut != null ? s.tauxTvaDefaut : 20;
+  syncTva();
   document.getElementById('setSeuilTvaBase').value = s.seuilTvaBase;
   document.getElementById('setSeuilTvaMajore').value = s.seuilTvaMajore;
   document.getElementById('setDelai').value = s.delaiPaiement;
@@ -318,6 +331,25 @@ CC.renderUrssafTable = function () {
   });
 };
 
+// Etat de la carte TVA : on ne montre la date et le taux que si l'interrupteur
+// est mis, et on rappelle en clair ce que l'activation change.
+function syncTva() {
+  const s = CC.state.settings;
+  const bloc = document.getElementById('tvaReglages');
+  const avert = document.getElementById('tvaAvert');
+  if (bloc) bloc.classList.toggle('hidden', !s.tvaActive);
+  if (!avert) return;
+  if (!s.tvaActive) {
+    avert.className = 'tva-avert';
+    avert.textContent = "Inactif : tes factures sont en franchise, ton chiffre d'affaires est ton encaissement, et les calculs sont ceux que tu connais.";
+    return;
+  }
+  const d = s.tvaDepuis ? CC.util.frDate(s.tvaDepuis) : '(date à choisir)';
+  avert.className = 'tva-avert on';
+  avert.textContent = 'Actif depuis le ' + d + '. Les montants saisis sont désormais des montants TTC : '
+    + 'URSSAF, plafond micro et impôt se calculent sur le hors taxes. Les factures encaissées avant cette date ne sont pas touchées.';
+}
+
 CC.bindSettings = function () {
   const map = {
     setTauxImpot: ['tauxImpot', 'num'],
@@ -343,6 +375,33 @@ CC.bindSettings = function () {
       CC.render();
     });
   });
+  // --- TVA : l'interrupteur, sa date, son taux ---
+  document.getElementById('setTvaActive').addEventListener('change', (e) => {
+    CC.state.settings.tvaActive = e.target.checked;
+    // Premiere activation sans date : on propose le 1er janvier prochain, la
+    // date de bascule la plus courante. Reste modifiable.
+    if (e.target.checked && !CC.state.settings.tvaDepuis) {
+      const jan = new Date(new Date().getFullYear() + 1, 0, 1);
+      CC.state.settings.tvaDepuis = CC.util.toISO(jan);
+      if (CC.dp) CC.dp.set(CC.dp.byInput('setTvaDepuis'), CC.state.settings.tvaDepuis);
+    }
+    CC.markDirty();
+    syncTva();
+    CC.render();
+  });
+  const dep = document.getElementById('setTvaDepuis');
+  if (dep) dep.addEventListener('change', (e) => {
+    CC.state.settings.tvaDepuis = e.target.value || '';
+    CC.markDirty(); syncTva(); CC.render();
+  });
+  document.getElementById('setTauxTvaDefaut').addEventListener('change', (e) => {
+    const v = parseFloat(e.target.value);
+    CC.state.settings.tauxTvaDefaut = (isFinite(v) && v > 0) ? v : 20;
+    e.target.value = CC.state.settings.tauxTvaDefaut;
+    CC.markDirty();
+  });
+  if (CC.dp) CC.dp.init(document.getElementById('tab-settings'));
+
   document.getElementById('setCoupleFiscal').addEventListener('change', (e) => {
     CC.state.settings.coupleFiscal = e.target.checked;
     CC.markDirty();

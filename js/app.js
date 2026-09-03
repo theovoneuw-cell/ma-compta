@@ -600,6 +600,69 @@ CC.installReadOnlyGuard = function () {
   }, true);
 };
 
+// ---------------------------------------------------------------------------
+// Sauvegarde de secours : ne demander que quand il y a vraiment une decision.
+//
+// L'ancienne boite disait « elle contient N facture(s) » et rien d'autre. Or ce
+// nombre ne permet PAS de decider : il ne dit ni de quand date la sauvegarde, ni
+// en quoi elle differe de ce qu'on a sous les yeux. Cliquer « Recuperer » sur une
+// sauvegarde plus ancienne faisait perdre du travail sans le moindre avertissement.
+//
+// Desormais : si la sauvegarde est identique au document ouvert, on l'efface en
+// silence — il n'y a rien a decider. Sinon on dit precisement ce qui differe, et
+// laquelle des deux versions est la plus recente.
+// ---------------------------------------------------------------------------
+
+// Compare la sauvegarde a l'etat en memoire. Renvoie une description lisible.
+function comparerRecuperation(obj) {
+  const cle = (f) => JSON.stringify({
+    id: f.id, libelle: f.libelle, montant: +f.montant || 0, numFacture: f.numFacture || '',
+    dateEncaissement: f.dateEncaissement || '', annee: f.annee || null, trimestre: f.trimestre || null,
+    dateEnvoi: f.dateEnvoi || '', dateEcheance: f.dateEcheance || '', notes: f.notes || '',
+    categorie: f.categorie || '', modePaiement: f.modePaiement || '', fichier: f.fichier || '',
+    previsionnel: f.previsionnel, tauxTva: +f.tauxTva || 0
+  });
+  const sauv = obj.factures || [];
+  const ouvert = CC.state.factures || [];
+  const parIdSauv = new Map(sauv.map((f) => [f.id, f]));
+  const parIdOuv = new Map(ouvert.map((f) => [f.id, f]));
+
+  const ajoutees = sauv.filter((f) => !parIdOuv.has(f.id));          // dans la sauvegarde seulement
+  const perdues = ouvert.filter((f) => !parIdSauv.has(f.id));        // a l'ecran seulement
+  const modifiees = sauv.filter((f) => parIdOuv.has(f.id) && cle(f) !== cle(parIdOuv.get(f.id)));
+
+  const reglages = JSON.stringify(obj.settings || {}) !== JSON.stringify(CC.state.settings || {});
+  const declarations = JSON.stringify(obj.declarations || {}) !== JSON.stringify(CC.state.declarations || {});
+  const trajets = JSON.stringify(obj.trajets || []) !== JSON.stringify(CC.state.trajets || []);
+
+  const identique = !ajoutees.length && !perdues.length && !modifiees.length
+    && !reglages && !declarations && !trajets;
+
+  // Une phrase par difference, la plus parlante d'abord.
+  const morceaux = [];
+  const nom = (f) => (CC.util.clientKey(f.libelle) || f.libelle || 'sans nom') + ' ' + CC.util.eur0(+f.montant || 0);
+  const liste = (arr) => arr.slice(0, 3).map(nom).join(', ') + (arr.length > 3 ? ', …' : '');
+  if (ajoutees.length) morceaux.push(`${ajoutees.length} facture(s) que tu n'as plus à l'écran : ${liste(ajoutees)}`);
+  if (perdues.length) morceaux.push(`${perdues.length} facture(s) en moins qu'à l'écran : ${liste(perdues)}`);
+  if (modifiees.length) morceaux.push(`${modifiees.length} facture(s) différente(s) : ${liste(modifiees)}`);
+  if (reglages) morceaux.push('des réglages différents');
+  if (declarations) morceaux.push('un suivi de déclarations différent');
+  if (trajets) morceaux.push('des trajets différents');
+
+  return { identique, ajoutees, perdues, modifiees, morceaux };
+}
+
+function momentFr(ms) {
+  if (!ms) return null;
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return null;
+  const auj = new Date();
+  const memeJour = d.toDateString() === auj.toDateString();
+  const heure = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  if (memeJour) return "aujourd'hui à " + heure;
+  return 'le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + ' à ' + heure;
+}
+
 async function checkRecovery() {
   if (CC.state.readOnly) return;   // pas de récupération en mode lecture seule (disque absent)
   try {
@@ -607,13 +670,35 @@ async function checkRecovery() {
     if (!res || !res.content) return;
     const obj = JSON.parse(res.content);
     if (!obj.factures || !obj.factures.length) { CC.storage.clearRecovery(); return; }
+
+    const cmp = comparerRecuperation(obj);
+    // Rien a decider : c'est le meme document. On nettoie sans rien demander.
+    if (cmp.identique) { CC.storage.clearRecovery(); return; }
+
+    const quand = momentFr(res.savedAt);
+    const quandFichier = momentFr(res.fileSavedAt);
+    const plusRecente = res.savedAt && res.fileSavedAt && res.savedAt > res.fileSavedAt + 1000;
+
+    let detail = 'Sauvegarde' + (quand ? ' de ' + quand : '') + '.\n\n';
+    detail += 'Par rapport à ce que tu as à l\'écran, elle contient :\n• ' + cmp.morceaux.join('\n• ') + '\n\n';
+    if (quandFichier) {
+      detail += plusRecente
+        ? `Elle est plus récente que ton fichier (enregistré ${quandFichier}) : la récupérer te rend probablement du travail perdu.`
+        : `Ton fichier est plus récent (enregistré ${quandFichier}) : la récupérer te ferait revenir en arrière.`;
+    } else {
+      detail += 'Récupérer remplace ce que tu as à l\'écran. Rien n\'est enregistré tant que tu ne le demandes pas.';
+    }
+
     const choix = await CC.dialog({
       type: 'question',
       buttons: ['Récupérer', 'Ignorer'],
-      defaultId: 0, cancelId: 1,
-      title: 'Récupération',
-      message: 'Une sauvegarde de secours a été trouvée.',
-      detail: `Elle contient ${obj.factures.length} facture(s). Voulez-vous la récupérer ?`
+      defaultId: plusRecente ? 0 : 1,
+      cancelId: 1,
+      title: 'Sauvegarde de secours',
+      message: plusRecente
+        ? 'Une sauvegarde plus récente que ton fichier a été trouvée.'
+        : 'Une sauvegarde de secours a été trouvée.',
+      detail
     });
     if (choix.response === 0) {
       CC.storage.applyData(obj);

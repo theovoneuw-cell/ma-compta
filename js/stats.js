@@ -24,6 +24,78 @@ CC.stats = {
     return !CC.stats.isInvoiced(f);
   },
 
+  // -------------------------------------------------------------------------
+  // HORS TAXES / TOUTES TAXES
+  //
+  // `montant` est, et reste, ce qui entre reellement sur le compte : le TTC.
+  // C'est lui qu'on affiche dans la liste des factures et dans les relances —
+  // c'est la somme que le client doit.
+  //
+  // Mais le CHIFFRE D'AFFAIRES, lui, est hors taxes. URSSAF, plafond micro,
+  // impot, seuils : tout se calcule sur le HT. Tant que tu es en franchise les
+  // deux sont egaux, et rien ne change. Le jour ou tu factures la TVA, cette
+  // distinction devient la difference entre des cotisations justes et des
+  // cotisations surestimees de 20 %.
+  //
+  // Une facture sans `tauxTva` (toutes les anciennes) est en franchise : HT = TTC.
+  tauxDe(f) {
+    const t = +(f && f.tauxTva);
+    return (isFinite(t) && t > 0) ? t : 0;
+  },
+
+  // Base de calcul du chiffre d'affaires.
+  ht(f) {
+    const ttc = +(f && f.montant) || 0;
+    const taux = CC.stats.tauxDe(f);
+    return taux ? ttc / (1 + taux / 100) : ttc;
+  },
+
+  // TVA collectee sur cette facture (0 en franchise).
+  tvaDe(f) {
+    const ttc = +(f && f.montant) || 0;
+    return ttc - CC.stats.ht(f);
+  },
+
+  // La date qui decide du regime de TVA d'une facture.
+  //
+  // En prestations de services la TVA est exigible a l'ENCAISSEMENT : c'est donc
+  // lui qui commande, pas la date de facturation. Pour une facture pas encore
+  // payee on prend la meilleure estimation disponible — l'echeance, sinon le
+  // debut du trimestre de rattachement — pour qu'une vente prevue sur 2027 soit
+  // proposee avec TVA des aujourd'hui, et qu'une facture de 2026 saisie en
+  // retard reste en franchise.
+  dateFiscale(f) {
+    const aujourdhui = () => CC.util.toISO(new Date());
+    if (!f) return aujourdhui();
+    if (f.dateEncaissement) return f.dateEncaissement;
+    if (f.dateEcheance) return f.dateEcheance;
+    const y = +f.annee, t = +f.trimestre;
+    if (y && t >= 1 && t <= 4) {
+      const z = (n) => String(n).padStart(2, '0');
+      return y + '-' + z((t - 1) * 3 + 1) + '-01';
+    }
+    return aujourdhui();
+  },
+
+  // Une facture releve-t-elle de la periode DE FRANCHISE (avant l'assujettissement) ?
+  enFranchise(f, settings) {
+    const s = settings || (CC.state && CC.state.settings) || {};
+    if (!s.tvaActive) return true;
+    if (!s.tvaDepuis) return false;
+    return CC.stats.dateFiscale(f) < s.tvaDepuis;
+  },
+
+  // Le regime applicable a une DATE d'encaissement, d'apres les reglages.
+  // Sert a pre-remplir le taux d'une nouvelle facture, jamais a recalculer une
+  // facture existante : ce qui a ete facture a ete facture.
+  tauxParDefaut(dateISO, settings) {
+    const s = settings || (CC.state && CC.state.settings) || {};
+    if (!s.tvaActive) return 0;
+    if (s.tvaDepuis && dateISO && dateISO < s.tvaDepuis) return 0;
+    const t = +s.tauxTvaDefaut;
+    return (isFinite(t) && t > 0) ? t : 20;
+  },
+
   // Periode de reference (annee/trimestre) : la feuille Excel fait foi ;
   // pour une facture payee sans periode explicite, on prend la date d'encaissement.
   //
@@ -78,7 +150,7 @@ CC.stats = {
     let encaisse = 0, attente = 0, retard = 0, prevu = 0, brut = 0;
     const today = new Date();
     factures.forEach((f) => {
-      const m = +f.montant || 0; brut += m;
+      const m = CC.stats.ht(f); brut += +f.montant || 0;
       const st = CC.stats.statut(f, settings, today);
       if (st === 'recue') encaisse += m;
       else if (st === 'retard') retard += m;
@@ -94,14 +166,14 @@ CC.stats = {
     factures.forEach((f) => {
       if (!CC.stats.isPaid(f)) return;
       if (CC.stats.yearOf(f) !== year || CC.stats.trimOf(f) !== trimestre) return;
-      s += +f.montant || 0;
+      s += CC.stats.ht(f);
     });
     return s;
   },
 
   encaisseYear(factures, year) {
     let s = 0;
-    factures.forEach((f) => { if (CC.stats.isPaid(f) && CC.stats.yearOf(f) === year) s += +f.montant || 0; });
+    factures.forEach((f) => { if (CC.stats.isPaid(f) && CC.stats.yearOf(f) === year) s += CC.stats.ht(f); });
     return s;
   },
 
@@ -122,9 +194,40 @@ CC.stats = {
     factures.forEach((f) => {
       if (paidOnly && !CC.stats.isPaid(f)) return;
       const c = f.categorie || CC.util.categoryOf(f.libelle);
-      map.set(c, (map.get(c) || 0) + (+f.montant || 0));
+      map.set(c, (map.get(c) || 0) + CC.stats.ht(f));
     });
     return Array.from(map.entries()).map(([categorie, total]) => ({ categorie, total })).sort((a, b) => b.total - a.total);
+  },
+
+  // TVA collectee, par trimestre puis pour l'annee. Sur les ENCAISSEMENTS, comme
+  // le reste de l'app : en prestations de services la TVA est exigible a
+  // l'encaissement, pas a la facturation.
+  //
+  // Ne dit rien de la TVA deductible sur les achats : l'app ne suit pas les
+  // depenses. Le montant affiche est donc la TVA collectee brute, pas ce qui
+  // sera reellement reverse.
+  tvaByTrim(factures, year) {
+    const out = [];
+    for (let t = 1; t <= 4; t++) {
+      let ht = 0, tva = 0;
+      factures.forEach((f) => {
+        if (!CC.stats.isPaid(f)) return;
+        if (CC.stats.yearOf(f) !== year || CC.stats.trimOf(f) !== t) return;
+        ht += CC.stats.ht(f);
+        tva += CC.stats.tvaDe(f);
+      });
+      out.push({ trimestre: t, ht, tva });
+    }
+    return out;
+  },
+
+  tvaCollecteeYear(factures, year) {
+    const trims = CC.stats.tvaByTrim(factures, year);
+    return {
+      trims,
+      ht: trims.reduce((a, t) => a + t.ht, 0),
+      tva: trims.reduce((a, t) => a + t.tva, 0)
+    };
   },
 
   // Date limite de DECLARATION URSSAF d'un trimestre
@@ -178,7 +281,7 @@ CC.stats = {
     factures.forEach((f) => {
       if (!CC.stats.isPaid(f)) return;
       const d = CC.util.parseDate(f.dateEncaissement);
-      if (d && d.getFullYear() === year) arr[d.getMonth()] += +f.montant || 0;
+      if (d && d.getFullYear() === year) arr[d.getMonth()] += CC.stats.ht(f);
     });
     return arr;
   },
@@ -198,7 +301,7 @@ CC.stats = {
       }
       if (CC.stats.yearOf(f) !== year) return;
       const t = CC.stats.trimOf(f);
-      if (t) arr[t - 1] += +f.montant || 0;
+      if (t) arr[t - 1] += CC.stats.ht(f);
     });
     return arr;
   },
@@ -208,8 +311,8 @@ CC.stats = {
     factures.forEach((f) => {
       const c = CC.util.clientKey(f.libelle);
       const cur = map.get(c) || { client: c, total: 0, paye: 0, count: 0 };
-      cur.total += +f.montant || 0;
-      if (CC.stats.isPaid(f)) cur.paye += +f.montant || 0;
+      cur.total += CC.stats.ht(f);
+      if (CC.stats.isPaid(f)) cur.paye += CC.stats.ht(f);
       cur.count += 1;
       map.set(c, cur);
     });
@@ -218,7 +321,7 @@ CC.stats = {
 
   avgInvoice(factures) {
     if (!factures.length) return 0;
-    return factures.reduce((a, f) => a + (+f.montant || 0), 0) / factures.length;
+    return factures.reduce((a, f) => a + CC.stats.ht(f), 0) / factures.length;
   },
 
   // Saisonnalite : encaisse moyen par mois sur toutes les annees
@@ -246,7 +349,7 @@ CC.stats = {
         const d = CC.util.parseDate(f.dateEncaissement);
         if (!d || d.getFullYear() !== y) return;
         // <= meme jour/mois
-        if (d.getMonth() < cutMonth || (d.getMonth() === cutMonth && d.getDate() <= cutDay)) s += +f.montant || 0;
+        if (d.getMonth() < cutMonth || (d.getMonth() === cutMonth && d.getDate() <= cutDay)) s += CC.stats.ht(f);
       });
       return s;
     }
@@ -320,7 +423,7 @@ CC.stats = {
     const majore = +settings.seuilTvaMajore || 0;
 
     const ofYear = (y) => factures.filter((f) => f.dateEncaissement && CC.util.yearOf(f.dateEncaissement) === y);
-    const somme = (l) => l.reduce((a, f) => a + (+f.montant || 0), 0);
+    const somme = (l) => l.reduce((a, f) => a + CC.stats.ht(f), 0);
     const payees = ofYear(year);
     const enc = somme(payees);
     const encPrec = somme(ofYear(year - 1));
@@ -329,7 +432,7 @@ CC.stats = {
     // dans l'ordre. C'est le seul depassement qui coupe la franchise sur-le-champ.
     let cumul = 0, franchi = null;
     payees.slice().sort((a, b) => a.dateEncaissement.localeCompare(b.dateEncaissement))
-      .forEach((f) => { cumul += +f.montant || 0; if (!franchi && majore && cumul > majore) franchi = f.dateEncaissement; });
+      .forEach((f) => { cumul += CC.stats.ht(f); if (!franchi && majore && cumul > majore) franchi = f.dateEncaissement; });
 
     // Fin d'annee attendue, sur la meme base civile. Pour la TVA on ne s'appuie
     // QUE sur ce qui est engage : encaisse + factures emises non payees + ventes

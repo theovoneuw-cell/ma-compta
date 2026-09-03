@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mtljf16f" />
+  <link rel="stylesheet" href="css/styles.css?b=mtlm2f0p" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mtljf16f"></script>
+  <script src="js/theme.js?b=mtlm2f0p"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -244,6 +244,12 @@
           <h3>Franchise de TVA</h3>
           <p class="card-sub">Où tu en es des deux seuils, et ce qui t'attend au 1er janvier.</p>
           <div id="fiscalTva"></div>
+        </div>
+
+        <div class="card hidden" id="cardTvaCollectee">
+          <h3>TVA collectée</h3>
+          <p class="card-sub">Ce que tu as encaissé pour l'État, et ce qui reste vraiment ton chiffre d'affaires.</p>
+          <div id="fiscalTvaCollectee"></div>
         </div>
 
         <div class="card">
@@ -578,6 +584,32 @@
           </div>
 
           <div class="card">
+            <h3>Assujettissement à la TVA</h3>
+            <p class="card-sub">À n'activer que le jour où tu commences réellement à facturer la TVA. Tant que c'est décoché, rien ne change nulle part dans l'app.</p>
+            <div class="field">
+              <label class="check"><input type="checkbox" id="setTvaActive" /> Je facture la TVA</label>
+              <small>Fait apparaître le taux sur la fiche facture, et calcule dès lors ton chiffre d'affaires <b>hors taxes</b> — c'est lui qui sert à l'URSSAF, au plafond micro et à l'impôt.</small>
+            </div>
+            <div class="field-row" id="tvaReglages">
+              <div class="field">
+                <label>Depuis le</label>
+                <div class="dp" data-dp-clearable data-dp-placeholder="Choisir une date">
+                  <button type="button" class="dp-field" data-dp-btn></button>
+                  <input type="hidden" id="setTvaDepuis" />
+                  <div class="dp-pop hidden" data-dp-pop></div>
+                </div>
+                <small>Les factures encaissées avant cette date restent en franchise. Tes années passées ne bougent pas.</small>
+              </div>
+              <div class="field">
+                <label>Taux proposé à la saisie (%)</label>
+                <input type="number" id="setTauxTvaDefaut" step="0.1" min="0" max="30" class="input mask-amount" />
+                <small>Modifiable facture par facture. 20 % pour la plupart des prestations.</small>
+              </div>
+            </div>
+            <p class="tva-avert" id="tvaAvert"></p>
+          </div>
+
+          <div class="card">
             <h3>Objectifs &amp; seuils</h3>
             <div class="field-row">
               <div class="field">
@@ -882,6 +914,21 @@
           <div class="field">
             <label>Montant (€) *</label>
             <input type="number" id="f_montant" class="input mask-amount" step="0.01" min="0" required />
+            <p class="field-hint" id="f_montantHint">Ce que le client règle.</p>
+          </div>
+          <!-- Taux de TVA : n'apparaît qu'une fois l'assujettissement activé dans
+               les Paramètres. Tant que tu es en franchise, ce champ n'existe pas
+               à l'écran et aucune facture ne porte de taux. -->
+          <div class="field hidden" id="f_tvaField">
+            <label>TVA</label>
+            <select id="f_tauxTva" class="input">
+              <option value="0">Sans TVA (franchise)</option>
+              <option value="20">20 % — taux normal</option>
+              <option value="10">10 %</option>
+              <option value="5.5">5,5 %</option>
+              <option value="2.1">2,1 %</option>
+            </select>
+            <p class="field-hint" id="f_tvaHint"></p>
           </div>
           <div class="field">
             <label>N° de facture</label>
@@ -969,29 +1016,29 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mtljf16f"></script>
-  <script src="js/drive-store.js?b=mtljf16f"></script>
-  <script src="js/api-web.js?b=mtljf16f"></script>
-  <script src="js/settings.js?b=mtljf16f"></script>
-  <script src="js/datepicker.js?b=mtljf16f"></script>
-  <script src="js/stats.js?b=mtljf16f"></script>
-  <script src="js/charts.js?b=mtljf16f"></script>
-  <script src="js/import.js?b=mtljf16f"></script>
-  <script src="js/pdfimport.js?b=mtljf16f"></script>
-  <script src="js/factures.js?b=mtljf16f"></script>
-  <script src="js/fiscal.js?b=mtljf16f"></script>
-  <script src="js/bilan.js?b=mtljf16f"></script>
-  <script src="js/ai.js?b=mtljf16f"></script>
-  <script src="js/connections.js?b=mtljf16f"></script>
-  <script src="js/agenda.js?b=mtljf16f"></script>
-  <script src="js/mailbox.js?b=mtljf16f"></script>
-  <script src="js/trajets.js?b=mtljf16f"></script>
-  <script src="js/notes.js?b=mtljf16f"></script>
-  <script src="js/today.js?b=mtljf16f"></script>
-  <script src="js/privacy.js?b=mtljf16f"></script>
-  <script src="js/storage.js?b=mtljf16f"></script>
-  <script src="js/rappels.js?b=mtljf16f"></script>
-  <script src="js/notifs.js?b=mtljf16f"></script>
-  <script src="js/app.js?b=mtljf16f"></script>
+  <script src="js/google-auth-web.js?b=mtlm2f0p"></script>
+  <script src="js/drive-store.js?b=mtlm2f0p"></script>
+  <script src="js/api-web.js?b=mtlm2f0p"></script>
+  <script src="js/settings.js?b=mtlm2f0p"></script>
+  <script src="js/datepicker.js?b=mtlm2f0p"></script>
+  <script src="js/stats.js?b=mtlm2f0p"></script>
+  <script src="js/charts.js?b=mtlm2f0p"></script>
+  <script src="js/import.js?b=mtlm2f0p"></script>
+  <script src="js/pdfimport.js?b=mtlm2f0p"></script>
+  <script src="js/factures.js?b=mtlm2f0p"></script>
+  <script src="js/fiscal.js?b=mtlm2f0p"></script>
+  <script src="js/bilan.js?b=mtlm2f0p"></script>
+  <script src="js/ai.js?b=mtlm2f0p"></script>
+  <script src="js/connections.js?b=mtlm2f0p"></script>
+  <script src="js/agenda.js?b=mtlm2f0p"></script>
+  <script src="js/mailbox.js?b=mtlm2f0p"></script>
+  <script src="js/trajets.js?b=mtlm2f0p"></script>
+  <script src="js/notes.js?b=mtlm2f0p"></script>
+  <script src="js/today.js?b=mtlm2f0p"></script>
+  <script src="js/privacy.js?b=mtlm2f0p"></script>
+  <script src="js/storage.js?b=mtlm2f0p"></script>
+  <script src="js/rappels.js?b=mtlm2f0p"></script>
+  <script src="js/notifs.js?b=mtlm2f0p"></script>
+  <script src="js/app.js?b=mtlm2f0p"></script>
 </body>
 </html>

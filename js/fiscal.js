@@ -290,6 +290,33 @@ CC.renderFiscal = function () {
     (settings.versementActif ? '' :
       `<p class="ir-note">Estimation sur le barème ${year + 1} (revenus ${year}).${autres ? '' : ' <b>Si ton foyer a d\u2019autres revenus</b>, renseigne-les dans Paramètres : sans eux, l\u2019impôt est sous-estimé.'} Ni réductions ni crédits d\u2019impôt ne sont pris en compte.</p>`);
 
+  // ---------- TVA collectée ----------
+  // N'apparaît qu'une fois l'assujettissement activé : tant que tu es en
+  // franchise, cette carte n'a rien à dire et reste invisible.
+  (function renderTvaCollectee() {
+    const carte = document.getElementById('cardTvaCollectee');
+    const box = document.getElementById('fiscalTvaCollectee');
+    if (!carte || !box) return;
+    if (!settings.tvaActive) { carte.classList.add('hidden'); return; }
+    carte.classList.remove('hidden');
+
+    const c = CC.stats.tvaCollecteeYear(fy, year);
+    const rows = c.trims.map((t) => `<div class="sd-row">
+      <span class="sd-date">T${t.trimestre} ${year}</span>
+      <span class="sd-src">${CC.util.eur0(t.ht)} HT encaissé</span>
+      <span class="sd-amt">${CC.util.eur0(t.tva)}</span>
+    </div>`).join('');
+
+    box.innerHTML = `
+      <div class="ir-grid">
+        <div class="fc"><div class="t">CA hors taxes ${year}</div><div class="v">${CC.util.eur0(c.ht)}</div><div class="d">base URSSAF et impôt</div></div>
+        <div class="fc"><div class="t">TVA collectée ${year}</div><div class="v">${CC.util.eur0(c.tva)}</div><div class="d">encaissée pour l'État</div></div>
+        <div class="fc"><div class="t">Total encaissé</div><div class="v">${CC.util.eur0(c.ht + c.tva)}</div><div class="d">ce qui est entré sur le compte</div></div>
+      </div>
+      ${rows}
+      <p class="tva-rappel">Cette somme n'est pas à toi : elle est collectée pour l'État. La TVA que tu récupères sur tes achats vient en déduction — l'app ne suit pas tes dépenses, c'est donc un montant <b>brut</b>. La fréquence de déclaration (annuelle ou trimestrielle) dépend du régime choisi avec ton comptable.</p>`;
+  })();
+
   // ---------- Barèmes utilisés ----------
   // Rien ne prévient quand un barème officiel change au 1er janvier : cette carte
   // le rend visible plutôt que de laisser l'app calculer en silence sur l'an dernier.

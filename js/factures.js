@@ -64,8 +64,11 @@ CC.facturesView = {
     }).join('');
 
     document.getElementById('facturesEmpty').classList.toggle('hidden', list.length > 0);
-    const sums = CC.stats.sums(list, S.settings);
-    const prevuTxt = sums.prevu > 0 ? ` · Prévisionnel ${CC.util.eur0(sums.prevu)}` : '';
+    // TTC, comme les lignes du tableau (CC.stats.sums renvoie du HT, qui est la
+    // bonne unite pour le fiscal mais pas pour un recapitulatif de creances).
+    let prevuTtc = 0;
+    list.forEach((f) => { if (CC.stats.statut(f, S.settings) === 'prevu') prevuTtc += +f.montant || 0; });
+    const prevuTxt = prevuTtc > 0 ? ` · Prévisionnel ${CC.util.eur0(prevuTtc)}` : '';
     document.getElementById('facturesSummary').textContent =
       `${list.length} facture(s) — Total ${CC.util.eur0(total)} · Encaissé ${CC.util.eur0(enc)}${prevuTxt}`;
   },
@@ -89,6 +92,7 @@ CC.facturesView = {
     CC.dp.set(CC.dp.byInput('f_dateEnvoi'), e.dateEnvoi || '');
     CC.dp.set(CC.dp.byInput('f_dateEcheance'), e.dateEcheance || '');
     document.getElementById('f_notes').value = e.notes || '';
+    CC.facturesView.syncTva(e, isEdit);   // apres les dates : c'est la periode qui decide du taux
     CC.facturesView.setPj(e.fichier || '');
     document.getElementById('btnDeleteFacture').classList.toggle('hidden', !isEdit);
     document.getElementById('modalFacture').classList.remove('hidden');
@@ -136,6 +140,85 @@ CC.facturesView = {
     }
   },
 
+  // Prepare la partie TVA de la fiche.
+  //
+  // Le champ n'apparait que si l'assujettissement est active dans les Parametres :
+  // tant que tu es en franchise, la fiche est exactement celle d'avant. Pour une
+  // facture EXISTANTE on affiche son taux tel quel, sans jamais le recalculer —
+  // ce qui a ete facture a ete facture. Pour une NOUVELLE on propose le taux qui
+  // correspond a sa periode, pas a la date du jour.
+  syncTva(e, isEdit) {
+    const champ = document.getElementById('f_tvaField');
+    const sel = document.getElementById('f_tauxTva');
+    if (!champ || !sel) return;
+    sel._touche = false;                  // le taux n'a pas encore ete choisi a la main
+    const actif = !!CC.state.settings.tvaActive;
+    champ.classList.toggle('hidden', !actif);
+    const mh = document.getElementById('f_montantHint');
+    if (mh) mh.textContent = actif ? 'Ce que le client règle, TVA comprise.' : 'Ce que le client règle.';
+    if (!actif) { sel.disabled = false; sel.value = '0'; CC.facturesView.majHt(); return; }
+
+    if (isEdit) {
+      const taux = CC.stats.tauxDe(e);
+      // Un taux inhabituel (barème modifié depuis) doit rester visible plutôt
+      // que d'être silencieusement ramené à zéro par le menu déroulant.
+      if (taux && !Array.from(sel.options).some((o) => parseFloat(o.value) === taux)) {
+        const opt = document.createElement('option');
+        opt.value = String(taux); opt.textContent = String(taux).replace('.', ',') + ' %';
+        sel.appendChild(opt);
+      }
+      sel.value = String(taux || 0);
+      sel._touche = true;                 // on ne réécrit pas le taux d'une facture existante
+    }
+    CC.facturesView.majTaux(!isEdit);
+  },
+
+  // La date qui décide, lue dans le FORMULAIRE — elle bouge pendant la saisie.
+  dateFiscaleFormulaire() {
+    const recue = document.getElementById('f_recue').checked;
+    const enc = document.getElementById('f_dateEncaissement').value;
+    return CC.stats.dateFiscale({
+      dateEncaissement: recue ? (enc || CC.util.toISO(new Date())) : '',
+      dateEcheance: document.getElementById('f_dateEcheance').value,
+      annee: document.getElementById('f_annee').value,
+      trimestre: document.getElementById('f_trimestre').value
+    });
+  },
+
+  // Applique la règle de période : une facture qui relève de l'avant-bascule est
+  // en franchise, point. Le taux est forcé à zéro et le champ verrouillé — c'est
+  // la garantie que l'activation ne contamine pas le passé.
+  majTaux(reproposer) {
+    const sel = document.getElementById('f_tauxTva');
+    const s = CC.state.settings;
+    if (!sel || !s.tvaActive) { CC.facturesView.majHt(); return; }
+    const d = CC.facturesView.dateFiscaleFormulaire();
+    const avant = !!(s.tvaDepuis && d < s.tvaDepuis);
+    sel.disabled = avant;
+    if (avant) sel.value = '0';
+    else if (reproposer && !sel._touche) sel.value = String(CC.stats.tauxParDefaut(d, s));
+    CC.facturesView.majHt(avant ? d : null);
+  },
+
+  // Rappelle en clair ce que la saisie donne : TTC, HT, et TVA. Ou, si la facture
+  // relève de la franchise, pourquoi le taux est verrouillé.
+  majHt(dateFranchise) {
+    const hint = document.getElementById('f_tvaHint');
+    if (!hint) return;
+    const s = CC.state.settings;
+    if (dateFranchise) {
+      hint.classList.remove('calc');
+      hint.textContent = `Période du ${CC.util.frDate(dateFranchise)} : avant le ${CC.util.frDate(s.tvaDepuis)}, donc en franchise. Pas de TVA sur cette facture.`;
+      return;
+    }
+    const ttc = parseFloat(document.getElementById('f_montant').value);
+    const taux = parseFloat(document.getElementById('f_tauxTva').value) || 0;
+    if (!isFinite(ttc) || ttc <= 0 || !taux) { hint.textContent = ''; hint.classList.remove('calc'); return; }
+    const f = { montant: ttc, tauxTva: taux };
+    hint.textContent = `${CC.util.eur(ttc)} TTC = ${CC.util.eur(CC.stats.ht(f))} HT + ${CC.util.eur(CC.stats.tvaDe(f))} de TVA`;
+    hint.classList.add('calc');
+  },
+
   closeModal() { document.getElementById('modalFacture').classList.add('hidden'); },
 
   save() {
@@ -157,6 +240,12 @@ CC.facturesView = {
     if (!annee) annee = new Date().getFullYear();
     if (!trim) trim = 1;
 
+    // Dernier verrou avant ecriture : une facture qui releve de la periode
+    // d'avant l'assujettissement ne peut pas porter de TVA, quoi qu'affiche le
+    // formulaire. C'est ce qui garantit que l'activation ne touche jamais au passe.
+    const saisi = parseFloat(document.getElementById('f_tauxTva').value) || 0;
+    const tauxRetenu = CC.stats.enFranchise({ dateEncaissement: dateEnc, dateEcheance: document.getElementById('f_dateEcheance').value, annee, trimestre: trim }, CC.state.settings) ? 0 : saisi;
+
     const data = {
       libelle, montant,
       numFacture: document.getElementById('f_numFacture').value.trim(),
@@ -168,7 +257,10 @@ CC.facturesView = {
       dateEnvoi: document.getElementById('f_dateEnvoi').value,
       dateEcheance: document.getElementById('f_dateEcheance').value,
       notes: document.getElementById('f_notes').value.trim(),
-      fichier: document.getElementById('f_fichier').value
+      fichier: document.getElementById('f_fichier').value,
+      // 0 = franchise. On ecrit toujours la valeur : passer une facture de 20 %
+      // a « sans TVA » doit pouvoir effacer le taux, pas seulement l'ignorer.
+      tauxTva: tauxRetenu
     };
 
     if (id) {
@@ -226,6 +318,18 @@ CC.facturesView = {
     // Sélecteurs de date (composant partagé, cohérent avec l'Agenda)
     if (CC.dp) CC.dp.init(document.getElementById('modalFacture'));
     document.getElementById('btnCancelModal').addEventListener('click', () => CC.facturesView.closeModal());
+    // Le montant recalcule juste l'affichage HT.
+    const mt = document.getElementById('f_montant');
+    if (mt) ['input', 'change'].forEach((ev) => mt.addEventListener(ev, () => CC.facturesView.majHt()));
+    // Choisir un taux a la main l'emporte : on ne le repropose plus ensuite.
+    const tx = document.getElementById('f_tauxTva');
+    if (tx) tx.addEventListener('change', () => { tx._touche = true; CC.facturesView.majHt(); });
+    // Tout ce qui deplace la facture dans le temps rejoue la regle de periode :
+    // c'est ce qui garantit qu'une facture d'avant la bascule reste en franchise.
+    ['f_dateEncaissement', 'f_dateEcheance', 'f_annee', 'f_trimestre', 'f_recue'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => CC.facturesView.majTaux(true));
+    });
 
     // Piece jointe (lecture PDF)
     document.getElementById('btnImportPj').addEventListener('click', () => document.getElementById('pjInput').click());

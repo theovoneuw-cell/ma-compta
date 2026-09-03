@@ -231,7 +231,11 @@ function normalize(f) {
     ...(typeof f.previsionnel === 'boolean' ? { previsionnel: f.previsionnel } : {}),
     // Etat d'avant encaissement : sans lui, « Annuler l'encaissement » ne sait plus
     // quoi restaurer apres un redemarrage.
-    ...(f._avantRecue ? { _avantRecue: f._avantRecue } : {})
+    ...(f._avantRecue ? { _avantRecue: f._avantRecue } : {}),
+    // Taux de TVA de CETTE facture. Absent = franchise (HT = TTC), ce qui est le
+    // cas de toutes les factures anterieures a l assujettissement : elles ne
+    // doivent jamais etre recalculees retroactivement.
+    ...(+f.tauxTva > 0 ? { tauxTva: +f.tauxTva } : {})
   };
 }
 function fileName(p) { return p ? p.split(/[\\/]/).pop() : ''; }
