@@ -8,89 +8,19 @@ window.CC = window.CC || {};
 // heures. Tant qu'on n'a pas les deux, « ce client paie bien » n'est qu'une
 // impression.
 //
-// Ici on saisit des séances (chronomètre ou à la main), et on les croise avec
-// le CA encaissé, les cotisations URSSAF et les frais de route des trajets. Ce
-// qui sort : ce qu'il te reste réellement par heure, client par client.
+// Ici on saisit des séances, et on les croise avec le CA encaissé, les
+// cotisations URSSAF et les frais de route des trajets. Ce qui sort : ce qu'il
+// te reste réellement par heure, client par client.
 //
-// Le chronomètre vit dans localStorage et non dans le fichier de compta : il
-// est propre à CET ordinateur, et il ne doit pas marquer le document modifié
-// à chaque seconde qui passe.
+// Volontairement SANS chronomètre : il faut penser à le lancer, penser à
+// l'arrêter, et une fois oublié il fabrique des durées fausses. La saisie
+// après coup, en une ligne, est plus fidèle.
 // ---------------------------------------------------------------------------
-
-const TP_CHRONO_KEY = 'tempsChrono';
-// Au-delà, on considère qu'un chronomètre a été oublié en route et on le
-// signale au lieu d'enregistrer 40 h de travail sans broncher.
-const TP_OUBLI_H = 12;
 
 CC.temps = {
   _bound: false,
-  _tick: null,
 
   seances() { return CC.state.temps || (CC.state.temps = []); },
-
-  // ---- Chronomètre ---------------------------------------------------------
-  chrono() {
-    try { const raw = localStorage.getItem(TP_CHRONO_KEY); return raw ? JSON.parse(raw) : null; }
-    catch (_) { return null; }
-  },
-  _setChrono(c) {
-    try {
-      if (c) localStorage.setItem(TP_CHRONO_KEY, JSON.stringify(c));
-      else localStorage.removeItem(TP_CHRONO_KEY);
-    } catch (_) {}
-  },
-
-  demarrer() {
-    if (this.chrono()) return;
-    const client = (document.getElementById('tpClient') || {}).value || '';
-    const note = (document.getElementById('tpNote') || {}).value || '';
-    this._setChrono({ debut: Date.now(), client: client.trim(), note: note.trim() });
-    this._paintChrono();
-    CC.toast('Chronomètre lancé.', 'ok');
-  },
-
-  // Arrête et enregistre. Un chronomètre manifestement oublié n'enregistre pas
-  // ses 40 heures en silence : on demande la vraie durée.
-  async arreter(minutesForcees) {
-    const c = this.chrono();
-    if (!c) return;
-    let minutes = minutesForcees != null ? minutesForcees : Math.max(1, Math.round((Date.now() - c.debut) / 60000));
-    if (minutesForcees == null && minutes > TP_OUBLI_H * 60) {
-      let res;
-      try {
-        res = await CC.dialog({
-          type: 'question',
-          buttons: ['Enregistrer cette durée', 'Enregistrer ' + duree(minutes), 'Annuler'],
-          defaultId: 0, cancelId: 2,
-          title: 'Chronomètre oublié ?',
-          message: 'Il tourne depuis ' + duree(minutes) + '.',
-          detail: 'Corrige la durée réellement travaillée (1h30, 90, 1:30…), ou garde la durée mesurée.',
-          input: { type: 'text', placeholder: 'ex. 2h30' }
-        });
-      } catch (_) { res = { response: 2 }; }
-      if (!res || res.response === 2) return;
-      if (res.response === 0) {
-        const saisi = parseDuree(res.value);
-        if (!saisi) { CC.toast('Durée non comprise — le chronomètre continue.', 'err'); return; }
-        minutes = saisi;
-      }
-    }
-    this._setChrono(null);
-    this.ajouter({
-      date: CC.util.toISO(new Date(c.debut)),
-      client: c.client || (document.getElementById('tpClient') || {}).value || '',
-      minutes,
-      note: c.note || ''
-    });
-    this._paint();
-    CC.toast('Séance enregistrée : ' + duree(minutes) + '.', 'ok');
-  },
-
-  annulerChrono() {
-    this._setChrono(null);
-    this._paintChrono();
-    CC.toast('Chronomètre annulé — rien n\'a été enregistré.');
-  },
 
   // ---- Séances -------------------------------------------------------------
   ajouter(s) {
@@ -174,7 +104,7 @@ CC.temps = {
       });
     });
 
-    // Les clients chronométrés d'abord, du meilleur taux au moins bon. Ceux
+    // Les clients dont on a saisi des heures d'abord, du meilleur taux au moins bon. Ceux
     // sans heures saisies ferment la marche : leur taux est inconnu, pas nul.
     lignes.sort((a, b) => {
       if ((a.heures > 0) !== (b.heures > 0)) return a.heures > 0 ? -1 : 1;
@@ -188,60 +118,13 @@ CC.temps = {
   render() {
     if (!CC.estBureau()) return;
     this._paint();
-    if (!this._tick) this._tick = setInterval(() => CC.temps._paintChrono(true), 1000);
   },
 
   _paint() {
-    this._paintChrono();
     this._paintClients();
     this._paintKpis();
     this._paintTable();
     this._paintJournal();
-  },
-
-  // Chronomètre : l'affichage complet quand il tourne, sinon l'invitation.
-  _paintChrono(seulementCompteur) {
-    const box = document.getElementById('tpChronoState');
-    if (!box) return;
-    const c = this.chrono();
-    const btn = document.getElementById('tpStart');
-    const champs = document.getElementById('tpChampsChrono');
-
-    if (!c) {
-      if (seulementCompteur) return;
-      box.innerHTML = '';
-      box.classList.add('hidden');
-      if (btn) btn.textContent = 'Démarrer';
-      if (champs) champs.classList.remove('hidden');
-      return;
-    }
-
-    const minutes = Math.max(0, Math.round((Date.now() - c.debut) / 60000));
-    const secondes = Math.max(0, Math.floor((Date.now() - c.debut) / 1000));
-    const oubli = minutes > TP_OUBLI_H * 60;
-    box.classList.remove('hidden');
-    // Arrêter n'est pas un geste destructeur : le bouton reste le bouton
-    // principal, seul son libellé change.
-    if (btn) btn.textContent = 'Arrêter et enregistrer';
-    if (champs) champs.classList.add('hidden');
-
-    // Pendant le tic-tac on ne réécrit que le compteur : réécrire tout le bloc
-    // chaque seconde ferait clignoter les boutons et perdrait le focus.
-    const compteur = document.getElementById('tpCompteur');
-    if (seulementCompteur && compteur) { compteur.textContent = chrono(secondes); return; }
-
-    box.innerHTML = `
-      <div class="tp-run${oubli ? ' oubli' : ''}">
-        <div class="tp-run-time" id="tpCompteur">${chrono(secondes)}</div>
-        <div class="tp-run-main">
-          <div class="tp-run-t">${esc(c.client || 'Sans client')}</div>
-          <div class="tp-run-s">Démarré ${quand(c.debut)}${c.note ? ' · ' + esc(c.note) : ''}</div>
-          ${oubli ? '<div class="tp-run-w">Ce chronomètre tourne depuis plus de ' + TP_OUBLI_H + ' h — il a probablement été oublié. Corrige la durée à l\'arrêt, ou annule-le.</div>' : ''}
-        </div>
-        <button class="mini-btn" id="tpCancel">Annuler</button>
-      </div>`;
-    const cancel = document.getElementById('tpCancel');
-    if (cancel) cancel.addEventListener('click', () => CC.temps.annulerChrono());
   },
 
   // Liste des clients connus (factures + séances déjà saisies) pour la saisie.
@@ -272,7 +155,7 @@ CC.temps = {
       { cls: 'green', label: 'Net par heure', value: totalH > 0 ? CC.util.eur(totalNet / totalH) : '—', hint: totalH > 0 ? 'après URSSAF et frais de route' : 'aucune heure saisie' },
       { cls: 'blue', label: 'Brut par heure', value: totalH > 0 ? CC.util.eur(totalCa / totalH) : '—', hint: totalH > 0 ? CC.util.eur0(totalCa) + ' encaissés' : '—' },
       meilleur
-        ? { cls: 'amber', label: 'Écart entre clients', value: pire ? CC.util.eur(meilleur.netHeure - pire.netHeure) : '—', hint: pire ? `${court(meilleur.client)} vs ${court(pire.client)}` : 'un seul client chronométré' }
+        ? { cls: 'amber', label: 'Écart entre clients', value: pire ? CC.util.eur(meilleur.netHeure - pire.netHeure) : '—', hint: pire ? `${court(meilleur.client)} vs ${court(pire.client)}` : 'un seul client avec des heures' }
         : { cls: 'amber', label: 'Écart entre clients', value: '—', hint: 'rien à comparer pour l\'instant' }
     ];
     box.innerHTML = k.map((x) => `<div class="kpi ${x.cls}"><div class="label">${x.label}</div><div class="value">${x.value}</div><div class="hint">${esc(x.hint)}</div></div>`).join('');
@@ -286,7 +169,7 @@ CC.temps = {
     const sans = lignes.filter((l) => l.heures === 0 && l.ca > 0);
 
     if (!avec.length) {
-      box.innerHTML = `<div class="ck-empty">Aucune heure saisie pour cette période. Lance le chronomètre pendant une séance, ou ajoute une durée à la main : le tableau se remplit tout seul.</div>`;
+      box.innerHTML = `<div class="ck-empty">Aucune heure saisie pour cette période. Ajoute une séance ci-dessus — dès la première, le tableau se remplit.</div>`;
       return;
     }
 
@@ -361,11 +244,6 @@ CC.temps = {
   bind() {
     if (this._bound || !CC.estBureau()) return;
     this._bound = true;
-    const start = document.getElementById('tpStart');
-    if (start) start.addEventListener('click', () => {
-      if (CC.temps.chrono()) CC.temps.arreter();
-      else CC.temps.demarrer();
-    });
     const add = document.getElementById('tpAdd');
     if (add) add.addEventListener('click', () => CC.temps.ajouterManuel());
     const dureeEl = document.getElementById('tpDuree');
@@ -410,16 +288,6 @@ function duree(minutes) {
   const h = Math.floor(m / 60), r = m % 60;
   if (!h) return r + ' min';
   return h + ' h' + (r ? String(r).padStart(2, '0') : '');
-}
-function chrono(sec) {
-  const z = (n) => String(n).padStart(2, '0');
-  return z(Math.floor(sec / 3600)) + ':' + z(Math.floor(sec / 60) % 60) + ':' + z(sec % 60);
-}
-function quand(ms) {
-  const d = new Date(ms);
-  const auj = CC.util.toISO(d) === CC.util.toISO(new Date());
-  const h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  return auj ? 'à ' + h : 'le ' + d.toLocaleDateString('fr-FR') + ' à ' + h;
 }
 function court(nom) { return String(nom || '').length > 22 ? String(nom).slice(0, 21) + '…' : String(nom || ''); }
 

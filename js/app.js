@@ -491,15 +491,6 @@ async function init() {
   // départ si une pièce référencée a disparu du disque.
   if (CC.coffre && CC.estBureau()) CC.coffre.pull();
 
-  // Chronomètre laissé en route la veille : il tourne toujours, et sans un mot
-  // il enregistrerait douze heures de « travail ». On le signale à l'ouverture.
-  if (CC.temps && CC.estBureau()) {
-    const c = CC.temps.chrono();
-    if (c && (Date.now() - c.debut) > 12 * 3600000) {
-      setTimeout(() => CC.toast('Un chronomètre tourne depuis hier — corrige-le dans Compta › Temps.', 'err'), 1200);
-    }
-  }
-
   // Rappels : notifications du jour sur le PC, puis dépôt des rappels à venir
   // sur le serveur pour que l'iPhone soit prévenu même app fermée.
   if (CC.notifs) CC.notifs.demarrage();
