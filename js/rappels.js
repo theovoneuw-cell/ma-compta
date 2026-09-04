@@ -23,7 +23,7 @@ CC.rappels = {
     return {
       actif: false,          // interrupteur general (active depuis Parametres)
       heure: 9,              // heure d'envoi des rappels (0-23, heure locale)
-      pc: { urssaf: true, retard: true, agenda: true, mail: true },
+      pc: { urssaf: true, retard: true, agenda: true, mail: true, docs: true },
       push: { urssaf: true, retard: true, hebdo: true, mail: true },
       serveur: '',           // URL du Worker Cloudflare (sans / final)
       vapid: '',             // cle publique VAPID du Worker
@@ -172,6 +172,35 @@ CC.rappels = {
       lundi = CC.util.addDays(lundi, 7);
     }
 
+    // ---- Coffre a documents : avant qu'une piece perde sa validite ----
+    // Deux rappels : a l'avance (delai choisi sur la fiche, 30 j par defaut),
+    // puis le jour meme. Une attestation perimee decouverte le jour ou un
+    // client la reclame, c'est un chantier qui attend.
+    //
+    // Ces rappels n'existent que sur l'ordinateur : les documents y sont, et
+    // eux seuls. Ils sont donc exclus du paquet envoye au serveur (voir digest).
+    if (CC.estBureau && CC.estBureau()) {
+      (S.documents || []).forEach((d) => {
+        if (!d.expire) return;
+        const dl = CC.util.parseDate(d.expire);
+        if (!dl) return;
+        const avant = +d.rappelJours > 0 ? +d.rappelJours : 30;
+        const nom = d.titre || d.nom || 'Document';
+        garder({
+          id: 'doc-' + d.id + '-avant', at: CC.rappels.a(CC.util.addDays(dl, -avant), H), type: 'docs',
+          titre: nom + ' — à renouveler',
+          corps: 'Valable jusqu\'au ' + CC.rappels.jour(dl) + ', soit dans ' + avant + ' jours. Demande le renouvellement maintenant.',
+          onglet: 'coffre'
+        });
+        garder({
+          id: 'doc-' + d.id + '-jour', at: CC.rappels.a(dl, H), type: 'docs',
+          titre: nom + ' — périme aujourd\'hui',
+          corps: 'Ce document n\'est plus valable à partir de demain. Remplace-le dans le coffre.',
+          onglet: 'coffre'
+        });
+      });
+    }
+
     return out.sort((a, b) => a.at - b.at);
   },
 
@@ -230,7 +259,9 @@ CC.rappels = {
     now = now || new Date();
     const conf = CC.rappels.conf();
     const items = CC.rappels.liste(now)
-      .filter((r) => r.at > now.getTime() && conf.push[r.type] !== false)
+      // Les rappels du coffre restent sur l'ordinateur : les documents ne sont
+      // pas sur le telephone, une notification pousee n'y menerait a rien.
+      .filter((r) => r.at > now.getTime() && r.type !== 'docs' && conf.push[r.type] !== false)
       .map((r) => ({ id: r.id, at: r.at, titre: r.titre, corps: r.corps, onglet: r.onglet }));
     return { v: 1, genere: now.getTime(), heure: conf.heure, items };
   }

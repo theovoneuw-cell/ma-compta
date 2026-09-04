@@ -10,6 +10,11 @@ CC.state = {
   declarations: {},
   trajets: [],
   notes: [],            // pense-bête (synchronisé PC ↔ iPhone via le document)
+  // Outils de bureau (PC/Mac). Leurs DONNÉES voyagent quand même dans le
+  // fichier de compta : le téléphone n'affiche pas ces onglets, mais il ne doit
+  // surtout pas perdre leur contenu en réenregistrant le document.
+  documents: [],        // coffre à documents : fiches (le fichier, lui, est sur le disque)
+  temps: [],            // feuille de temps : séances de travail
   filePath: null,
   primaryPath: null,    // chemin habituel du fichier (sur le disque externe)
   readOnly: false,      // true quand on affiche la copie locale (disque absent)
@@ -175,7 +180,8 @@ CC.state.subTab = 'dashboard';   // sous-onglet actif dans Compta
 
 CC.switchTab = function (name, dir) {
   // Onglets "Compta" exposes via le menu (dashboard/factures/fiscal) -> ouvrir Compta + sous-onglet
-  if (name === 'dashboard' || name === 'factures' || name === 'fiscal' || name === 'donnees') {
+  if (name === 'dashboard' || name === 'factures' || name === 'fiscal' || name === 'donnees'
+      || name === 'bilan' || name === 'coffre' || name === 'temps') {
     CC.switchTab('compta');
     CC.switchSub(name);
     return;
@@ -216,6 +222,8 @@ CC.switchSub = function (sub) {
   if (sub === 'factures') CC.facturesView.render();
   if (sub === 'fiscal') CC.renderFiscal();
   if (sub === 'bilan' && CC.renderBilan) CC.renderBilan();
+  if (sub === 'coffre' && CC.coffre) CC.coffre.render();
+  if (sub === 'temps' && CC.temps) CC.temps.render();
 };
 
 CC.confirmIfDirty = async function () {
@@ -416,6 +424,15 @@ async function init() {
   if (CC.trajets) CC.trajets.bind();
   if (CC.prospection) CC.prospection.bind();
   if (CC.notes) CC.notes.bind();
+  // Outils réservés à l'ordinateur : sur téléphone, on retire leurs onglets et
+  // leurs boutons du DOM plutôt que de les laisser mener à des écrans inertes.
+  if (CC.estBureau()) {
+    if (CC.coffre) CC.coffre.bind();
+    if (CC.temps) CC.temps.bind();
+    if (CC.recherche) CC.recherche.bind();
+  } else {
+    document.querySelectorAll('.bureau-only').forEach((el) => el.classList.add('hidden'));
+  }
   if (CC.privacy) CC.privacy.bind();
   if (CC.notifs) CC.notifs.bind();
   CC.installReadOnlyGuard();
@@ -470,6 +487,18 @@ async function init() {
   // Pense-bête : récupère la version Drive (synchro PC ↔ iPhone)
   if (CC.notes) CC.notes.pull();
   if (CC.prospection) CC.prospection.pull();
+  // Coffre : on lit le contenu réel du dossier une fois, pour savoir dès le
+  // départ si une pièce référencée a disparu du disque.
+  if (CC.coffre && CC.estBureau()) CC.coffre.pull();
+
+  // Chronomètre laissé en route la veille : il tourne toujours, et sans un mot
+  // il enregistrerait douze heures de « travail ». On le signale à l'ouverture.
+  if (CC.temps && CC.estBureau()) {
+    const c = CC.temps.chrono();
+    if (c && (Date.now() - c.debut) > 12 * 3600000) {
+      setTimeout(() => CC.toast('Un chronomètre tourne depuis hier — corrige-le dans Compta › Temps.', 'err'), 1200);
+    }
+  }
 
   // Rappels : notifications du jour sur le PC, puis dépôt des rappels à venir
   // sur le serveur pour que l'iPhone soit prévenu même app fermée.

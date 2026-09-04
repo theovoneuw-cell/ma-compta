@@ -2356,3 +2356,161 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   .ps-h { grid-template-columns: 70px 1fr auto; }
   .ps-bloc { margin-bottom: 20px; }
 }
+
+/* ===================== COFFRE À DOCUMENTS (PC / Mac) =====================
+   Une fiche = une carte. Ce qu'on doit lire de loin : le titre et la validité.
+   Le reste (nom du fichier, poids) est en retrait : on ne le cherche que si on
+   le cherche vraiment. */
+.co-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.co-head > div:first-child { flex: 1 1 320px; }
+.co-head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.co-alert { margin-bottom: 14px; }
+
+/* Barre d'envoi : elle n'existe que quand une case est cochée. */
+.co-bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding: 10px 14px; border-radius: var(--r-md);
+  background: var(--accent-soft); border: 1px solid rgba(79,70,229,.22);
+}
+.co-bar-n { font-size: 13px; font-weight: 600; color: var(--accent-strong); }
+:root[data-theme="dark"] .co-bar-n { color: #c7d2fe; }
+
+.co-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.co-card {
+  display: grid; grid-template-columns: auto auto 1fr; grid-template-rows: auto auto;
+  gap: 4px 12px; align-items: start;
+  padding: 14px 15px; border-radius: var(--r-md);
+  background: var(--card-bg-2); border: 1px solid var(--card-border);
+  box-shadow: var(--card-shine); transition: transform .2s cubic-bezier(.32,.72,0,1), box-shadow .2s ease;
+}
+.co-card:hover { transform: translateY(-2px); box-shadow: var(--card-shine), var(--shadow-soft); }
+.co-card.co-missing { opacity: .74; border-style: dashed; }
+.co-pick { display: flex; align-items: center; padding-top: 2px; }
+.co-ic { color: var(--accent); display: flex; padding-top: 1px; }
+.co-main { min-width: 0; }
+.co-t { font-weight: 600; color: var(--ink); font-size: 14px; line-height: 1.25; }
+.co-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 6px; }
+.co-file { font-size: 11.5px; color: var(--soft); max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-size { font-size: 11.5px; color: var(--soft); }
+.co-warn { color: var(--red); font-weight: 600; }
+.co-notes { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* Validité : la seule couleur de la carte. Verte on n'y pense plus, ambre il
+   faut s'en occuper, rouge c'est déjà trop tard. */
+.co-exp { font-size: 12px; font-weight: 600; margin-top: 6px; }
+.co-exp.valide { color: var(--green); }
+.co-exp.bientot { color: var(--amber); }
+.co-exp.expire { color: var(--red); }
+.co-exp.perenne { color: var(--soft); font-weight: 500; }
+
+.co-actions { grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.co-hint { display: block; font-size: 11.5px; color: var(--soft); margin-top: 6px; }
+.co-file-line { font-size: 12px; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--border); margin-top: 2px; }
+
+.co-empty { text-align: center; padding: 40px 24px; }
+.co-empty-ic { display: inline-flex; color: var(--soft); }
+.co-empty-t { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--ink); margin-top: 8px; }
+.co-empty-s { font-size: 13px; color: var(--muted); margin: 8px auto 16px; max-width: 520px; line-height: 1.55; }
+
+/* ===================== FEUILLE DE TEMPS (PC / Mac) ===================== */
+.tp-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.tp-f { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--soft); font-weight: 600; }
+.tp-f-grow { flex: 1 1 220px; }
+.tp-f-court { flex: 0 0 110px; }
+.tp-actions { margin-top: 14px; }
+.tp-add { flex-shrink: 0; }
+
+/* Chronomètre en marche : le compteur est le sujet, le reste s'efface. */
+.tp-run {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 16px; border-radius: var(--r-md); margin-bottom: 14px;
+  background: linear-gradient(160deg, rgba(79,70,229,.10), transparent 60%), var(--card-bg-2);
+  border: 1px solid rgba(79,70,229,.24);
+}
+.tp-run.oubli { background: linear-gradient(160deg, rgba(194,116,10,.12), transparent 60%), var(--card-bg-2); border-color: rgba(194,116,10,.3); }
+.tp-run-time { font-family: var(--serif); font-size: 32px; font-weight: 600; letter-spacing: -1px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tp-run.oubli .tp-run-time { color: var(--amber); }
+.tp-run-main { flex: 1; min-width: 0; }
+.tp-run-t { font-weight: 600; color: var(--ink); }
+.tp-run-s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tp-run-w { font-size: 12px; color: var(--amber); margin-top: 6px; font-weight: 600; }
+
+.tp-table td.client { line-height: 1.3; }
+.tp-sub { display: block; font-size: 11px; color: var(--soft); font-weight: 400; margin-top: 2px; }
+.tp-moins { color: var(--muted); }
+.tp-rate { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tp-rate.haut { color: var(--green); }
+.tp-rate.bas { color: var(--amber); }
+.tp-rate.neg { color: var(--red); }
+/* Barre de comparaison : elle ne mesure pas un objectif, elle compare les
+   clients entre eux. D'où l'absence de graduation. */
+.tp-bar-col { width: 120px; padding-right: 15px !important; }
+.tp-bar { display: block; height: 7px; border-radius: 5px; background: var(--green); opacity: .85; }
+.tp-bar.bas { background: var(--amber); }
+.tp-bar.neg { background: var(--red); }
+.tp-foot { font-size: 11.5px; color: var(--soft); margin: 10px 2px 0; line-height: 1.5; }
+.tp-note { color: var(--muted); font-size: 12.5px; }
+
+/* ===================== RETRAITE (trimestres validés) ===================== */
+.rt-top { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-bottom: 14px; }
+.rt-big { font-family: var(--serif); font-size: 46px; font-weight: 600; letter-spacing: -2px; color: var(--ink); line-height: 1; }
+.rt-big span { font-size: 20px; color: var(--soft); margin-left: 6px; letter-spacing: -.5px; }
+.rt-pills { display: flex; gap: 9px; flex: 1 1 300px; }
+.rt-pill {
+  flex: 1; text-align: center; padding: 9px 6px; border-radius: var(--r-md);
+  background: var(--card-bg-2); border: 1px solid var(--card-border); box-shadow: var(--card-shine);
+}
+.rt-pill.ok { background: linear-gradient(180deg, rgba(14,163,113,.14), transparent 70%), var(--card-bg-2); border-color: rgba(14,163,113,.3); }
+.rt-pill.vise { border-style: dashed; border-color: rgba(194,116,10,.45); }
+.rt-pill .rt-n { display: block; font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); }
+.rt-pill .rt-s { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--soft); margin-top: 3px; font-weight: 700; }
+.rt-pill.ok .rt-s { color: var(--green); }
+.rt-pill.vise .rt-s { color: var(--amber); }
+.rt-verdict { margin-bottom: 14px; }
+.rt-detail { margin-bottom: 4px; }
+
+/* ===================== PALETTE DE RECHERCHE (Ctrl+K) ===================== */
+.pal-backdrop {
+  position: fixed; inset: 0; z-index: 90; display: flex; justify-content: center; align-items: flex-start;
+  padding-top: 12vh; background: rgba(27,23,51,.34);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.pal {
+  width: min(680px, 92vw); max-height: 68vh; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border); border-radius: var(--r-xl);
+  box-shadow: var(--glass-shine), var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.pal-head { display: flex; align-items: center; gap: 11px; padding: 15px 18px; border-bottom: 1px solid var(--border); }
+.pal-loupe { color: var(--soft); flex-shrink: 0; }
+.pal-head input {
+  flex: 1; border: none; background: none; outline: none;
+  font-family: inherit; font-size: 16px; color: var(--ink);
+}
+.pal-head input::placeholder { color: var(--soft); }
+.pal-esc { font-size: 10.5px; color: var(--soft); border: 1px solid var(--border-strong); border-radius: var(--r-xs); padding: 2px 7px; }
+
+.pal-list { overflow-y: auto; padding: 6px; }
+.pal-sec {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; font-weight: 700;
+  color: var(--soft); padding: 11px 12px 5px;
+}
+.pal-sec span { opacity: .7; font-weight: 600; }
+.pal-item {
+  display: flex; align-items: center; gap: 11px; padding: 9px 12px;
+  border-radius: var(--r-sm); cursor: pointer;
+}
+.pal-item.sel { background: var(--accent-soft); }
+:root[data-theme="dark"] .pal-item.sel { background: rgba(99,102,241,.22); }
+.pal-ic { color: var(--soft); display: flex; flex-shrink: 0; }
+.pal-item.sel .pal-ic { color: var(--accent); }
+.pal-txt { min-width: 0; flex: 1; }
+.pal-t { display: block; font-size: 13.5px; color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-s { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-vide { padding: 34px; text-align: center; color: var(--muted); font-size: 13px; }
+.pal-foot {
+  display: flex; align-items: center; gap: 14px; padding: 9px 16px;
+  border-top: 1px solid var(--border); font-size: 11px; color: var(--soft);
+}
+.pal-foot b { font-weight: 700; color: var(--muted); border: 1px solid var(--border-strong); border-radius: 5px; padding: 0 4px; }
+.pal-foot .spacer { flex: 1; }

@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mtmvse9v" />
+  <link rel="stylesheet" href="css/styles.css?b=mtn0dca3" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mtmvse9v"></script>
+  <script src="js/theme.js?b=mtn0dca3"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -69,6 +69,9 @@
     </nav>
 
     <div class="topbar-right">
+      <button id="btnRecherche" class="btn btn-icon bureau-only" title="Rechercher partout (Ctrl+K)" aria-label="Rechercher partout">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+      </button>
       <label class="year-select" title="Année"><select id="yearSelect" aria-label="Année"></select></label>
       <button id="btnTheme" class="btn btn-icon" title="Basculer le thème" aria-label="Basculer le thème"></button>
       <button id="btnPrivacy" class="btn btn-icon" title="Masquer les chiffres" aria-label="Masquer les chiffres"></button>
@@ -117,6 +120,11 @@
         <button class="subtab" data-sub="factures">Factures</button>
         <button class="subtab" data-sub="fiscal">Fiscal</button>
         <button class="subtab" data-sub="bilan">Bilan</button>
+        <!-- Outils d'ordinateur : ils manipulent des fichiers du disque (coffre)
+             ou demandent une saisie suivie (temps). Masqués sur téléphone par
+             app.js (classe bureau-only), pas seulement rétrécis. -->
+        <button class="subtab bureau-only" data-sub="coffre">Coffre</button>
+        <button class="subtab bureau-only" data-sub="temps">Temps</button>
         <button class="subtab" data-sub="donnees">Données</button>
       </nav>
 
@@ -273,6 +281,12 @@
         </div>
 
         <div class="card">
+          <h3>Trimestres de retraite validés</h3>
+          <p class="card-sub">Ton chiffre d'affaires valide de 0 à 4 trimestres par an. Personne ne te prévient : c'est ici.</p>
+          <div id="fiscalRetraite"></div>
+        </div>
+
+        <div class="card">
           <h3>Barèmes utilisés</h3>
           <p class="card-sub">Les chiffres officiels sur lesquels reposent les calculs, et leur année. À revoir chaque 1er janvier.</p>
           <div id="fiscalBaremes" class="qsched"></div>
@@ -285,7 +299,6 @@
         </div>
       </div>
 
-      <!-- ---- Sous-onglet : Données ---- -->
       <!-- ---- Sous-onglet : Bilan annuel ---- -->
       <div class="subpanel" id="sub-bilan">
         <div class="bilan-toolbar">
@@ -296,6 +309,81 @@
         <div id="bilanBody"></div>
       </div>
 
+      <!-- ---- Sous-onglet : Coffre à documents (PC / Mac) ---- -->
+      <div class="subpanel" id="sub-coffre">
+        <div class="card">
+          <div class="co-head">
+            <div>
+              <h3>Coffre à documents</h3>
+              <p class="card-sub">Les pièces qu'on te réclame : assurance RC pro, attestation de vigilance URSSAF, RIB, avis SIRENE, diplômes, plaquette. Rangées, datées, et envoyées par mail sans les chercher.</p>
+            </div>
+            <div class="co-head-actions">
+              <button class="btn" id="coffreDossier" title="Ouvrir le dossier du coffre dans l'explorateur">Ouvrir le dossier</button>
+              <button class="btn btn-primary" id="coffreAdd">Ajouter un document</button>
+            </div>
+          </div>
+          <div id="coffreBar" class="co-bar hidden"></div>
+          <div id="coffreBody"></div>
+        </div>
+      </div>
+
+      <!-- ---- Sous-onglet : Feuille de temps (PC / Mac) ---- -->
+      <div class="subpanel" id="sub-temps">
+        <div class="kpi-grid" id="tpKpis"></div>
+
+        <div class="card">
+          <h3>Chronomètre</h3>
+          <p class="card-sub">Lance-le en début de séance. Il continue de tourner si tu changes d'onglet ou si tu fermes l'app.</p>
+          <div id="tpChronoState" class="hidden"></div>
+          <div class="tp-form" id="tpChampsChrono">
+            <label class="tp-f tp-f-grow">Client
+              <input id="tpClient" class="input" type="text" list="tpClients" placeholder="ex. IME LES CHENES" autocomplete="off">
+            </label>
+            <label class="tp-f tp-f-grow">Sur quoi
+              <input id="tpNote" class="input" type="text" maxlength="120" placeholder="(optionnel) atelier, mixage, préparation…" autocomplete="off">
+            </label>
+          </div>
+          <datalist id="tpClients"></datalist>
+          <div class="tp-actions"><button class="btn btn-primary" id="tpStart">Démarrer</button></div>
+        </div>
+
+        <div class="card">
+          <h3>Ajouter une séance</h3>
+          <p class="card-sub">Pour ce qui est déjà fait. La durée s'écrit comme tu la dis : 1h30, 1,5h, 90, 1:30.</p>
+          <div class="tp-form">
+            <div class="tp-f">Date
+              <div class="dp" id="tpDateWrap" data-dp="jour">
+                <button type="button" class="dp-field" data-dp-btn></button>
+                <input type="hidden" id="tpDate_jour" value="">
+                <div class="dp-pop hidden" data-dp-pop></div>
+              </div>
+            </div>
+            <label class="tp-f tp-f-grow">Client
+              <input id="tpMClient" class="input" type="text" list="tpClients" placeholder="ex. IME LES CHENES" autocomplete="off">
+            </label>
+            <label class="tp-f tp-f-court">Durée
+              <input id="tpDuree" class="input" type="text" placeholder="1h30" autocomplete="off">
+            </label>
+            <label class="tp-f tp-f-grow">Note
+              <input id="tpMNote" class="input" type="text" maxlength="120" placeholder="(optionnel)" autocomplete="off">
+            </label>
+            <button class="btn btn-primary tp-add" id="tpAdd">Ajouter</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Rentabilité réelle par client</h3>
+          <p class="card-sub">Ce qu'il te reste par heure une fois l'URSSAF et la route payées. C'est ce chiffre-là qui dit quoi accepter et qui augmenter.</p>
+          <div id="tpRenta"></div>
+        </div>
+
+        <div class="card">
+          <h3>Journal des séances</h3>
+          <div id="tpJournal"></div>
+        </div>
+      </div>
+
+      <!-- ---- Sous-onglet : Données ---- -->
       <div class="subpanel" id="sub-donnees">
         <div class="card">
           <h3>Import / export des données</h3>
@@ -724,6 +812,26 @@
           </div>
 
           <div class="card">
+            <h3>Retraite</h3>
+            <p class="card-sub">Sert au calcul des trimestres validés (onglet Fiscal). Un trimestre s'obtient par tranche de 150 × SMIC horaire de revenu.</p>
+            <div class="field-row">
+              <div class="field">
+                <label>Régime de retraite</label>
+                <select id="setRegimeRetraite" class="input">
+                  <option value="general">Régime général (libéral non réglementé)</option>
+                  <option value="cipav">CIPAV</option>
+                </select>
+                <small>Depuis 2018, une activité libérale non réglementée relève du régime général. La CIPAV fonctionne par points : le calcul de l'app ne s'y applique pas.</small>
+              </div>
+            </div>
+            <div class="field">
+              <label>SMIC horaire brut au 1<sup>er</sup> janvier (€/h)</label>
+              <div id="smicTable"></div>
+              <small>C'est lui qui fixe le CA nécessaire pour valider un trimestre. <b>Prends la valeur du 1<sup>er</sup> janvier</b> : une revalorisation en cours d'année ne compte pas pour la retraite (le SMIC est passé à 12,31 € le 1<sup>er</sup> juin 2026, mais 2026 se calcule sur les 12,02 € du 1<sup>er</sup> janvier). Vide = valeur intégrée à l'app.</small>
+            </div>
+          </div>
+
+          <div class="card">
             <h3>Assujettissement à la TVA</h3>
             <p class="card-sub">À n'activer que le jour où tu commences réellement à facturer la TVA. Tant que c'est décoché, rien ne change nulle part dans l'app.</p>
             <div class="field">
@@ -930,6 +1038,7 @@
                 <label class="check"><input type="checkbox" id="notifPcRetard" /> Factures échues non payées</label>
                 <label class="check"><input type="checkbox" id="notifPcAgenda" /> Rendez-vous du jour</label>
                 <label class="check"><input type="checkbox" id="notifPcMail" /> Mails non lus</label>
+                <label class="check"><input type="checkbox" id="notifPcDocs" /> Documents du coffre qui périment</label>
               </div>
             </div>
 
@@ -1174,33 +1283,38 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mtmvse9v"></script>
-  <script src="js/drive-store.js?b=mtmvse9v"></script>
-  <script src="js/api-web.js?b=mtmvse9v"></script>
-  <script src="js/settings.js?b=mtmvse9v"></script>
-  <script src="js/datepicker.js?b=mtmvse9v"></script>
-  <script src="js/stats.js?b=mtmvse9v"></script>
-  <script src="js/charts.js?b=mtmvse9v"></script>
-  <script src="js/import.js?b=mtmvse9v"></script>
-  <script src="js/pdfimport.js?b=mtmvse9v"></script>
-  <script src="js/factures.js?b=mtmvse9v"></script>
-  <script src="js/fiscal.js?b=mtmvse9v"></script>
-  <script src="js/bilan.js?b=mtmvse9v"></script>
-  <script src="js/ai.js?b=mtmvse9v"></script>
-  <script src="js/connections.js?b=mtmvse9v"></script>
-  <script src="js/agenda.js?b=mtmvse9v"></script>
-  <script src="js/mailbox.js?b=mtmvse9v"></script>
-  <script src="js/trajets.js?b=mtmvse9v"></script>
+  <script src="js/google-auth-web.js?b=mtn0dca3"></script>
+  <script src="js/drive-store.js?b=mtn0dca3"></script>
+  <script src="js/api-web.js?b=mtn0dca3"></script>
+  <script src="js/settings.js?b=mtn0dca3"></script>
+  <script src="js/datepicker.js?b=mtn0dca3"></script>
+  <script src="js/stats.js?b=mtn0dca3"></script>
+  <script src="js/charts.js?b=mtn0dca3"></script>
+  <script src="js/import.js?b=mtn0dca3"></script>
+  <script src="js/pdfimport.js?b=mtn0dca3"></script>
+  <script src="js/factures.js?b=mtn0dca3"></script>
+  <script src="js/fiscal.js?b=mtn0dca3"></script>
+  <script src="js/bilan.js?b=mtn0dca3"></script>
+  <script src="js/ai.js?b=mtn0dca3"></script>
+  <script src="js/connections.js?b=mtn0dca3"></script>
+  <script src="js/agenda.js?b=mtn0dca3"></script>
+  <script src="js/mailbox.js?b=mtn0dca3"></script>
+  <script src="js/trajets.js?b=mtn0dca3"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mtmvse9v"></script>
-  <script src="js/prospection.js?b=mtmvse9v"></script>
-  <script src="js/notes.js?b=mtmvse9v"></script>
-  <script src="js/today.js?b=mtmvse9v"></script>
-  <script src="js/privacy.js?b=mtmvse9v"></script>
-  <script src="js/storage.js?b=mtmvse9v"></script>
-  <script src="js/rappels.js?b=mtmvse9v"></script>
-  <script src="js/notifs.js?b=mtmvse9v"></script>
-  <script src="js/app.js?b=mtmvse9v"></script>
+  <script src="js/prospection-base.js?b=mtn0dca3"></script>
+  <script src="js/prospection.js?b=mtn0dca3"></script>
+  <script src="js/notes.js?b=mtn0dca3"></script>
+  <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
+       onglets et leurs raccourcis ne s'activent que dans Electron. -->
+  <script src="js/coffre.js?b=mtn0dca3"></script>
+  <script src="js/temps.js?b=mtn0dca3"></script>
+  <script src="js/recherche.js?b=mtn0dca3"></script>
+  <script src="js/today.js?b=mtn0dca3"></script>
+  <script src="js/privacy.js?b=mtn0dca3"></script>
+  <script src="js/storage.js?b=mtn0dca3"></script>
+  <script src="js/rappels.js?b=mtn0dca3"></script>
+  <script src="js/notifs.js?b=mtn0dca3"></script>
+  <script src="js/app.js?b=mtn0dca3"></script>
 </body>
 </html>

@@ -67,6 +67,19 @@ CC.util = {
   uid() { return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 };
 
+// ---------------------------------------------------------------------------
+// « Sommes-nous sur l'ordinateur ? »
+//
+// Certains outils n'ont de sens que sur PC/Mac : ils touchent des FICHIERS du
+// disque (coffre à documents), demandent une saisie longue (feuille de temps)
+// ou un clavier (palette Ctrl+K). Sur l'iPhone, ils sont simplement absents —
+// pas grisés, pas vides : l'onglet n'existe pas.
+//
+// Le signe le plus sur qu'on tourne dans Electron : preload.js a pose
+// window.api.notify, que le pont web (api-web.js) ne recree pas.
+// ---------------------------------------------------------------------------
+CC.estBureau = function () { return !!(window.api && window.api.notify); };
+
 CC.MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 CC.TRIMS = ['T1', 'T2', 'T3', 'T4'];
 
@@ -82,6 +95,10 @@ CC.defaultSettings = function () {
     },
     defaultUrssafRate: 26.1,   // annees non renseignees
     tauxFraisAnnexes: 0.155,   // CFP + taxe CCI/CMA : s'ajoutent au taux de cotisations (≈ 0,155 % du CA)
+    // SMIC horaire brut au 1er janvier, par annee. Sert UNIQUEMENT au calcul des
+    // trimestres de retraite valides. Vide = on retombe sur CC.SMIC_HORAIRE.
+    smicHoraire: {},
+    regimeRetraite: 'general',  // 'general' (liberal non reglemente) | 'cipav'
     versementActif: false,
     tauxImpot: 2.2,
     abattementBNC: 34,         // abattement forfaitaire micro-BNC
@@ -139,6 +156,75 @@ CC.tarifKmEffectif = function () {
   const s = (CC.state && CC.state.settings) ? CC.state.settings : {};
   const t = +s.tarifKm;
   return (t > 0) ? t : CC.baremeKm(s.chevauxFiscaux);
+};
+
+// ---------------------------------------------------------------------------
+// RETRAITE : trimestres valides par le chiffre d'affaires
+//
+// Regle (regime general, ce dont releve un micro-entrepreneur en activite
+// liberale NON reglementee depuis 2018) :
+//   revenu retenu = CA encaisse - abattement forfaitaire
+//   1 trimestre est valide par tranche de 150 x SMIC horaire brut du 1er janvier
+//   de l'annee, dans la limite de 4.
+//
+// On calcule a partir de la REGLE et non d'une table de montants recopiee :
+// une table se perime en silence, la regle se verifie a l'oeil (le SMIC est
+// affiche, et modifiable dans les Parametres).
+//
+// Attention : ce calcul ne vaut PAS pour la CIPAV (retraite par points, autres
+// paliers). D'ou le reglage `regimeRetraite`.
+// ---------------------------------------------------------------------------
+//
+// ATTENTION, la valeur retenue est celle **du 1er JANVIER**. Les revalorisations
+// en cours d'annee ne comptent PAS pour la retraite : le SMIC est passe a
+// 12,31 EUR le 1er juin 2026, mais 2026 se calcule sur les 12,02 EUR du 1er
+// janvier (150 x 12,02 = 1 803 EUR, le montant publie par la Cnav). Ce 12,31 EUR
+// ne servira que s'il est encore en vigueur au 1er janvier 2027.
+// De meme 2025 reste a 11,88 EUR : la hausse datait du 1er novembre 2024, il n'y
+// a pas eu de revalorisation au 1er janvier 2025.
+CC.SMIC_HORAIRE = { 2023: 11.27, 2024: 11.65, 2025: 11.88, 2026: 12.02 };
+CC.HEURES_PAR_TRIMESTRE = 150;
+
+// SMIC horaire retenu pour une annee : la valeur saisie dans les Parametres
+// l'emporte ; sinon la table ci-dessus ; sinon la derniere annee connue (et on
+// le dit, plutot que de laisser croire a un chiffre a jour).
+CC.smicDe = function (year) {
+  const s = (CC.state && CC.state.settings) ? CC.state.settings : {};
+  const saisi = parseFloat(((s.smicHoraire || {})[year]));
+  if (saisi > 0) return { valeur: saisi, annee: year, exact: true, source: 'Paramètres' };
+  const t = CC.SMIC_HORAIRE[year];
+  if (t > 0) return { valeur: t, annee: year, exact: true, source: 'barème intégré' };
+  const annees = Object.keys(CC.SMIC_HORAIRE).map(Number).sort((a, b) => a - b);
+  const derniere = annees[annees.length - 1];
+  return { valeur: CC.SMIC_HORAIRE[derniere], annee: derniere, exact: false, source: 'barème intégré' };
+};
+
+// Trimestres valides par un CA encaisse sur une annee.
+CC.retraite = function (caEncaisse, year) {
+  const s = (CC.state && CC.state.settings) ? CC.state.settings : {};
+  const smic = CC.smicDe(year);
+  // Assiette sociale : le pourcentage d'abattement, SANS le plancher de 305 EUR
+  // (celui-ci est une regle fiscale, pas sociale).
+  const tauxAb = (s.abattementBNC != null ? s.abattementBNC : 34) / 100;
+  const part = Math.max(0, 1 - tauxAb);
+  const revenu = Math.max(0, +caEncaisse || 0) * part;
+  const seuil = CC.HEURES_PAR_TRIMESTRE * smic.valeur;          // revenu par trimestre
+  const caParTrimestre = part > 0 ? seuil / part : 0;           // le meme, exprime en CA
+  const brut = seuil > 0 ? Math.floor(revenu / seuil) : 0;
+  const trimestres = Math.max(0, Math.min(4, brut));
+  const caPourTout = caParTrimestre * 4;
+  return {
+    trimestres,
+    revenu,
+    seuil,
+    caParTrimestre,
+    caPourTout,
+    // Ce qu'il reste a encaisser pour valider le trimestre suivant / les 4.
+    manqueSuivant: trimestres >= 4 ? 0 : Math.max(0, caParTrimestre * (trimestres + 1) - caEncaisse),
+    manqueTout: Math.max(0, caPourTout - caEncaisse),
+    smic,
+    cipav: s.regimeRetraite === 'cipav'
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -230,6 +316,16 @@ CC.baremesUtilises = function (year) {
     ou: 'settings.js — CC.plafondMicro'
   });
 
+  // SMIC horaire : il commande les trimestres de retraite valides.
+  const smic = CC.smicDe(year);
+  out.push({
+    quoi: 'SMIC horaire brut au 1er janvier ' + year,
+    valeur: String(smic.valeur).replace('.', ',') + ' €/h'
+      + (smic.exact ? ' · ' + smic.source : ' — valeur ' + smic.annee + ' faute de mieux'),
+    perime: !smic.exact,
+    ou: 'Paramètres — Retraite'
+  });
+
   // Bareme kilometrique : fige a l'edition 2024.
   out.push({
     quoi: 'Barème kilométrique',
@@ -296,8 +392,44 @@ CC.renderSettings = function () {
   document.getElementById('setDefaultRate').value = s.defaultUrssafRate;
   const fa = document.getElementById('setFraisAnnexes');
   if (fa) fa.value = (s.tauxFraisAnnexes != null ? s.tauxFraisAnnexes : 0.155);
+  const reg = document.getElementById('setRegimeRetraite');
+  if (reg) reg.value = s.regimeRetraite || 'general';
   CC.renderUrssafTable();
+  CC.renderSmicTable();
   if (CC.notifs) CC.notifs.render();
+};
+
+// Tableau editable du SMIC horaire, meme esprit que les taux URSSAF : une ligne
+// par annee utile, vide = on retombe sur le bareme integre (CC.SMIC_HORAIRE).
+CC.renderSmicTable = function () {
+  const box = document.getElementById('smicTable');
+  if (!box) return;
+  const s = CC.state.settings;
+  if (!s.smicHoraire) s.smicHoraire = {};
+  const annees = new Set(CC.stats.years(CC.state.factures));
+  Object.keys(CC.SMIC_HORAIRE).forEach((y) => annees.add(+y));
+  Object.keys(s.smicHoraire).forEach((y) => annees.add(+y));
+  const cur = new Date().getFullYear();
+  annees.add(cur); annees.add(cur + 1);
+  const list = Array.from(annees).filter((y) => y >= cur - 3).sort((a, b) => a - b);
+
+  box.innerHTML = '<table class="rate-table"><tbody>' + list.map((y) => {
+    const v = s.smicHoraire[y] != null && s.smicHoraire[y] !== '' ? s.smicHoraire[y] : '';
+    const def = CC.SMIC_HORAIRE[y];
+    return `<tr><td class="ry">${y}</td>
+      <td><input type="number" step="0.01" min="0" max="99" class="smic-input mask-amount" data-year="${y}" value="${v}" placeholder="${def != null ? def : '—'}"></td></tr>`;
+  }).join('') + '</tbody></table>';
+
+  box.querySelectorAll('.smic-input').forEach((inp) => {
+    inp.addEventListener('change', (e) => {
+      const y = e.target.dataset.year;
+      const v = parseFloat(e.target.value);
+      if (isNaN(v) || v <= 0) delete CC.state.settings.smicHoraire[y];
+      else CC.state.settings.smicHoraire[y] = v;
+      CC.markDirty();
+      CC.render();
+    });
+  });
 };
 
 // Tableau editable des taux URSSAF par trimestre
@@ -402,6 +534,12 @@ CC.bindSettings = function () {
   });
   if (CC.dp) CC.dp.init(document.getElementById('tab-settings'));
 
+  const reg = document.getElementById('setRegimeRetraite');
+  if (reg) reg.addEventListener('change', (e) => {
+    CC.state.settings.regimeRetraite = e.target.value || 'general';
+    CC.markDirty();
+    CC.render();
+  });
   document.getElementById('setCoupleFiscal').addEventListener('change', (e) => {
     CC.state.settings.coupleFiscal = e.target.checked;
     CC.markDirty();

@@ -309,6 +309,7 @@ CC.notifs = {
     set('notifCle', conf.cle);
     chk('notifPcUrssaf', conf.pc.urssaf); chk('notifPcRetard', conf.pc.retard);
     chk('notifPcAgenda', conf.pc.agenda); chk('notifPcMail', conf.pc.mail);
+    chk('notifPcDocs', conf.pc.docs);
     chk('notifPushUrssaf', conf.push.urssaf); chk('notifPushRetard', conf.push.retard);
     chk('notifPushHebdo', conf.push.hebdo); chk('notifPushMail', conf.push.mail);
 
@@ -358,6 +359,7 @@ CC.notifs = {
 
     coche('notifPcUrssaf', 'pc.urssaf'); coche('notifPcRetard', 'pc.retard');
     coche('notifPcAgenda', 'pc.agenda'); coche('notifPcMail', 'pc.mail');
+    coche('notifPcDocs', 'pc.docs');
     coche('notifPushUrssaf', 'push.urssaf'); coche('notifPushRetard', 'push.retard');
     coche('notifPushHebdo', 'push.hebdo'); coche('notifPushMail', 'push.mail');
 

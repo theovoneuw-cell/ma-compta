@@ -10,7 +10,9 @@ CC.storage = {
       settings: CC.state.settings,
       declarations: CC.state.declarations,
       factures: CC.state.factures,
-      trajets: CC.state.trajets
+      trajets: CC.state.trajets,
+      documents: CC.state.documents,
+      temps: CC.state.temps
     }, null, 2);
   },
 
@@ -26,6 +28,11 @@ CC.storage = {
     CC.state.declarations = obj.declarations || {};
     CC.state.factures = Array.isArray(obj.factures) ? obj.factures.map(normalize) : [];
     CC.state.trajets = Array.isArray(obj.trajets) ? obj.trajets : [];
+    // Outils de bureau : relus tels quels, y compris sur l'iPhone (qui ne les
+    // affiche pas mais les réécrit à l'identique — sinon un enregistrement
+    // depuis le téléphone effacerait le coffre et la feuille de temps).
+    CC.state.documents = Array.isArray(obj.documents) ? obj.documents : [];
+    CC.state.temps = Array.isArray(obj.temps) ? obj.temps.map(normTemps) : [];
     // Le pense-bête vit désormais dans son propre fichier Drive (notes.json).
     // On garde juste une graine de migration si un ancien fichier compta en contenait.
     if (Array.isArray(obj.notes) && obj.notes.length) CC.state._notesSeed = obj.notes;
@@ -114,6 +121,8 @@ CC.storage = {
     CC.state.factures = [];
     CC.state.declarations = {};
     CC.state.trajets = [];
+    CC.state.documents = [];
+    CC.state.temps = [];
     CC.state.filePath = null;
     CC.state.dirty = false;
     window.api.setFile(null);
@@ -238,4 +247,18 @@ function normalize(f) {
     ...(+f.tauxTva > 0 ? { tauxTva: +f.tauxTva } : {})
   };
 }
+// Une seance de travail. `minutes` fait foi : c'est la seule grandeur sur
+// laquelle on additionne, et elle est stockee en entier pour ne pas trainer
+// d'arrondis d'heures decimales.
+function normTemps(t) {
+  return {
+    id: t.id || CC.util.uid(),
+    date: t.date || '',
+    client: t.client || '',
+    minutes: Math.max(0, Math.round(+t.minutes || 0)),
+    note: t.note || '',
+    factureId: t.factureId || ''
+  };
+}
+
 function fileName(p) { return p ? p.split(/[\\/]/).pop() : ''; }

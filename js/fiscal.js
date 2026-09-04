@@ -317,6 +317,54 @@ CC.renderFiscal = function () {
       <p class="tva-rappel">Cette somme n'est pas à toi : elle est collectée pour l'État. La TVA que tu récupères sur tes achats vient en déduction — l'app ne suit pas tes dépenses, c'est donc un montant <b>brut</b>. La fréquence de déclaration (annuelle ou trimestrielle) dépend du régime choisi avec ton comptable.</p>`;
   })();
 
+  // ---------- Retraite : trimestres validés ----------
+  // Personne ne t'annonce que tu n'as validé que 3 trimestres sur 4 : ça se
+  // découvre trente ans plus tard, sur le relevé de carrière. Ici on le dit
+  // pendant qu'il est encore temps d'y faire quelque chose.
+  (function renderRetraite() {
+    const box = document.getElementById('fiscalRetraite');
+    if (!box || !CC.retraite) return;
+    const r = CC.retraite(enc, year);
+    const enCours = year >= today.getFullYear();
+    const restants = Math.max(0, 4 - r.trimestres);
+
+    const pastilles = [1, 2, 3, 4].map((n) => {
+      const acquis = n <= r.trimestres;
+      // Le trimestre en cours d'acquisition : celui qu'on peut encore décrocher.
+      const vise = !acquis && n === r.trimestres + 1 && enCours;
+      return `<div class="rt-pill${acquis ? ' ok' : ''}${vise ? ' vise' : ''}">
+        <span class="rt-n">T${n}</span>
+        <span class="rt-s">${acquis ? 'validé' : (vise ? 'à portée' : '—')}</span>
+      </div>`;
+    }).join('');
+
+    let verdict, cls;
+    if (r.trimestres >= 4) { verdict = 'Année pleine : 4 trimestres sur 4.'; cls = 'ok'; }
+    else if (enCours) {
+      verdict = `Il te manque ${CC.util.eur0(r.manqueSuivant)} de CA encaissé avant le 31 décembre pour valider le ${r.trimestres + 1}<sup>e</sup> trimestre`
+        + (restants > 1 ? `, et ${CC.util.eur0(r.manqueTout)} pour les ${restants} qui restent.` : '.');
+      cls = r.trimestres >= 3 ? 'warn' : 'warn';
+    } else {
+      verdict = `Année close sur ${r.trimestres} trimestre${r.trimestres > 1 ? 's' : ''} — il aurait fallu ${CC.util.eur0(r.caPourTout)} encaissés pour en valider 4.`;
+      cls = r.trimestres >= 4 ? 'ok' : 'danger';
+    }
+
+    const ab = settings.abattementBNC || 34;
+    box.innerHTML = `
+      <div class="rt-top">
+        <div class="rt-big">${r.trimestres}<span>/ 4</span></div>
+        <div class="rt-pills">${pastilles}</div>
+      </div>
+      <div class="alert ${cls} rt-verdict"><span class="ai">${cls === 'ok' ? '✓' : '!'}</span><div>${verdict}</div></div>
+      <div class="forecast rt-detail">
+        <div class="fc"><div class="t">Revenu retenu ${year}</div><div class="v">${CC.util.eur0(r.revenu)}</div><div class="d">CA encaissé − abattement ${ab} %</div></div>
+        <div class="fc"><div class="t">Un trimestre coûte</div><div class="v">${CC.util.eur0(r.caParTrimestre)}</div><div class="d">de CA encaissé (150 × SMIC)</div></div>
+        <div class="fc"><div class="t">Année pleine à</div><div class="v">${CC.util.eur0(r.caPourTout)}</div><div class="d">de CA encaissé sur ${year}</div></div>
+      </div>
+      <p class="tva-rappel">Règle appliquée : 1 trimestre par tranche de 150 × SMIC horaire brut (${String(r.smic.valeur).replace('.', ',')} €/h${r.smic.exact ? '' : ' — valeur ' + r.smic.annee + ', à corriger dans Paramètres'}) de revenu, 4 au maximum.
+      ${r.cipav ? 'Attention : tu as indiqué dépendre de la CIPAV, dont les règles sont différentes — ce calcul ne vaut pas pour toi.' : 'Calcul du régime général, celui des activités libérales non réglementées depuis 2018. Si tu dépends de la CIPAV, indique-le dans les Paramètres.'}</p>`;
+  })();
+
   // ---------- Barèmes utilisés ----------
   // Rien ne prévient quand un barème officiel change au 1er janvier : cette carte
   // le rend visible plutôt que de laisser l'app calculer en silence sur l'an dernier.

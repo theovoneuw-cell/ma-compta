@@ -419,6 +419,7 @@ window.CC = window.CC || {};
       disconnect() { return Promise.resolve(CC.gauth.disconnect()); },
       async events(range) {
         const params = new URLSearchParams({ singleEvents: 'true', orderBy: 'startTime', timeMin: range.timeMin, timeMax: range.timeMax, maxResults: String(range.maxResults || 25) });
+        if (range.q && String(range.q).trim()) params.set('q', String(range.q).trim());   // parité avec Electron
         const data = await gget(GCAL + '?' + params.toString());
         if (data.__error) return { error: data.__error };
         const events = (data.items || []).map((e) => ({
