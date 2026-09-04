@@ -2168,7 +2168,7 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .ps-leg-note { margin-left: auto; color: var(--soft); }
 
 /* --- Modèles --- */
-.ps-mod-layout { display: grid; grid-template-columns: 244px 1fr; gap: 16px; align-items: start; }
+.ps-mod-layout { display: grid; grid-template-columns: 244px minmax(0, 1fr); gap: 16px; align-items: start; }
 .ps-mod-side { display: flex; flex-direction: column; gap: 8px; }
 .ps-mod {
   display: block; width: 100%; text-align: left; cursor: pointer;
@@ -2231,21 +2231,128 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .ps-etab-main { flex: 1; min-width: 0; }
 .ps-etab:hover .ps-nom { color: var(--accent); }
 
-/* --- Mobile (PWA iPhone) --- */
-/* Les indicateurs du Réseau sont de simples compteurs : sur un écran étroit ils
-   restent sur deux colonnes (l'app passe le reste des KPI sur une seule), sinon
-   cinq tuiles empilées repoussent la liste sous la ligne de flottaison. */
-@media (max-width: 430px) {
-  #psKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  #psKpis .kpi { padding: 10px 12px; }
-  #psKpis .kpi .value { font-size: 20px; }
-  #psKpis .kpi .label { font-size: 9.5px; letter-spacing: .9px; margin-bottom: 6px; }
-}
+
+/* Repères réservés au téléphone : la ville et l'unité se replient dans la ligne
+   secondaire quand les colonnes disparaissent. */
+.ps-v, .ps-u { display: none; }
+.kpi .l-court { display: none; }
+
+/* ===========================================================================
+   Réseau sur téléphone
+   Un tableau qui défile horizontalement ne se manipule pas au pouce : chaque
+   ligne devient une carte — nom et type sur la première ligne, statut et
+   téléphone sur la seconde. Le balisage ne change pas, seule la mise en page.
+   =========================================================================== */
 @media (max-width: 720px) {
-  .ps-cols { grid-template-columns: 1fr; }
-  .ps-mod-layout { grid-template-columns: 1fr; }
-  .ps-map-wrap { height: 52vh; min-height: 300px; }
-  .ps-pub, #psTable th:nth-child(3), #psTable td:nth-child(3) { display: none; }
-  #psTable th:nth-child(4), #psTable td:nth-child(4) { display: none; }
-  .ps-dl { grid-template-columns: 92px 1fr; }
+
+  /* --- Liste des structures et des gestionnaires --- */
+  #psub-structures .table-wrap,
+  #psub-gestionnaires .table-wrap { overflow-x: visible; }
+  #psTable, #psGtable { min-width: 0; display: block; }
+  #psTable thead, #psGtable thead { display: none; }
+  #psTable tbody, #psGtable tbody { display: block; }
+
+  #psBody tr, #psGbody tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+    padding: 12px 15px; border-bottom: 1px solid var(--border);
+  }
+  #psBody tr:last-child, #psGbody tr:last-child { border-bottom: 0; }
+  #psBody td, #psGbody td { display: block; padding: 0; border: 0; font-size: 13px; }
+  #psBody tr:active, #psGbody tr:active { background: var(--surface-2); }
+
+  /* Sélecteurs préfixés par l'id : sinon `#psBody td { display: block }`
+     l'emporte sur ces masquages et toutes les colonnes réapparaissent. */
+  #psBody .ps-c-ville, #psBody .ps-c-pub, #psBody .ps-c-places,
+  #psGbody .ps-c-ville, #psGbody .ps-c-places { display: none; }
+  .ps-v, .ps-u { display: inline; }
+  #psBody .ps-c-nom, #psGbody .ps-c-nom { flex: 1 1 100%; order: 1; }
+  .ps-c-nom { flex: 1 1 100%; order: 1; }
+  .ps-c-nom .ps-nom { font-size: 14.5px; }
+  .ps-c-nom .ps-sub { margin-top: 3px; }
+  #psBody .ps-c-suivi, #psGbody .ps-c-suivi { order: 2; text-align: left; }
+  #psBody .ps-c-tel, #psGbody .ps-c-tel { order: 3; margin-left: auto; color: var(--muted); }
+
+  /* --- Barre d'outils : la recherche prend toute la largeur, l'export s'efface
+         (on n'ouvre pas un CSV depuis un téléphone). --- */
+  #psub-structures .toolbar, #psub-gestionnaires .toolbar { gap: 8px; }
+  #psSearch, #psGsearch { flex: 1 1 100%; }
+  #psExport { display: none; }
+  #psSummary, #psGsummary { font-size: 12.5px; }
+
+  /* --- Filtres : une rangée qui défile au doigt plutôt qu'un mur de menus --- */
+  #psub-structures .filters-row {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; margin: 0 -12px 14px; padding: 0 12px 2px;
+  }
+  #psub-structures .filters-row::-webkit-scrollbar { display: none; }
+  #psub-structures .filters-row select { flex: 0 0 auto; max-width: 76vw; }
+
+  /* --- Indicateurs : seuls les trois qui appellent une action, sur une ligne --- */
+  #psKpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  #psub-structures .toolbar, #psub-gestionnaires .toolbar { margin-bottom: 10px; }
+  /* Quatre sous-onglets qui tiennent sans defiler sur un ecran de 393 px. */
+  #tab-reseau .subtab { padding: 6px 11px; font-size: 13.5px; }
+  #psKpis .kpi:nth-child(1), #psKpis .kpi:nth-child(2) { display: none; }
+  #psKpis .kpi { padding: 11px 10px; border-left-width: 3px; }
+  #psKpis .kpi .value { font-size: 21px; }
+  #psKpis .kpi .label { font-size: 9.5px; letter-spacing: .6px; margin-bottom: 5px; }
+  #psKpis .kpi .l-long { display: none; }
+  #psKpis .kpi .l-court { display: inline; }
+
+  /* --- Gestionnaires : le texte d'explication se lit une fois, il ne doit pas
+         occuper le premier écran à chaque visite. --- */
+  #psub-gestionnaires > .card { padding: 12px 14px; }
+  #psub-gestionnaires > .card h3 { font-size: 14px; }
+  #psub-gestionnaires > .card .card-sub { font-size: 12px; margin-top: 4px; }
+
+  /* --- Carte : les deux menus côte à côte, la consigne dessous --- */
+  #psub-carte .toolbar select { flex: 1 1 45%; min-width: 0; }
+  #psub-carte .toolbar .summary { flex: 1 1 100%; }
+  .ps-map-wrap { height: 56vh; min-height: 300px; }
+  .ps-legend { gap: 10px; font-size: 11.5px; }
+  .ps-leg-note { margin-left: 0; flex: 1 1 100%; }
+
+  /* --- Modèles : la liste passe en rangée défilante au-dessus de l'éditeur.
+         C'est #psModList qui doit défiler, pas .ps-mod-side (qui contient aussi
+         le bouton « Nouveau modèle » : le passer en rangée le collerait à côté
+         de la liste au lieu de le placer dessous). --- */
+  /* minmax(0,…) et min-width:0 : sans eux, la rangée defilante des modeles
+     impose sa largeur intrinseque (5 x 210 px) a la colonne, et tout l editeur
+     deborde de l ecran. */
+  .ps-mod-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .ps-mod-side, .ps-mod-main, #psModList { min-width: 0; max-width: 100%; }
+  #psModList {
+    display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; margin: 0 -12px; padding: 0 12px 2px;
+  }
+  #psModList::-webkit-scrollbar { display: none; }
+  .ps-mod { flex: 0 0 auto; width: 210px; }
+  #psModNouveau { align-self: flex-start; white-space: nowrap; }
+  #psub-modeles .form-grid { grid-template-columns: 1fr; gap: 10px; }
+  /* La signature se règle une fois : sur téléphone elle passe SOUS les modèles,
+     qui sont ce qu'on vient chercher. */
+  #psub-modeles { display: flex; flex-direction: column; }
+  /* Sans ce min-width, la rangée défilante des modèles (5 × 210 px) impose sa
+     largeur intrinsèque à toute la colonne et l'éditeur déborde de l'écran. */
+  #psub-modeles > * { min-width: 0; }
+  #psub-modeles > .ps-mod-layout { order: 1; }
+  #psub-modeles > .card { order: 2; margin-top: 4px; }
+  #psModCorps { min-height: 240px; }
+  .ps-apercu { padding: 14px 15px; font-size: 13px; }
+
+  /* --- Fiche : une colonne, en-tête collé en haut pour garder la croix --- */
+  .ps-cols { grid-template-columns: 1fr; gap: 0; }
+  .ps-modal-head {
+    position: sticky; top: 0; z-index: 3; margin: -4px -4px 8px; padding: 4px 4px 10px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .ps-modal-head h2 { font-size: 19px; }
+  .ps-dl { grid-template-columns: 96px 1fr; gap: 5px 10px; }
+  #psFicheCorps .form-grid { grid-template-columns: 1fr; }
+  #psFicheCorps .btn-row { gap: 8px; }
+  #psFicheCorps .btn-row .btn { flex: 1 1 auto; }
+  .ps-evt { flex-wrap: wrap; }
+  .ps-evt .input { flex: 1 1 100%; }
+  .ps-h { grid-template-columns: 70px 1fr auto; }
+  .ps-bloc { margin-bottom: 20px; }
 }

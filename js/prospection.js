@@ -375,13 +375,17 @@ CC.prospection = {
     this.toutes().forEach((s) => { const st = this.statutDe(s.id); c[st] = (c[st] || 0) + 1; });
     const dues = Object.entries(this.suivi().fiches).filter(([, f]) => f.relanceLe && f.relanceLe <= auj).length;
     const kpi = document.getElementById('psKpis');
+    // Deux libellés par indicateur : le long sur écran large, le court sur
+    // téléphone, où seuls les trois derniers restent affichés.
     if (kpi) kpi.innerHTML = [
-      ['À contacter', c.aucun || 0, ''],
-      ['Contactées', (c.contacte || 0) + (c.relance || 0), 'blue'],
-      ['Relances dues', dues, dues ? 'amber' : ''],
-      ['Rendez-vous', c.rdv || 0, 'indigo'],
-      ['Interventions actées', c.gagne || 0, 'green'],
-    ].map(([l, v, cls]) => `<div class="kpi ${cls}"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('');
+      ['À contacter', 'À contacter', c.aucun || 0, ''],
+      ['Contactées', 'Contactées', (c.contacte || 0) + (c.relance || 0), 'blue'],
+      ['Relances dues', 'Relances', dues, dues ? 'amber' : ''],
+      ['Rendez-vous', 'RDV', c.rdv || 0, 'indigo'],
+      ['Interventions actées', 'Actées', c.gagne || 0, 'green'],
+    ].map(([l, court, v, cls]) => `<div class="kpi ${cls}">
+        <div class="label"><span class="l-long">${l}</span><span class="l-court">${court}</span></div>
+        <div class="value">${v}</div></div>`).join('');
 
     const sum = document.getElementById('psSummary');
     if (sum) sum.textContent = r.length + ' structure' + (r.length > 1 ? 's' : '') + ' sur ' + this.toutes().length;
@@ -395,14 +399,16 @@ CC.prospection = {
       const pubs = (s.publics || []).map((p) => (b.pubLib[p] || p).replace(/\s*\(.*\)/, '')).join(', ');
       const rel = f.relanceLe
         ? `<span class="ps-rel${f.relanceLe <= auj ? ' late' : ''}">${CC.util.frDate(f.relanceLe)}</span>` : '';
+      // Les cellules sont nommées : sur téléphone la CSS replie la ligne en carte
+      // (nom + statut / type · ville + téléphone) sans changer ce balisage.
       return `<tr data-id="${psEsc(s.id)}">
-        <td><span class="ps-nom">${psEsc(psTitre(s.nom))}</span>${client ? '<span class="ps-client" title="Déjà facturé">client</span>' : ''}
-            <div class="ps-sub">${psEsc(s.catCourt)}</div></td>
-        <td>${psEsc(psTitre(s.ville))}<div class="ps-sub">${psEsc(s.secteur)}</div></td>
-        <td class="ps-pub">${psEsc(pubs)}</td>
-        <td class="num">${s.capacite || '—'}</td>
-        <td class="ps-tel">${s.tel ? psEsc(psTel(s.tel)) : '—'}</td>
-        <td><span class="stpill ps-${st}">${psEsc(PS_STATUT_LIB[st])}</span> ${rel}</td>
+        <td class="ps-c-nom"><span class="ps-nom">${psEsc(psTitre(s.nom))}</span>${client ? '<span class="ps-client" title="Déjà facturé">client</span>' : ''}
+            <div class="ps-sub">${psEsc(s.catCourt)}<span class="ps-v"> · ${psEsc(psTitre(s.ville))}</span></div></td>
+        <td class="ps-c-ville">${psEsc(psTitre(s.ville))}<div class="ps-sub">${psEsc(s.secteur)}</div></td>
+        <td class="ps-c-pub">${psEsc(pubs)}</td>
+        <td class="ps-c-places num">${s.capacite || '—'}</td>
+        <td class="ps-c-tel ps-tel">${s.tel ? psEsc(psTel(s.tel)) : '—'}</td>
+        <td class="ps-c-suivi"><span class="stpill ps-${st}">${psEsc(PS_STATUT_LIB[st])}</span> ${rel}</td>
       </tr>`;
     }).join('');
 
@@ -434,12 +440,12 @@ CC.prospection = {
       const fam = Object.entries(g.familles).sort((a, x) => x[1] - a[1]).slice(0, 2)
         .map(([f, n]) => (b.famLib[f] || f) + ' ×' + n).join(' · ');
       return `<tr data-gid="${psEsc(g.id)}">
-        <td><span class="ps-nom">${psEsc(psTitre(g.nom))}</span>${g.mail ? '<span class="ps-client ps-mailok" title="Adresse connue">mail</span>' : ''}
-            <div class="ps-sub">${psEsc(fam)}</div></td>
-        <td>${psEsc(psTitre(g.ville))}</td>
-        <td class="num">${g.nbEtabs}</td>
-        <td class="num">${g.capacite || '—'}</td>
-        <td class="ps-tel">${g.tel ? psEsc(psTel(g.tel)) : '—'}</td>
+        <td class="ps-c-nom"><span class="ps-nom">${psEsc(psTitre(g.nom))}</span>${g.mail ? '<span class="ps-client ps-mailok" title="Adresse connue">mail</span>' : ''}
+            <div class="ps-sub">${psEsc(fam)}<span class="ps-v"> · ${psEsc(psTitre(g.ville))}</span></div></td>
+        <td class="ps-c-ville">${psEsc(psTitre(g.ville))}</td>
+        <td class="ps-c-suivi num">${g.nbEtabs} <span class="ps-u">étab.</span></td>
+        <td class="ps-c-places num">${g.capacite || '—'}</td>
+        <td class="ps-c-tel ps-tel">${g.tel ? psEsc(psTel(g.tel)) : '—'}</td>
       </tr>`;
     }).join('');
     const vide = document.getElementById('psGempty');
