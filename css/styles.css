@@ -2412,29 +2412,6 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .co-empty-t { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--ink); margin-top: 8px; }
 .co-empty-s { font-size: 13px; color: var(--muted); margin: 8px auto 16px; max-width: 520px; line-height: 1.55; }
 
-/* ===================== FEUILLE DE TEMPS (PC / Mac) ===================== */
-.tp-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
-.tp-f { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--soft); font-weight: 600; }
-.tp-f-grow { flex: 1 1 220px; }
-.tp-f-court { flex: 0 0 110px; }
-.tp-add { flex-shrink: 0; }
-
-.tp-table td.client { line-height: 1.3; }
-.tp-sub { display: block; font-size: 11px; color: var(--soft); font-weight: 400; margin-top: 2px; }
-.tp-moins { color: var(--muted); }
-.tp-rate { font-weight: 700; font-variant-numeric: tabular-nums; }
-.tp-rate.haut { color: var(--green); }
-.tp-rate.bas { color: var(--amber); }
-.tp-rate.neg { color: var(--red); }
-/* Barre de comparaison : elle ne mesure pas un objectif, elle compare les
-   clients entre eux. D'où l'absence de graduation. */
-.tp-bar-col { width: 120px; padding-right: 15px !important; }
-.tp-bar { display: block; height: 7px; border-radius: 5px; background: var(--green); opacity: .85; }
-.tp-bar.bas { background: var(--amber); }
-.tp-bar.neg { background: var(--red); }
-.tp-foot { font-size: 11.5px; color: var(--soft); margin: 10px 2px 0; line-height: 1.5; }
-.tp-note { color: var(--muted); font-size: 12.5px; }
-
 /* ===================== RETRAITE (trimestres validés) ===================== */
 .rt-top { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-bottom: 14px; }
 .rt-big { font-family: var(--serif); font-size: 46px; font-weight: 600; letter-spacing: -2px; color: var(--ink); line-height: 1; }

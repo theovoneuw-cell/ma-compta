@@ -28,10 +28,12 @@ CC.storage = {
     CC.state.declarations = obj.declarations || {};
     CC.state.factures = Array.isArray(obj.factures) ? obj.factures.map(normalize) : [];
     CC.state.trajets = Array.isArray(obj.trajets) ? obj.trajets : [];
-    // Outils de bureau : relus tels quels, y compris sur l'iPhone (qui ne les
-    // affiche pas mais les réécrit à l'identique — sinon un enregistrement
-    // depuis le téléphone effacerait le coffre et la feuille de temps).
+    // Coffre à documents : relu tel quel, y compris sur l'iPhone (qui ne l'affiche
+    // pas mais le réécrit à l'identique — sinon un enregistrement depuis le
+    // téléphone effacerait le coffre).
     CC.state.documents = Array.isArray(obj.documents) ? obj.documents : [];
+    // Feuille de temps : onglet retiré, champ conservé. On ne supprime pas les
+    // données d'un fichier existant parce qu'on a cessé de les afficher.
     CC.state.temps = Array.isArray(obj.temps) ? obj.temps.map(normTemps) : [];
     // Le pense-bête vit désormais dans son propre fichier Drive (notes.json).
     // On garde juste une graine de migration si un ancien fichier compta en contenait.

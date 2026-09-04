@@ -10,11 +10,14 @@ CC.state = {
   declarations: {},
   trajets: [],
   notes: [],            // pense-bête (synchronisé PC ↔ iPhone via le document)
-  // Outils de bureau (PC/Mac). Leurs DONNÉES voyagent quand même dans le
-  // fichier de compta : le téléphone n'affiche pas ces onglets, mais il ne doit
-  // surtout pas perdre leur contenu en réenregistrant le document.
+  // Coffre à documents (PC/Mac). Ses DONNÉES voyagent quand même dans le fichier
+  // de compta : le téléphone n'affiche pas cet onglet, mais il ne doit surtout
+  // pas en perdre le contenu en réenregistrant le document.
   documents: [],        // coffre à documents : fiches (le fichier, lui, est sur le disque)
-  temps: [],            // feuille de temps : séances de travail
+  // Feuille de temps : l'onglet a été RETIRÉ le 2026-09-04. Le champ reste lu et
+  // réécrit tel quel — un fichier peut encore contenir des séances, et l'app
+  // n'efface jamais en silence ce qu'elle ne sait plus afficher.
+  temps: [],
   filePath: null,
   primaryPath: null,    // chemin habituel du fichier (sur le disque externe)
   readOnly: false,      // true quand on affiche la copie locale (disque absent)
@@ -181,7 +184,7 @@ CC.state.subTab = 'dashboard';   // sous-onglet actif dans Compta
 CC.switchTab = function (name, dir) {
   // Onglets "Compta" exposes via le menu (dashboard/factures/fiscal) -> ouvrir Compta + sous-onglet
   if (name === 'dashboard' || name === 'factures' || name === 'fiscal' || name === 'donnees'
-      || name === 'bilan' || name === 'coffre' || name === 'temps') {
+      || name === 'bilan' || name === 'coffre') {
     CC.switchTab('compta');
     CC.switchSub(name);
     return;
@@ -223,7 +226,6 @@ CC.switchSub = function (sub) {
   if (sub === 'fiscal') CC.renderFiscal();
   if (sub === 'bilan' && CC.renderBilan) CC.renderBilan();
   if (sub === 'coffre' && CC.coffre) CC.coffre.render();
-  if (sub === 'temps' && CC.temps) CC.temps.render();
 };
 
 CC.confirmIfDirty = async function () {
@@ -428,7 +430,6 @@ async function init() {
   // leurs boutons du DOM plutôt que de les laisser mener à des écrans inertes.
   if (CC.estBureau()) {
     if (CC.coffre) CC.coffre.bind();
-    if (CC.temps) CC.temps.bind();
     if (CC.recherche) CC.recherche.bind();
   } else {
     document.querySelectorAll('.bureau-only').forEach((el) => el.classList.add('hidden'));

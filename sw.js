@@ -11,7 +11,7 @@
 // Version du cache : à incrémenter à chaque refonte visuelle. L'ancien cache est
 // purgé à l'activation, ce qui évite de servir un mélange d'anciens et de
 // nouveaux fichiers après une mise à jour importante.
-const CACHE = 'macompta-mtn0nmzb';
+const CACHE = 'macompta-mtn15b1e';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
@@ -27,7 +27,7 @@ const SHELL = [
   'js/prospection-base.js', 'js/prospection.js',
   // Outils de bureau : leurs onglets sont masqués sur téléphone, mais les
   // fichiers sont chargés par index.html — sans eux, la page casse hors ligne.
-  'js/coffre.js', 'js/temps.js', 'js/recherche.js',
+  'js/coffre.js', 'js/recherche.js',
   'js/privacy.js', 'js/storage.js', 'js/rappels.js', 'js/notifs.js', 'js/app.js', 'js/theme.js',
   'js/google-auth-web.js', 'js/drive-store.js', 'js/api-web.js'
 ];

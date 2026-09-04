@@ -6,8 +6,8 @@ window.CC = window.CC || {};
 //
 // Huit onglets, et l'information cherchée est toujours dans un autre. Cette
 // palette cherche partout d'un seul champ : factures, clients, structures du
-// Réseau, documents du coffre, séances de travail, pense-bête, réglages — plus
-// les mails et l'agenda, qui eux demandent le réseau et arrivent donc après.
+// Réseau, documents du coffre, pense-bête, réglages — plus les mails et
+// l'agenda, qui eux demandent le réseau et arrivent donc après.
 //
 // Deux temps assumés :
 //   · ce qui est DANS le document répond instantanément, hors connexion ;
@@ -29,7 +29,6 @@ const RQ_IC = {
   agenda: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/></svg>',
   doc: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.2"/><circle cx="13" cy="12" r="3"/><path d="M13 9v3M6.5 8v8"/></svg>',
   note: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v11l-5 5H5z"/><path d="M19 15h-5v5"/></svg>',
-  temps: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
   aller: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>'
 };
 
@@ -182,18 +181,6 @@ CC.recherche = {
         });
       });
 
-      // --- Séances de travail ---
-      (CC.state.temps || []).forEach((t) => {
-        const s = colle((t.client || '') + ' ' + (t.note || ''));
-        if (s < 0) return;
-        res.push({
-          sec: 'Temps', ic: RQ_IC.temps, score: s + 0.5,
-          titre: (t.client || 'Sans client') + (t.note ? ' — ' + t.note : ''),
-          sous: CC.util.frDate(t.date),
-          run: () => CC.switchTab('temps')
-        });
-      });
-
       // --- Pense-bête ---
       (CC.state.notes || []).forEach((nt) => {
         const s = colle(nt.text || '');
@@ -221,7 +208,6 @@ CC.recherche = {
       { titre: 'Fiscal', mots: 'urssaf tva impot retraite trimestres', run: () => CC.switchTab('fiscal') },
       { titre: 'Bilan', mots: 'annuel synthese', run: () => CC.switchTab('bilan') },
       { titre: 'Coffre à documents', mots: 'attestation assurance rib kbis vigilance', run: () => CC.switchTab('coffre') },
-      { titre: 'Feuille de temps', mots: 'heures chrono rentabilite taux horaire', run: () => CC.switchTab('temps') },
       { titre: 'Agenda', mots: 'calendrier rendez-vous', run: () => CC.switchTab('agenda') },
       { titre: 'Trajets', mots: 'kilometres frais route peage', run: () => CC.switchTab('trajets') },
       { titre: 'Réseau', mots: 'demarchage prospection structures', run: () => CC.switchTab('reseau') },
