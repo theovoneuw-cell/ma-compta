@@ -2122,3 +2122,130 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .check-list { display: flex; flex-direction: column; gap: 7px; margin: 8px 0 4px; }
 .check-list .check { margin: 0; }
 .check-list .check small { color: var(--muted); font-size: 11.5px; }
+
+/* ===========================================================================
+   Onglet Réseau (démarchage des structures médico-sociales)
+   Réutilise les jetons de l'app : cartes, table, pastilles, verre dépoli.
+   =========================================================================== */
+
+#psSearch, #psGsearch { min-width: 220px; flex: 0 1 320px; }
+
+/* --- Table des structures --- */
+#psBody tr, #psGbody tr { cursor: pointer; }
+.ps-nom { font-weight: 600; }
+.ps-sub { color: var(--soft); font-size: 11.5px; margin-top: 2px; }
+.ps-pub { color: var(--muted); font-size: 12px; max-width: 250px; }
+.ps-tel { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Marqueur « déjà facturé » : discret, il ne doit pas concurrencer le nom. */
+.ps-client {
+  display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: var(--r-pill);
+  font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  background: var(--green-soft); color: var(--green); vertical-align: 1px;
+}
+.ps-mailok { background: var(--accent-soft); color: var(--accent); }
+
+.ps-rel { font-size: 11.5px; color: var(--soft); font-variant-numeric: tabular-nums; margin-left: 6px; }
+.ps-rel.late { color: var(--red); font-weight: 700; }
+
+/* Pastilles de statut — mêmes formes que .stpill des factures. */
+.stpill.ps-aucun { background: var(--surface-2); color: var(--muted); }
+.stpill.ps-contacte { background: var(--accent-soft); color: var(--accent-strong); }
+.stpill.ps-relance { background: var(--amber-soft); color: var(--amber); }
+.stpill.ps-rdv { background: var(--green-soft); color: var(--green); }
+.stpill.ps-devis { background: #efe9fb; color: #6d28d9; }
+.stpill.ps-gagne { background: var(--green-soft); color: #047857; font-weight: 700; }
+.stpill.ps-refus { background: var(--red-soft); color: var(--red); }
+
+/* --- Carte --- */
+.ps-map-wrap {
+  height: 60vh; min-height: 380px; border: 1px solid var(--card-border);
+  border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-soft);
+}
+#psMap { width: 100%; height: 100%; }
+.ps-legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 4px 0; font-size: 12px; color: var(--muted); }
+.ps-leg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.ps-leg-note { margin-left: auto; color: var(--soft); }
+
+/* --- Modèles --- */
+.ps-mod-layout { display: grid; grid-template-columns: 244px 1fr; gap: 16px; align-items: start; }
+.ps-mod-side { display: flex; flex-direction: column; gap: 8px; }
+.ps-mod {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--r-md);
+  padding: 10px 13px; color: inherit; font: inherit;
+}
+.ps-mod:hover { border-color: var(--border-strong); }
+.ps-mod.active { border-color: var(--accent); background: var(--accent-soft); }
+.ps-mod-t { display: block; font-weight: 600; }
+.ps-mod-s { display: block; color: var(--soft); font-size: 11.5px; margin-top: 2px; }
+.ps-mod-main { min-width: 0; }
+.ps-apercu-t {
+  margin: 22px 0 9px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 1.1px; font-weight: 700; color: var(--soft);
+}
+.ps-apercu {
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--r-lg);
+  padding: 16px 18px; white-space: pre-wrap; line-height: 1.6; user-select: text;
+  box-shadow: var(--shadow-soft);
+}
+
+/* --- Modale fiche --- */
+.ps-modal { max-width: 1080px; }
+.ps-modal-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+.ps-modal-head h2 { margin: 0; }
+.ps-modal-head .dlg-x { margin-left: auto; }
+.ps-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.ps-bloc { margin-bottom: 18px; }
+.ps-bloc h4 {
+  margin: 0 0 10px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 1.1px; font-weight: 700; color: var(--soft);
+}
+.ps-dl { display: grid; grid-template-columns: 108px 1fr; gap: 5px 12px; margin: 0; }
+.ps-dl dt { color: var(--soft); }
+.ps-dl dd { margin: 0; }
+.ps-note { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
+.ps-bloc-client {
+  background: var(--green-soft); border-radius: var(--r-md); padding: 12px 14px;
+}
+.ps-bloc-client h4 { color: var(--green); }
+.ps-bloc-client .ps-note { color: #0b6a4c; margin-top: 4px; }
+.ps-form { margin-bottom: 10px; }
+
+/* Journal des échanges */
+.ps-evt { display: flex; gap: 8px; margin-bottom: 10px; }
+.ps-evt .input { flex: 1; }
+.ps-h {
+  display: grid; grid-template-columns: 82px 1fr auto; gap: 10px; align-items: start;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.ps-h time { color: var(--soft); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.ps-hx { background: none; border: 0; color: var(--soft); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 3px; }
+.ps-hx:hover { color: var(--red); }
+
+/* Établissements d'un gestionnaire */
+.ps-etab {
+  padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+  display: flex; gap: 10px; align-items: center;
+}
+.ps-etab-main { flex: 1; min-width: 0; }
+.ps-etab:hover .ps-nom { color: var(--accent); }
+
+/* --- Mobile (PWA iPhone) --- */
+/* Les indicateurs du Réseau sont de simples compteurs : sur un écran étroit ils
+   restent sur deux colonnes (l'app passe le reste des KPI sur une seule), sinon
+   cinq tuiles empilées repoussent la liste sous la ligne de flottaison. */
+@media (max-width: 430px) {
+  #psKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #psKpis .kpi { padding: 10px 12px; }
+  #psKpis .kpi .value { font-size: 20px; }
+  #psKpis .kpi .label { font-size: 9.5px; letter-spacing: .9px; margin-bottom: 6px; }
+}
+@media (max-width: 720px) {
+  .ps-cols { grid-template-columns: 1fr; }
+  .ps-mod-layout { grid-template-columns: 1fr; }
+  .ps-map-wrap { height: 52vh; min-height: 300px; }
+  .ps-pub, #psTable th:nth-child(3), #psTable td:nth-child(3) { display: none; }
+  #psTable th:nth-child(4), #psTable td:nth-child(4) { display: none; }
+  .ps-dl { grid-template-columns: 92px 1fr; }
+}

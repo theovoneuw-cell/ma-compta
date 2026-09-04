@@ -570,6 +570,12 @@ window.CC = window.CC || {};
       save(notes) { return CC.cloud.saveNotes(notes); }
     },
 
+    // ---- Démarchage (fichier Drive séparé) ----
+    prospection: {
+      load() { return CC.cloud.loadProspection(); },
+      save(suivi) { return CC.cloud.saveProspection(suivi); }
+    },
+
     // ---- Menu natif : inexistant sur le web ----
     onMenu() {}
   };

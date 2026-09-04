@@ -96,9 +96,11 @@ window.CC = window.CC || {};
     return await r.json();
   }
 
-  // ----- Variante générique (par nom de fichier) pour le pense-bête -----
+  // ----- Variante générique (par nom de fichier) : pense-bête, démarchage -----
   const NOTES_NAME = 'notes.json';
+  const PROSPECTION_NAME = 'prospection.json';
   let notesMeta = null;
+  let prospectionMeta = null;
   async function findNamed(name) {
     const q = encodeURIComponent("name='" + name + "'");
     const url = FILES + '?spaces=appDataFolder&pageSize=1&fields=' + encodeURIComponent('files(' + FIELDS + ')') + '&q=' + q;
@@ -176,6 +178,28 @@ window.CC = window.CC || {};
       try {
         if (!notesMeta) notesMeta = await findNamed(NOTES_NAME);
         notesMeta = notesMeta ? await uploadUpdate(notesMeta.id, content) : await uploadNewNamed(NOTES_NAME, content);
+        return { ok: true };
+      } catch (e) { return { offline: true, error: String(e.message || e) }; }
+    },
+
+    // ----- Démarchage (fichier Drive séparé) -----
+    async loadProspection() {
+      try {
+        if (!CC.gauth.isConnected()) return { exists: false, suivi: null, offline: true };
+        const f = await findNamed(PROSPECTION_NAME);
+        if (!f) return { exists: false, suivi: null };
+        prospectionMeta = f;
+        const r = await authFetch(FILES + '/' + f.id + '?alt=media');
+        if (!r.ok) throw new Error('Drive prospection ' + r.status);
+        return { exists: true, suivi: JSON.parse(await r.text()) };
+      } catch (_) { return { exists: false, suivi: null, offline: true }; }
+    },
+    async saveProspection(suivi) {
+      if (!CC.gauth.isConnected()) return { offline: true };
+      const content = JSON.stringify(Object.assign({}, suivi || {}, { savedAt: new Date().toISOString() }));
+      try {
+        if (!prospectionMeta) prospectionMeta = await findNamed(PROSPECTION_NAME);
+        prospectionMeta = prospectionMeta ? await uploadUpdate(prospectionMeta.id, content) : await uploadNewNamed(PROSPECTION_NAME, content);
         return { ok: true };
       } catch (e) { return { offline: true, error: String(e.message || e) }; }
     },

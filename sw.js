@@ -11,7 +11,7 @@
 // Version du cache : à incrémenter à chaque refonte visuelle. L'ancien cache est
 // purgé à l'activation, ce qui évite de servir un mélange d'anciens et de
 // nouveaux fichiers après une mise à jour importante.
-const CACHE = 'macompta-mtlm2f0p';
+const CACHE = 'macompta-mtmv7cea';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
@@ -24,6 +24,7 @@ const SHELL = [
   'js/settings.js', 'js/datepicker.js', 'js/stats.js', 'js/charts.js', 'js/import.js', 'js/pdfimport.js',
   'js/factures.js', 'js/fiscal.js', 'js/bilan.js', 'js/ai.js', 'js/connections.js',
   'js/agenda.js', 'js/mailbox.js', 'js/trajets.js', 'js/notes.js', 'js/today.js',
+  'js/prospection-base.js', 'js/prospection.js',
   'js/privacy.js', 'js/storage.js', 'js/rappels.js', 'js/notifs.js', 'js/app.js', 'js/theme.js',
   'js/google-auth-web.js', 'js/drive-store.js', 'js/api-web.js'
 ];

@@ -201,14 +201,17 @@ CC.switchTab = function (name, dir) {
   if (name === 'mails' && CC.mailbox) CC.mailbox.render();
   if (name === 'redaction' && CC.ai) CC.ai.render();
   if (name === 'trajets' && CC.trajets) CC.trajets.render();
+  if (name === 'reseau' && CC.prospection) CC.prospection.render();
   if (name === 'settings') { if (CC.connections) CC.connections.render(); if (CC.notifs) CC.notifs.render(); }
 };
 
 // Sous-onglets de la partie Compta
 CC.switchSub = function (sub) {
   CC.state.subTab = sub;
-  document.querySelectorAll('.subtab').forEach((t) => t.classList.toggle('active', t.dataset.sub === sub));
-  document.querySelectorAll('.subpanel').forEach((p) => p.classList.toggle('active', p.id === 'sub-' + sub));
+  // Portée limitée à #tab-compta : l'onglet Réseau a ses propres sous-onglets
+  // (data-psub), qui seraient désactivés par un sélecteur global.
+  document.querySelectorAll('#tab-compta .subtab').forEach((t) => t.classList.toggle('active', t.dataset.sub === sub));
+  document.querySelectorAll('#tab-compta .subpanel').forEach((p) => p.classList.toggle('active', p.id === 'sub-' + sub));
   if (sub === 'dashboard') CC.renderDashboard();
   if (sub === 'factures') CC.facturesView.render();
   if (sub === 'fiscal') CC.renderFiscal();
@@ -411,6 +414,7 @@ async function init() {
   CC.agenda.bind();
   if (CC.mailbox) CC.mailbox.bind();
   if (CC.trajets) CC.trajets.bind();
+  if (CC.prospection) CC.prospection.bind();
   if (CC.notes) CC.notes.bind();
   if (CC.privacy) CC.privacy.bind();
   if (CC.notifs) CC.notifs.bind();
@@ -465,6 +469,7 @@ async function init() {
 
   // Pense-bête : récupère la version Drive (synchro PC ↔ iPhone)
   if (CC.notes) CC.notes.pull();
+  if (CC.prospection) CC.prospection.pull();
 
   // Rappels : notifications du jour sur le PC, puis dépôt des rappels à venir
   // sur le serveur pour que l'iPhone soit prévenu même app fermée.

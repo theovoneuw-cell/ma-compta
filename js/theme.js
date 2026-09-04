@@ -37,6 +37,7 @@ window.CC = window.CC || {};
     // Même raison pour le fond de carte : les tuiles sont des images, elles ne
     // suivent pas le CSS et doivent être remplacées par le jeu clair ou sombre.
     if (CC.trajets && CC.trajets._applyTiles) { try { CC.trajets._applyTiles(); } catch (_) {} }
+    if (CC.prospection && CC.prospection._appliquerTuiles) { try { CC.prospection._appliquerTuiles(); } catch (_) {} }
   }
 
   CC.theme = {

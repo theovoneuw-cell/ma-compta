@@ -44,17 +44,23 @@ CC.trajets = {
   // sombre laissaient voir un quadrillage noir : les tuiles ne se joignent pas au
   // pixel près, et le fond du conteneur transparaissait dans chaque interstice.
   // On change donc de jeu de tuiles au lieu d'assombrir les tuiles claires.
+  // NB (2026-09-04) : CARTO exige maintenant une clé d'API et tamponne
+  // « API KEY REQUIRED » en travers de chaque tuile. Remplacé par le fond Canvas
+  // d'Esri, sans clé — une couche de dessin, une couche de noms de lieux.
   _applyTiles() {
     const map = CC.trajets._map;
     if (!map || typeof L === 'undefined') return;
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const url = dark
-      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-    if (CC.trajets._tilesUrl === url) return;
+    const style = dark ? 'Dark' : 'Light';
+    if (CC.trajets._tilesStyle === style) return;
     if (CC.trajets._tiles) map.removeLayer(CC.trajets._tiles);
-    CC.trajets._tiles = L.tileLayer(url, { maxZoom: 20, subdomains: 'abcd' }).addTo(map);
-    CC.trajets._tilesUrl = url;
+    if (CC.trajets._labels) map.removeLayer(CC.trajets._labels);
+    const esri = (couche) => L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + style + '_Gray_' + couche + '/MapServer/tile/{z}/{y}/{x}',
+      { maxNativeZoom: 16, maxZoom: 19, attribution: 'Esri' });
+    CC.trajets._tiles = esri('Base').addTo(map);
+    CC.trajets._labels = esri('Reference').addTo(map);
+    CC.trajets._tilesStyle = style;
   },
 
   renderRate() {
@@ -70,7 +76,7 @@ CC.trajets = {
     if (!box) return;
     const tarif = CC.tarifKmEffectif();
     const toll = CC._tollReady ? 'péages TollGuru actifs' : 'péages non configurés (Paramètres → Connexions)';
-    box.textContent = `Barème : ${tarif.toString().replace('.', ',')} €/km · ${s.chevauxFiscaux || 5} CV · ${toll} · Carte © OSM/CARTO`;
+    box.textContent = `Barème : ${tarif.toString().replace('.', ',')} €/km · ${s.chevauxFiscaux || 5} CV · ${toll} · Fond de carte Esri`;
   },
 
   // ---- Autocomplétion d'adresses ----
