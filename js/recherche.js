@@ -85,7 +85,7 @@ CC.recherche = {
       </div>`;
     document.body.appendChild(back);
 
-    back.addEventListener('click', (e) => { if (e.target === back) CC.recherche.fermer(); });
+    back.addEventListener('click', (e) => { if (CC.clicFond(e, back)) CC.recherche.fermer(); });
     const inp = document.getElementById('palInput');
     inp.addEventListener('input', () => {
       CC.recherche._chercher(inp.value);

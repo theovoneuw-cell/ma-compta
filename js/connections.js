@@ -27,6 +27,11 @@ CC.connections = {
     const sig = document.getElementById('setMailSignature');
     if (ton) ton.value = s.mailTon || 'cordial';
     if (sig) sig.value = s.mailSignature || '';
+    // Signature complete (photo + coordonnees) : interrupteur et apercu.
+    const sigAuto = document.getElementById('setMailSignatureAuto');
+    if (sigAuto) sigAuto.checked = s.mailSignatureAuto !== false;
+    const sigPrev = document.getElementById('setSignaturePreview');
+    if (sigPrev && window.CC && CC.signature) sigPrev.innerHTML = CC.signature.apercu();
     const cv = document.getElementById('setCv');
     const tarif = document.getElementById('setTarifKm');
     if (cv) cv.value = String(s.chevauxFiscaux || 5);
@@ -152,6 +157,7 @@ CC.connections = {
     // Ton & signature -> settings
     $('setMailTon') && $('setMailTon').addEventListener('change', (e) => { CC.state.settings.mailTon = e.target.value; CC.markDirty(); });
     $('setMailSignature') && $('setMailSignature').addEventListener('change', (e) => { CC.state.settings.mailSignature = e.target.value; CC.markDirty(); });
+    $('setMailSignatureAuto') && $('setMailSignatureAuto').addEventListener('change', (e) => { CC.state.settings.mailSignatureAuto = e.target.checked; CC.markDirty(); });
     $('setAdresseDepart') && $('setAdresseDepart').addEventListener('change', (e) => { CC.state.settings.adresseDepart = e.target.value.trim(); CC.markDirty(); });
   }
 };

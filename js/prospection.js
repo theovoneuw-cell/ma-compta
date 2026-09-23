@@ -987,8 +987,9 @@ CC.prospection = {
 
     // Modale
     document.getElementById('psFicheX').addEventListener('click', () => this.closeFiche());
-    document.getElementById('modalProspection').addEventListener('click', (e) => {
-      if (e.target.id === 'modalProspection') this.closeFiche();
+    const mp = document.getElementById('modalProspection');
+    mp.addEventListener('click', (e) => {
+      if (CC.clicFond(e, mp)) this.closeFiche();
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !document.getElementById('modalProspection').classList.contains('hidden')) this.closeFiche();

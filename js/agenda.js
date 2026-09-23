@@ -86,7 +86,7 @@ CC.agenda = {
       m.addEventListener('click', (e) => {
         // Refermer les mini-calendriers si on clique ailleurs dans la modale
         if (!e.target.closest('.dp')) document.querySelectorAll('.dp-pop:not(.hidden)').forEach((p) => p.classList.add('hidden'));
-        if (e.target.id === 'agendaModal' || e.target.closest('[data-ev-close]')) { CC.agenda._closeModal(); return; }
+        if (CC.clicFond(e, m) || e.target.closest('[data-ev-close]')) { CC.agenda._closeModal(); return; }
         const add = e.target.closest('[data-ev-add]');
         if (add) { CC.agenda._openCreate(add.dataset.evAdd); return; }
         const open = e.target.closest('[data-ev-open]');

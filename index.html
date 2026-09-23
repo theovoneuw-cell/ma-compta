@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://api-adresse.data.gouv.fr https://router.project-osrm.org https://apis.tollguru.com; frame-src https://accounts.google.com https://content.googleapis.com; manifest-src 'self';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://api-adresse.data.gouv.fr https://recherche-entreprises.api.gouv.fr https://router.project-osrm.org https://apis.tollguru.com; frame-src https://accounts.google.com https://content.googleapis.com; manifest-src 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#4f46e5" />
   <title>Ma Compta</title>
@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mtn15b1e" />
+  <link rel="stylesheet" href="css/styles.css?b=mudzy8by" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mtn15b1e"></script>
+  <script src="js/theme.js?b=mudzy8by"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -118,6 +118,7 @@
       <nav class="subtabs">
         <button class="subtab active" data-sub="dashboard">Tableau de bord</button>
         <button class="subtab" data-sub="factures">Factures</button>
+        <button class="subtab" data-sub="clients">Clients</button>
         <button class="subtab" data-sub="fiscal">Fiscal</button>
         <button class="subtab" data-sub="bilan">Bilan</button>
         <!-- Outil d'ordinateur : il manipule des fichiers du disque. Masqué sur
@@ -137,25 +138,35 @@
           <div class="qsched" id="urssafSchedule"></div>
         </div>
 
+        <div class="card">
+          <h3>Chiffre d'affaires par trimestre</h3>
+          <p class="card-sub" id="trimSub"></p>
+          <div class="chart-box chart-box-trim"><canvas id="chartTrimestres"></canvas></div>
+        </div>
+
         <div class="card-grid">
           <div class="card">
             <h3>Encaissé par mois</h3>
+            <p class="card-sub" id="monthlySub"></p>
             <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
           </div>
           <div class="card">
-            <h3>Encaissé vs en attente</h3>
-            <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+            <h3>Où en est l'argent</h3>
+            <p class="card-sub">Encaissé, en attente, prévu et en retard, sur la période choisie.</p>
+            <div id="statusBox" class="etat-argent"></div>
           </div>
         </div>
 
         <div class="card-grid">
           <div class="card">
-            <h3>Comparaison annuelle (encaissé)</h3>
+            <h3>Comparaison annuelle</h3>
+            <p class="card-sub">Encaissé de chaque année ; l'année choisie en couleur.</p>
             <div class="chart-box"><canvas id="chartYears"></canvas></div>
           </div>
           <div class="card">
             <h3>Top clients</h3>
-            <div class="chart-box"><canvas id="chartClients"></canvas></div>
+            <p class="card-sub">Payé, en attente et prévu par client ; le % est sa part du total.</p>
+            <div class="chart-box chart-box-clients"><canvas id="chartClients"></canvas></div>
           </div>
         </div>
 
@@ -240,6 +251,43 @@
           <div id="facturesEmpty" class="empty hidden">
             Aucune facture. Cliquez sur « + Nouvelle facture » ou importez votre Excel (sous-onglet Données).
           </div>
+        </div>
+      </div>
+
+      <!-- ---- Sous-onglet : Clients ---- -->
+      <div class="subpanel" id="sub-clients">
+        <div class="toolbar">
+          <button id="btnNewClient" class="btn btn-primary">+ Nouveau client</button>
+          <button id="btnIndyClients" class="btn" title="Lire tes factures Indy (Gmail ou PDF) pour remplir adresses et SIRET">Compléter depuis Indy</button>
+          <input type="search" id="clientsSearch" class="input" placeholder="Rechercher un client, une ville, un SIRET…" />
+          <select id="clientsFiltre">
+            <option value="all">Tous les clients</option>
+            <option value="sans">Sans fiche</option>
+            <option value="incomplet">Fiche à compléter</option>
+            <option value="impaye">Avec un montant à encaisser</option>
+            <option value="chorus">Chorus Pro</option>
+          </select>
+          <span class="spacer"></span>
+          <span id="clientsSummary" class="summary"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="clientsTable">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Activité</th>
+                <th class="num">Factures</th>
+                <th class="num">CA total</th>
+                <th class="num" id="clientsAnneeTh">CA</th>
+                <th class="num">À encaisser</th>
+                <th class="num" title="Délai moyen entre l'envoi et le paiement">Délai réel</th>
+                <th>Dernière</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="clientsBody"></tbody>
+          </table>
+          <div id="clientsEmpty" class="empty hidden">Aucun client ne correspond.</div>
         </div>
       </div>
 
@@ -643,6 +691,9 @@
               <button id="mailSearchClear" class="mail-search-clear hidden" type="button" title="Effacer" aria-label="Effacer la recherche">✕</button>
             </div>
             <div class="gm-pager" id="mailPager"></div>
+            <button id="mailKbd" class="gm-icobtn gm-kbd" title="Raccourcis clavier (?)" aria-label="Raccourcis clavier">
+              <svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+            </button>
             <button id="mailRefresh" class="gm-icobtn" title="Actualiser" aria-label="Actualiser">
               <svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
@@ -922,8 +973,20 @@
                 </div>
               </div>
               <div class="field">
-                <label>Signature</label>
+                <label>Signature texte</label>
                 <textarea id="setMailSignature" class="input" rows="3" placeholder="Théo Von Euw&#10;Prestations son & musique&#10;06 …"></textarea>
+                <small>Utilisée par la page Rédaction. Les mails envoyés depuis la boîte reçoivent la signature complète ci-dessous.</small>
+              </div>
+            </div>
+
+            <div class="conn-block">
+              <div class="conn-title"><span>Signature des mails</span></div>
+              <div class="field full">
+                <label class="check"><input type="checkbox" id="setMailSignatureAuto" checked /> Ajouter ma signature à chaque message envoyé</label>
+                <small>Photo et coordonnées, ajoutées à la fin du mail. La case reste décochable message par message dans le composeur.</small>
+              </div>
+              <div class="field full">
+                <div id="setSignaturePreview" class="sig-preview"></div>
               </div>
             </div>
           </div>
@@ -1102,9 +1165,11 @@
         </div>
 
         <div class="form-grid">
-          <div class="field full">
+          <div class="field full ac-field">
             <label>Client + nature de la vente *</label>
-            <input type="text" id="f_libelle" class="input" placeholder="ex. STUDIO M — session enregistrement" required />
+            <input type="text" id="f_libelle" class="input" placeholder="ex. STUDIO M — session enregistrement" autocomplete="off" required />
+            <div class="ac-list hidden" id="f_libelleAC"></div>
+            <p class="field-hint cl-hint hidden" id="f_clientHint"></p>
           </div>
           <div class="field">
             <label>Montant (€) *</label>
@@ -1204,6 +1269,140 @@
     </div>
   </div>
 
+  <!-- ===================== MODALE FICHE CLIENT ===================== -->
+  <div id="modalClient" class="modal-backdrop hidden">
+    <div class="modal modal-lg">
+      <div class="ps-modal-head">
+        <div>
+          <h2 id="clientModalTitle">Nouveau client</h2>
+          <p class="card-sub" id="clientModalSous"></p>
+        </div>
+        <button type="button" class="dlg-x" id="btnCloseClient" aria-label="Fermer">×</button>
+      </div>
+      <form id="formClient" autocomplete="off">
+        <div class="form-grid">
+          <div class="field full">
+            <label for="c_nom">Nom du client *</label>
+            <input type="text" id="c_nom" class="input" placeholder="ex. IME Les Chênes" required />
+            <p class="field-hint">C'est ce nom que l'app proposera quand tu saisis une facture.</p>
+          </div>
+          <div class="field full">
+            <label for="c_alias">Autres noms</label>
+            <input type="text" id="c_alias" class="input" placeholder="ex. Les Chênes, IME LES CHENES" />
+            <p class="field-hint">Séparés par des virgules. Les factures écrites sous ces noms comptent pour ce client.</p>
+          </div>
+          <div class="field">
+            <label for="c_type">Type</label>
+            <select id="c_type" class="input"></select>
+            <p class="field-hint" id="c_typeAide"></p>
+          </div>
+          <div class="field" id="c_siretField">
+            <label for="c_siret">SIRET</label>
+            <input type="text" id="c_siret" class="input" inputmode="numeric" placeholder="14 chiffres" />
+            <p class="field-hint" id="c_siretAide"></p>
+          </div>
+          <div class="field full">
+            <button type="button" class="btn" id="c_annuaire">Chercher l'adresse et le SIRET dans l'annuaire des entreprises</button>
+            <div id="c_annuaireRes" class="cl-an-res"></div>
+          </div>
+          <div class="field full">
+            <label for="c_adresse">Adresse</label>
+            <input type="text" id="c_adresse" class="input" placeholder="N° et rue" />
+          </div>
+          <div class="field">
+            <label for="c_cp">Code postal</label>
+            <input type="text" id="c_cp" class="input" inputmode="numeric" maxlength="5" />
+          </div>
+          <div class="field">
+            <label for="c_ville">Ville</label>
+            <input type="text" id="c_ville" class="input" />
+          </div>
+          <div class="field full hidden alert warn cl-manques" id="c_manques"></div>
+        </div>
+
+        <fieldset class="suivi">
+          <legend>Contact</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="c_contact">Interlocuteur</label>
+              <input type="text" id="c_contact" class="input" placeholder="Nom, fonction" />
+            </div>
+            <div class="field">
+              <label for="c_tel">Téléphone</label>
+              <input type="tel" id="c_tel" class="input" />
+            </div>
+            <div class="field full">
+              <label for="c_email">E-mail (envoi des factures)</label>
+              <input type="email" id="c_email" class="input" placeholder="compta@structure.fr" />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="suivi">
+          <legend>Facturation</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="c_categorie">Activité par défaut</label>
+              <select id="c_categorie" class="input"></select>
+              <p class="field-hint">Proposée à chaque nouvelle facture de ce client.</p>
+            </div>
+            <div class="field">
+              <label for="c_delai">Délai de paiement (jours)</label>
+              <input type="number" id="c_delai" class="input" min="1" max="120" step="1" />
+              <p class="field-hint">Vide = réglage général. Sert à calculer l'échéance et les retards.</p>
+            </div>
+            <div class="field full">
+              <label class="check"><input type="checkbox" id="c_chorus" /> Factures déposées sur Chorus Pro</label>
+              <p class="field-hint warn hidden" id="c_chorusAide">Les organismes publics reçoivent en principe leurs factures par Chorus Pro.</p>
+            </div>
+            <div class="field full hidden" id="c_chorusServiceField">
+              <label for="c_chorusService">Code service / n° d'engagement Chorus (optionnel)</label>
+              <input type="text" id="c_chorusService" class="input" />
+            </div>
+          </div>
+          <div class="field full">
+            <label for="c_notes">Notes</label>
+            <textarea id="c_notes" class="input" rows="2" placeholder="Bon de commande à joindre, jour de passage, etc."></textarea>
+          </div>
+        </fieldset>
+
+        <div id="c_histo" class="cl-histo-box"></div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnDeleteClient" class="btn btn-danger hidden">Supprimer la fiche</button>
+          <span class="spacer"></span>
+          <button type="button" id="btnCancelClient" class="btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE IMPORT INDY ===================== -->
+  <div id="modalIndy" class="modal-backdrop hidden">
+    <div class="modal modal-lg">
+      <div class="ps-modal-head">
+        <div>
+          <h2>Compléter les fiches depuis Indy</h2>
+          <p class="card-sub">Chaque facture Indy porte le nom, l'adresse et le SIRET du client. L'app les lit et te propose ce qui manque à chaque fiche.</p>
+        </div>
+        <button type="button" class="dlg-x" id="indyX" aria-label="Fermer">×</button>
+      </div>
+      <div class="indy-sources">
+        <button type="button" class="btn btn-primary" id="indyGmail">Chercher mes factures dans Gmail</button>
+        <button type="button" class="btn" id="indyPdf">Choisir des PDF…</button>
+        <input type="file" id="indyFichiers" accept="application/pdf" multiple class="hidden" />
+      </div>
+      <p class="indy-etat" id="indyEtat"></p>
+      <div id="indyCorps"></div>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="indyFermer">Fermer</button>
+        <button type="button" class="btn btn-primary" id="indyAppliquer" disabled>Compléter les fiches</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== MODALE FICHE RESEAU ===================== -->
   <div id="modalProspection" class="modal-backdrop hidden">
     <div class="modal modal-lg ps-modal">
@@ -1225,37 +1424,39 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mtn15b1e"></script>
-  <script src="js/drive-store.js?b=mtn15b1e"></script>
-  <script src="js/api-web.js?b=mtn15b1e"></script>
-  <script src="js/settings.js?b=mtn15b1e"></script>
-  <script src="js/datepicker.js?b=mtn15b1e"></script>
-  <script src="js/stats.js?b=mtn15b1e"></script>
-  <script src="js/charts.js?b=mtn15b1e"></script>
-  <script src="js/import.js?b=mtn15b1e"></script>
-  <script src="js/pdfimport.js?b=mtn15b1e"></script>
-  <script src="js/factures.js?b=mtn15b1e"></script>
-  <script src="js/fiscal.js?b=mtn15b1e"></script>
-  <script src="js/bilan.js?b=mtn15b1e"></script>
-  <script src="js/ai.js?b=mtn15b1e"></script>
-  <script src="js/connections.js?b=mtn15b1e"></script>
-  <script src="js/agenda.js?b=mtn15b1e"></script>
-  <script src="js/mailbox.js?b=mtn15b1e"></script>
-  <script src="js/trajets.js?b=mtn15b1e"></script>
+  <script src="js/google-auth-web.js?b=mudzy8by"></script>
+  <script src="js/drive-store.js?b=mudzy8by"></script>
+  <script src="js/api-web.js?b=mudzy8by"></script>
+  <script src="js/settings.js?b=mudzy8by"></script>
+  <script src="js/datepicker.js?b=mudzy8by"></script>
+  <script src="js/stats.js?b=mudzy8by"></script>
+  <script src="js/charts.js?b=mudzy8by"></script>
+  <script src="js/import.js?b=mudzy8by"></script>
+  <script src="js/pdfimport.js?b=mudzy8by"></script>
+  <script src="js/clients.js?b=mudzy8by"></script>
+  <script src="js/factures.js?b=mudzy8by"></script>
+  <script src="js/fiscal.js?b=mudzy8by"></script>
+  <script src="js/bilan.js?b=mudzy8by"></script>
+  <script src="js/ai.js?b=mudzy8by"></script>
+  <script src="js/connections.js?b=mudzy8by"></script>
+  <script src="js/agenda.js?b=mudzy8by"></script>
+  <script src="js/signature.js?b=mudzy8by"></script>
+  <script src="js/mailbox.js?b=mudzy8by"></script>
+  <script src="js/trajets.js?b=mudzy8by"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mtn15b1e"></script>
-  <script src="js/prospection.js?b=mtn15b1e"></script>
-  <script src="js/notes.js?b=mtn15b1e"></script>
+  <script src="js/prospection-base.js?b=mudzy8by"></script>
+  <script src="js/prospection.js?b=mudzy8by"></script>
+  <script src="js/notes.js?b=mudzy8by"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mtn15b1e"></script>
-  <script src="js/recherche.js?b=mtn15b1e"></script>
-  <script src="js/today.js?b=mtn15b1e"></script>
-  <script src="js/privacy.js?b=mtn15b1e"></script>
-  <script src="js/storage.js?b=mtn15b1e"></script>
-  <script src="js/rappels.js?b=mtn15b1e"></script>
-  <script src="js/notifs.js?b=mtn15b1e"></script>
-  <script src="js/app.js?b=mtn15b1e"></script>
+  <script src="js/coffre.js?b=mudzy8by"></script>
+  <script src="js/recherche.js?b=mudzy8by"></script>
+  <script src="js/today.js?b=mudzy8by"></script>
+  <script src="js/privacy.js?b=mudzy8by"></script>
+  <script src="js/storage.js?b=mudzy8by"></script>
+  <script src="js/rappels.js?b=mudzy8by"></script>
+  <script src="js/notifs.js?b=mudzy8by"></script>
+  <script src="js/app.js?b=mudzy8by"></script>
 </body>
 </html>

@@ -199,7 +199,7 @@ CC.ai = {
       L.push('URSSAF totale ' + year + ' : ' + eur(cot.urssaf) + ' ; net estimé après URSSAF : ' + eur(cot.net) + '.');
       const base = S.settings.seuilTvaBase, plafond = CC.effPlafond ? CC.effPlafond(year) : 0;
       L.push('Franchise TVA : seuil ' + eur(base) + ', marge restante ' + eur(base - sums.encaisse) + '. Plafond micro ' + year + ' : ' + eur(plafond) + ', marge ' + eur(plafond - sums.encaisse) + '.');
-      const top = CC.stats.topClients(fy, 3).map((c) => c.client + ' (' + eur(c.total) + ')');
+      const top = CC.stats.topClients(fy, 3).map((c) => (c.nom || c.client) + ' (' + eur(c.total) + ')');
       if (top.length) L.push('Top clients ' + year + ' : ' + top.join(', ') + '.');
       const traj = (S.trajets || []).filter((t) => String(t.date || '').slice(0, 4) === String(year));
       if (traj.length) L.push('Trajets ' + year + ' : ' + traj.length + ', indemnité km totale ' + eur(traj.reduce((a, t) => a + (+t.indemnite || 0), 0)) + '.');

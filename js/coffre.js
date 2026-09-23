@@ -359,7 +359,7 @@ CC.coffre = {
       document.body.appendChild(back);
       back.addEventListener('click', (e) => {
         if (!e.target.closest('.dp')) document.querySelectorAll('#coffreModal .dp-pop:not(.hidden)').forEach((p) => p.classList.add('hidden'));
-        if (e.target === back || e.target.closest('[data-co-close]')) { CC.coffre._closeModal(); return; }
+        if (CC.clicFond(e, back) || e.target.closest('[data-co-close]')) { CC.coffre._closeModal(); return; }
         const del = e.target.closest('[data-co-del]');
         if (del) CC.coffre.supprimer(del.dataset.coDel);
       });

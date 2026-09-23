@@ -31,7 +31,9 @@ CC.pdfImporter = {
         const items = byY[y].sort((a, b) => a.x - b.x);
         rows.push({
           full: items.map((i) => i.s).join('').replace(/\s+/g, ' ').trim(),
-          desc: items.filter((i) => i.x > 130).map((i) => i.s).join('').replace(/\s+/g, ' ').trim()
+          desc: items.filter((i) => i.x > 130).map((i) => i.s).join('').replace(/\s+/g, ' ').trim(),
+          // Colonne de gauche : ton bloc (en haut), puis celui du client.
+          left: items.filter((i) => i.x <= 130).map((i) => i.s).join('').replace(/\s+/g, ' ').trim()
         });
       });
     }
@@ -77,8 +79,65 @@ CC.pdfImporter = {
     m = text.match(/(\d{1,3})\s*jours/);
     out.echeanceJours = m ? parseInt(m[1], 10) : 30;
 
+    out.client = this.parseClient(rows);
+
     out.isIndy = !!(out.numFull && out.montant != null);
     return out;
+  },
+
+  // Bloc client d'une facture Indy : dans la colonne de gauche, juste apres ta
+  // ligne « APE », jusqu'aux conditions de paiement. Exemple :
+  //   ABA APPRENDRE / AUTREMENT / Chemin De La Solidarite / 06510 Carros, France / SIRET / 48404736000041
+  // -> { nom, adresse, cp, ville, siret }. Renvoie null si rien d'exploitable.
+  parseClient(rows) {
+    const gauche = rows.map((r) => r.left || '').filter(Boolean);
+    const ape = gauche.findIndex((l) => /^APE\s*:/i.test(l));
+    if (ape < 0) return null;
+    const lignes = [];
+    for (let i = ape + 1; i < gauche.length; i++) {
+      const l = gauche[i];
+      // Indy espace parfois les lettres (« Te rme s e t co ndit io ns ») : on
+      // compare sans les espaces.
+      const colle = l.replace(/\s+/g, '');
+      if (/^(Termes|ThéoVonEuw|Modedepaiement|Libellé|Échéance|IBAN|BIC|Cettefacture|TVAnonapplicable)/i.test(colle)) break;
+      lignes.push(l.replace(/\s*,\s*$/, ''));
+    }
+    if (!lignes.length) return null;
+    const c = { nom: '', adresse: '', cp: '', ville: '', siret: '' };
+    const reste = [];
+    for (let i = 0; i < lignes.length; i++) {
+      const l = lignes[i];
+      let m = l.match(/^SIRE[NT]\s*:?\s*([\d ]{9,})$/i);
+      if (m) { c.siret = m[1].replace(/\s/g, ''); continue; }
+      if (/^SIRE[NT]\s*:?$/i.test(l) && /^[\d ]{9,}$/.test(lignes[i + 1] || '')) { c.siret = lignes[++i].replace(/\s/g, ''); continue; }
+      if (/^[\d ]{14,17}$/.test(l) && !c.siret) { c.siret = l.replace(/\s/g, ''); continue; }
+      if (/^(N°\s*)?TVA/i.test(l)) { if (/^[A-Z]{2}[\dA-Z ]{8,}$/.test(lignes[i + 1] || '')) i++; continue; }
+      if (/^France$/i.test(l)) continue;
+      reste.push(l);
+    }
+    const iCp = reste.findIndex((l) => /^\d{5}\s+\S/.test(l));
+    if (iCp >= 0) {
+      const m = reste[iCp].match(/^(\d{5})\s+(.+?)(?:\s*,\s*France)?$/i);
+      c.cp = m[1];
+      c.ville = m[2].replace(/,\s*$/, '').trim();
+      const avant = reste.slice(0, iCp);
+      // La voie commence a la premiere ligne qui ressemble a une adresse (un
+      // numero, « rue », « chemin »…) ; Indy la coupe parfois sur deux lignes
+      // (« 47 Avenue du Trois » / « Septembre »), qu'on recolle. A defaut, la voie
+      // est la derniere ligne avant le code postal.
+      const VOIE = /^(\d+|rue|chemin|che|avenue|av|bd|boulevard|impasse|imp|all[ée]e|place|pl|route|rte|quai|cours|square|promenade|mont[ée]e|traverse|lotissement|r[ée]sidence|b[aâ]t|bp|cs|zone|za|zi|lieu|chez|domaine|parc|esplanade|voie|hameau|quartier)\b/i;
+      let debut = avant.findIndex((l, k) => k > 0 && VOIE.test(l));
+      if (debut < 0) debut = avant.length >= 2 ? avant.length - 1 : avant.length;
+      c.adresse = avant.slice(debut).join(' ');
+      c.nom = avant.slice(0, debut).join(' ');
+    } else {
+      c.nom = reste.join(' ');
+    }
+    c.nom = c.nom.replace(/\s+/g, ' ').trim();
+    c.adresse = c.adresse.replace(/\s+/g, ' ').trim();
+    // Ton propre SIREN (pied de page) n'est jamais celui du client.
+    if (/^910080589/.test(c.siret)) c.siret = '';
+    return (c.nom || c.siret || c.cp) ? c : null;
   },
 
   async fromArrayBuffer(arrayBuffer) {

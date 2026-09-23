@@ -95,7 +95,7 @@ CC.renderBilan = function () {
 
   // ----- Top clients -----
   const topHtml = top.length ? `<table class="fiscal-table"><thead><tr><th>Client</th><th class="num">CA encaissé</th><th class="num">Factures</th></tr></thead><tbody>` +
-    top.map((c) => `<tr><td class="q">${esc(c.client)}</td><td class="num">${CC.util.eur0(c.paye)}</td><td class="num">${c.count}</td></tr>`).join('') +
+    top.map((c) => `<tr><td class="q">${esc(c.nom || c.client)}</td><td class="num">${CC.util.eur0(c.paye)}</td><td class="num">${c.count}</td></tr>`).join('') +
     `</tbody></table>` : '<div class="ck-empty">Aucun client.</div>';
 
   // ----- Seuils (où l'année a atterri) -----
@@ -227,7 +227,7 @@ CC.bilan.buildPrintHTML = function (year) {
     return `<tr><td>${esc(c.categorie)}</td><td class="n">${eur0(c.total)}</td><td class="n">${pct(part, 0)}</td><td class="barcell"><span class="barwrap"><span class="bar" style="width:${part.toFixed(1)}%"></span></span></td></tr>`;
   }).join('') : '<tr><td colspan="4" class="muted">Aucune activité catégorisée.</td></tr>';
 
-  const topRows = top.length ? top.map((c) => `<tr><td>${esc(c.client)}</td><td class="n">${eur0(c.paye)}</td><td class="n">${c.count}</td></tr>`).join('') : '<tr><td colspan="3" class="muted">Aucun client.</td></tr>';
+  const topRows = top.length ? top.map((c) => `<tr><td>${esc(c.nom || c.client)}</td><td class="n">${eur0(c.paye)}</td><td class="n">${c.count}</td></tr>`).join('') : '<tr><td colspan="3" class="muted">Aucun client.</td></tr>';
 
   const seuil = (label, val, max) => {
     const r = Math.min(100, (val / max) * 100);

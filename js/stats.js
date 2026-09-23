@@ -127,7 +127,9 @@ CC.stats = {
       const ech = CC.util.parseDate(f.dateEcheance);
       if (ech && today > ech) return 'retard';
     } else if (f.dateEnvoi && settings) {
-      const ech = CC.util.addDays(CC.util.parseDate(f.dateEnvoi), settings.delaiPaiement || 30);
+      // Delai du client (fiche) s'il en a un, sinon le reglage general.
+      const delai = CC.clients ? CC.clients.delaiDe(f, settings) : (settings.delaiPaiement || 30);
+      const ech = CC.util.addDays(CC.util.parseDate(f.dateEnvoi), delai);
       if (ech && today > ech) return 'retard';
     }
     return 'attente';
@@ -306,15 +308,31 @@ CC.stats = {
     return arr;
   },
 
+  // Par client : total, et sa decomposition payé / en attente (emises, retard
+  // compris) / prevu. `nom` = nom de la fiche client s'il y en a une.
   topClients(factures, limit = 8) {
     const map = new Map();
+    const settings = CC.state && CC.state.settings;
+    const today = new Date();
     factures.forEach((f) => {
       const c = CC.util.clientKey(f.libelle);
-      const cur = map.get(c) || { client: c, total: 0, paye: 0, count: 0 };
-      cur.total += CC.stats.ht(f);
-      if (CC.stats.isPaid(f)) cur.paye += CC.stats.ht(f);
+      const cur = map.get(c) || { client: c, nom: '', _noms: new Map(), total: 0, paye: 0, attente: 0, prevu: 0, count: 0 };
+      // Nom affiché : celui de la fiche client, sinon l'écriture la plus fréquente.
+      const fi = CC.clients && CC.clients.ficheDe(f.libelle);
+      if (fi) cur.nom = fi.nom;
+      else { const n = String(f.libelle || '').split(/\s*(?:—|–)/)[0].trim(); if (n) cur._noms.set(n, (cur._noms.get(n) || 0) + 1); }
+      const ht = CC.stats.ht(f);
+      cur.total += ht;
+      const st = CC.stats.statut(f, settings, today);
+      if (st === 'recue') cur.paye += ht;
+      else if (st === 'prevu') cur.prevu += ht;
+      else cur.attente += ht;
       cur.count += 1;
       map.set(c, cur);
+    });
+    map.forEach((cur) => {
+      if (!cur.nom) cur.nom = cur._noms.size ? Array.from(cur._noms.entries()).sort((a, b) => b[1] - a[1])[0][0] : cur.client;
+      delete cur._noms;
     });
     return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, limit);
   },

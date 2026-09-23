@@ -1,6 +1,10 @@
 'use strict';
 window.CC = window.CC || {};
 
+// Repere de version de l'interface : permet de verifier, depuis l'exterieur,
+// quel code est reellement charge par l'application.
+try { localStorage.setItem('cc_ui_build', 'mails-v2-2026-09-20'); } catch (_) {}
+
 // Emojis proposés dans le composeur (regroupés par thème, ordre = affichage).
 const EMOJI_SET = [
   '🙂','😀','😃','😄','😁','😉','😊','😇','🥰','😍','😘','😗','🙃','😌','😎','🤩',
@@ -29,6 +33,18 @@ CC.mailbox = {
   _page: 0,
   _tokens: [''],    // _tokens[i] = jeton de la page i ('' = première page)
   _total: 0,
+  _curseur: -1,     // ligne survolee au clavier
+  // Garde-fous du prechargement : chaque message demande coute un aller-retour
+  // Gmail et un passage par le processus principal. Sans bride, balayer la liste
+  // du regard lancerait une requete par ligne et saturerait l'application.
+  _prechargeActif: true,
+  _prechargeEnCours: false,
+  _prechargeFaits: 0,
+  _PRECHARGE_MAX: 6,          // par liste affichee
+  _CACHE_MSG_MAX: 25,         // messages gardes en memoire
+  _clavierActif: false,   // le repere ne s'affiche qu'apres une vraie touche
+  _survolTimer: null,
+  _gardeScroll: false,
 
   // Repart de la première page (changement de dossier, recherche, actualisation).
   _resetPages() { this._page = 0; this._tokens = ['']; },
@@ -38,8 +54,10 @@ CC.mailbox = {
     document.querySelectorAll('.mfolder').forEach((b) => {
       b.addEventListener('click', () => { CC.mailbox._folder = b.dataset.folder; CC.mailbox._resetPages(); CC.mailbox.render(); });
     });
+    const kb = document.getElementById('mailKbd');
+    if (kb) kb.addEventListener('click', () => CC.mailbox._aideClavier());
     const r = document.getElementById('mailRefresh');
-    if (r) r.addEventListener('click', () => { CC.mailbox._resetPages(); CC.mailbox.render(); });
+    if (r) r.addEventListener('click', () => { CC.mailbox._oublieListes(); CC.mailbox._resetPages(); CC.mailbox.render(); });
 
     // Pages précédente / suivante (remonter dans les vieux messages)
     const pager = document.getElementById('mailPager');
@@ -83,6 +101,14 @@ CC.mailbox = {
     }
 
     const list = document.getElementById('mailList');
+    // Survol : on va chercher le message pendant que la souris s'approche.
+    if (list) list.addEventListener('mouseover', (e) => {
+      const it = e.target.closest('.mitem[data-id]');
+      if (!it || it.dataset.draft) return;
+      clearTimeout(CC.mailbox._survolTimer);
+      CC.mailbox._survolTimer = setTimeout(() => CC.mailbox._prechargeMsg(it.dataset.id), 350);
+    });
+    if (list) list.addEventListener('mouseout', () => clearTimeout(CC.mailbox._survolTimer));
     if (list) list.addEventListener('click', (e) => {
       const mc = e.target.closest('#mailConnect');
       if (mc) {
@@ -118,7 +144,7 @@ CC.mailbox = {
       rm.innerHTML = '<div class="modal modal-lg mail-read-modal"><button class="mail-read-x" data-mrclose title="Fermer" aria-label="Fermer">✕</button><div id="mailReadBody" class="mail-reader mail-reader-modal"></div></div>';
       document.body.appendChild(rm);
       rm.addEventListener('click', (e) => {
-        if (e.target.id === 'mailReadModal' || e.target.closest('[data-mrclose]')) { CC.mailbox._closeRead(); return; }
+        if (CC.clicFond(e, rm) || e.target.closest('[data-mrclose]')) { CC.mailbox._closeRead(); return; }
         CC.mailbox._readerClick(e);
       });
     }
@@ -137,27 +163,67 @@ CC.mailbox = {
       m.addEventListener('click', (e) => {
         const rm = e.target.closest('[data-mrm]');
         if (rm) { CC.mailbox._removeAttachment(parseInt(rm.dataset.mrm, 10)); return; }
-        if (e.target.id === 'mailModal' || e.target.closest('[data-mclose]')) { CC.mailbox._closeCompose(); return; }
+        if (CC.clicFond(e, m) || e.target.closest('[data-mclose]')) { CC.mailbox._closeCompose(); return; }
         if (e.target.closest('#mcSend')) { CC.mailbox._send(); return; }
         if (e.target.closest('#mcDraft')) { CC.mailbox._saveDraft(); return; }
         if (e.target.closest('#mcAI')) { CC.mailbox._aiHelp(); return; }
       });
     }
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { CC.mailbox._closeCompose(); CC.mailbox._closeRead(); } });
+    document.addEventListener('keydown', (e) => CC.mailbox._touche(e));
 
     this._bound = true;
   },
 
+  // ----- Cache d'affichage ---------------------------------------------------
+  // Les listes deja vues et les messages deja ouverts restent en memoire :
+  // revenir sur l'onglet, changer de dossier ou rouvrir un mail est instantane.
+  // La version fraiche est ensuite recuperee en arriere-plan, sans vider l'ecran.
+  _cacheL: new Map(),          // cle dossier|recherche|page -> { at, res }
+  _cacheM: new Map(),          // id du message -> { at, res }
+  _TTL_L: 120000,              // au-dela de 2 min, une liste affichee est rafraichie
+  _TTL_M: 900000,              // un message garde 15 min
+  _cleCache() { return this._folder + '|' + (this._search || '') + '|' + this._page; },
+  _oublieListes() { this._cacheL.clear(); },
+
+  // Lignes grises animees : l'oeil voit tout de suite la forme de la liste,
+  // au lieu d'un ecran vide avec le mot « Chargement ».
+  _squelette(n) {
+    let h = '';
+    for (let i = 0; i < n; i++) {
+      h += '<div class="mitem msk" aria-hidden="true"><span class="msk-av"></span>'
+        + '<div class="msk-b msk-b1"></div><div class="msk-b msk-b2"></div><div class="msk-b msk-b3"></div></div>';
+    }
+    return h;
+  },
+
   async render() {
+    // Une seule fois : signale la navigation au clavier a celui qui ouvre l'onglet.
+    try {
+      if (localStorage.getItem('cc_mails_v2_vu') !== '1') {
+        localStorage.setItem('cc_mails_v2_vu', '1');
+        setTimeout(() => CC.toast && CC.toast('Onglet Mails plus rapide — touche ? pour les raccourcis', 'ok'), 700);
+      }
+    } catch (_) {}
     document.querySelectorAll('.mfolder').forEach((b) => b.classList.toggle('active', b.dataset.folder === this._folder));
     const list = document.getElementById('mailList');
     const reader = document.getElementById('mailReader');
     if (!list) return;
     const search = this._search || '';
-    const seq = ++this._reqSeq;   // marque cette requête ; les réponses plus anciennes seront ignorées
-    list.innerHTML = `<div class="ck-empty">${search ? 'Recherche…' : 'Chargement des mails…'}</div>`;
-    if (reader) reader.innerHTML = '<div class="mail-empty">Sélectionne un message pour le lire.</div>';
-    this._setPager('…');
+    const seq = ++this._reqSeq;   // marque cette requete ; les reponses plus anciennes seront ignorees
+    const cle = this._cleCache();
+    const garde = this._cacheL.get(cle);
+
+    if (garde) {
+      // Affichage immediat depuis le cache. Le lecteur ouvert n'est pas touche.
+      this._paint(garde.res);
+      if (Date.now() - garde.at < this._TTL_L) { this._prechargePage(); return; }
+      this._marqueRafraichissement(true);   // contenu encore affiche, on actualise en fond
+    } else {
+      list.innerHTML = this._squelette(7);
+      if (reader) reader.innerHTML = '<div class="mail-empty">Sélectionne un message pour le lire.</div>';
+      this._setPager('…');
+    }
 
     let res;
     try {
@@ -167,9 +233,13 @@ CC.mailbox = {
       });
     } catch (e) { res = { error: e.message }; }
 
-    if (seq !== this._reqSeq) return;   // une recherche plus récente a été lancée entre-temps
+    if (seq !== this._reqSeq) return;   // une recherche plus recente a ete lancee entre-temps
+    this._marqueRafraichissement(false);
 
     if (res && res.error) {
+      // Si une version en cache est deja affichee, on la garde : mieux vaut un
+      // contenu un peu ancien qu'un ecran d'erreur a la place des messages.
+      if (garde) { CC.toast(res.error, 'err'); return; }
       this._setPager('');
       if (/connect|autoris|non connecté/i.test(res.error)) {
         list.innerHTML = `<div class="mail-empty">${esc(res.error)}<br><button class="btn btn-primary" id="mailConnect" style="margin-top:12px">Configurer / reconnecter Google</button></div>`;
@@ -179,9 +249,19 @@ CC.mailbox = {
       return;
     }
 
-    if (CC.updateMailBadge) CC.updateMailBadge();   // rafraîchit le compteur non lus
+    this._cacheL.set(cle, { at: Date.now(), res: res });
+    this._paint(res);
+    this._prechargePage();
+  },
+
+  // Dessine la liste a partir d'une reponse (fraiche ou gardee en memoire).
+  _paint(res) {
+    const list = document.getElementById('mailList');
+    if (!list) return;
+    const search = this._search || '';
+    if (CC.updateMailBadge) CC.updateMailBadge();   // rafraichit le compteur non lus
     this._list = (res && res.messages) || [];
-    // Mémorise le jeton de la page suivante pour pouvoir avancer, puis revenir.
+    // Memorise le jeton de la page suivante pour pouvoir avancer, puis revenir.
     this._total = res.total || 0;
     this._tokens.length = this._page + 1;
     if (res.nextPageToken) this._tokens.push(res.nextPageToken);
@@ -196,32 +276,181 @@ CC.mailbox = {
       return;
     }
 
-    // « À : … » pour Envoyés/Brouillons ; expéditeur pour Boîte principale et Favoris.
+    // « À : … » pour Envoyés/Brouillons ; expediteur pour Boite principale et Favoris.
     const sent = (this._folder === 'envoyes' || this._folder === 'brouillons');
     const isDraftFolder = this._folder === 'brouillons';
+    const ouvert = this._current ? this._current.id : '';
     list.innerHTML = this._list.map((m) => {
       const addr = sent ? (m.a || '') : (m.de || '');
       const nom = persona(addr);
       const who = sent ? ('À : ' + nom) : nom;
       const delTitle = isDraftFolder ? 'Supprimer le brouillon' : 'Mettre à la corbeille';
-      // Étoile « Favori » (comme Gmail) — pas sur les brouillons.
+      // Etoile « Favori » (comme Gmail) — pas sur les brouillons.
       const starBtn = isDraftFolder ? ''
         : `<button class="mitem-star${m.favori ? ' on' : ''}" title="${m.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}" aria-label="Favori">${m.favori ? '★' : '☆'}</button>`;
-      return `<div class="mitem${m.nonLu ? ' unread' : ''}" data-id="${esc(m.id)}" data-draft="${esc(m.draftId || '')}">
+      return `<div class="mitem${m.nonLu ? ' unread' : ''}${m.id === ouvert ? ' sel' : ''}" data-id="${esc(m.id)}" data-draft="${esc(m.draftId || '')}">
         <span class="mitem-av" style="background:${avatarColor(addr)}" aria-hidden="true">${esc(initials(nom))}</span>
         <div class="mitem-top">
           <span class="mitem-who">${esc(who)}</span>
           <span class="mitem-date">${esc(shortDate(m.dateMs))}</span>
         </div>
         <div class="mitem-subj">${esc(m.sujet)}${m.pj ? `<span class="mitem-pj" title="Pièce jointe">${ICO.clip}</span>` : ''}</div>
-        <div class="mitem-prev">${esc(m.apercu)}</div>
+        <div class="mitem-prev">${esc(decodeEntites(m.apercu))}</div>
         <div class="mitem-acts">
           ${starBtn}
           <button class="mitem-del" title="${delTitle}" aria-label="${delTitle}">${ICO.trash}</button>
         </div>
       </div>`;
     }).join('');
-    list.scrollTop = 0;   // nouvelle page = on repart du haut
+    this._prechargeFaits = 0;   // nouvelle liste : le plafond de prechargement repart
+    if (!this._gardeScroll) list.scrollTop = 0;   // nouvelle page = on repart du haut
+    this._gardeScroll = false;
+    if (this._clavierActif && this._curseur >= 0) this._majCurseur(this._curseur, false);
+  },
+
+  // Fine barre de progression en haut de la liste pendant une actualisation
+  // silencieuse : discrete, mais on sait que quelque chose travaille.
+  _marqueRafraichissement(on) {
+    const w = document.getElementById('mailList');
+    if (w) w.classList.toggle('maj-en-cours', !!on);
+  },
+
+  // Va chercher un message avant qu'on clique dessus (survol, voisin du curseur).
+  // Une seule requete a la fois, un plafond par liste, et jamais les messages
+  // a piece jointe : ce sont les plus lourds a rapatrier.
+  _prechargeMsg(id) {
+    if (!this._prechargeActif || !id || this._cacheM.has(id)) return;
+    if (this._prechargeEnCours || this._prechargeFaits >= this._PRECHARGE_MAX) return;
+    const item = (this._list || []).find((m) => m.id === id);
+    if (item && item.pj) return;
+    this._prechargeEnCours = true;
+    this._prechargeFaits++;
+    window.api.gmail.get(id)
+      .then((r) => { if (r && !r.error) this._rangeMsg(id, r); })
+      .catch(() => {})
+      .finally(() => { this._prechargeEnCours = false; });
+  },
+
+  // Range un message en memoire en bornant la taille du cache (le plus ancien sort).
+  _rangeMsg(id, res) {
+    this._cacheM.set(id, { at: Date.now(), res: res });
+    while (this._cacheM.size > this._CACHE_MSG_MAX) {
+      const premier = this._cacheM.keys().next().value;
+      if (premier === undefined) break;
+      this._cacheM.delete(premier);
+    }
+  },
+
+  // Charge la page suivante sans l'afficher : le clic sur « › » devient immediat.
+  async _prechargePage() {
+    const tok = this._tokens[this._page + 1];
+    if (!tok) return;
+    const cle = this._folder + '|' + (this._search || '') + '|' + (this._page + 1);
+    if (this._cacheL.has(cle)) return;
+    try {
+      const res = await window.api.gmail.list({
+        dossier: this._folder, maxResults: this._pageSize, recherche: this._search || '', pageToken: tok
+      });
+      if (res && !res.error) this._cacheL.set(cle, { at: Date.now(), res: res });
+    } catch (_) { /* le prechargement echoue en silence */ }
+  },
+
+  // ----- Clavier -------------------------------------------------------------
+  // Raccourcis facon Gmail : parcourir la liste sans quitter le clavier.
+  // Ils ne s'activent que sur l'onglet Mails, hors champ de saisie et hors modale.
+  _touche(e) {
+    const panneau = document.getElementById('tab-mails');
+    if (!panneau || !panneau.classList.contains('active')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (CC.recherche && CC.recherche._ouvert) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Une modale ouverte (composition, dialogue) prend la main ; la modale de
+    // lecture, elle, laisse passer les raccourcis.
+    const modales = document.querySelectorAll('.modal-backdrop:not(.hidden)');
+    for (const m of modales) { if (m.id !== 'mailReadModal') return; }
+
+    const k = e.key;
+    const n = (this._list || []).length;
+    const stop = () => { e.preventDefault(); e.stopPropagation(); };
+    if (['j', 'k', 'ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(k) >= 0) this._clavierActif = true;
+
+    if (k === 'j' || k === 'ArrowDown') { stop(); this._majCurseur(this._curseur + 1, true); return; }
+    if (k === 'k' || k === 'ArrowUp')   { stop(); this._majCurseur(this._curseur - 1, true); return; }
+    if (k === 'Home') { stop(); this._majCurseur(0, true); return; }
+    if (k === 'End')  { stop(); this._majCurseur(n - 1, true); return; }
+    if (k === 'Enter' || k === 'o') {
+      if (this._curseur < 0 || this._curseur >= n) return;
+      stop();
+      const m = this._list[this._curseur];
+      const el = document.querySelector('.mitem[data-id="' + (window.CSS && CSS.escape ? CSS.escape(m.id) : m.id) + '"]');
+      if (this._folder === 'brouillons') this._editDraft(m.id, m.draftId || '');
+      else this._open(m.id, el);
+      return;
+    }
+    if (k === 'n') { stop(); this._openCompose({}); return; }
+    if (k === 'r' && this._current) { stop(); this._reply(); return; }
+    if (k === 'f' && this._current) { stop(); this._forward(); return; }
+    if (k === 'u') { stop(); this._closeRead(); return; }
+    if (k === 's') {
+      const m = this._msgCurseur(); if (!m || this._folder === 'brouillons') return;
+      stop(); this._applyStar(m.id, !m.favori); return;
+    }
+    if (k === '#' || k === 'Backspace' || k === 'Delete') {
+      const m = this._msgCurseur(); if (!m) return;
+      stop(); this._del(m.id, m.draftId || ''); return;
+    }
+    if (k === '/') {
+      const input = document.getElementById('mailSearch');
+      if (input) { stop(); input.focus(); input.select(); }
+      return;
+    }
+    if (k === 'ArrowRight') {
+      const suiv = document.querySelector('.gm-pg[data-pg="next"]:not([disabled])');
+      if (suiv) { stop(); suiv.click(); }
+      return;
+    }
+    if (k === 'ArrowLeft') {
+      const prec = document.querySelector('.gm-pg[data-pg="prev"]:not([disabled])');
+      if (prec) { stop(); prec.click(); }
+      return;
+    }
+    if (k === '?') { stop(); this._aideClavier(); return; }
+  },
+
+  _msgCurseur() {
+    if (this._curseur < 0 || this._curseur >= (this._list || []).length) return null;
+    return this._list[this._curseur];
+  },
+
+  // Deplace la ligne active, la fait defiler dans la vue et precharge le message.
+  _majCurseur(i, defile) {
+    const n = (this._list || []).length;
+    if (!n) { this._curseur = -1; return; }
+    if (i < 0 && this._curseur < 0) return;   // rien a remonter : le clavier n'a pas encore servi
+    this._curseur = Math.max(0, Math.min(n - 1, i));
+    const lignes = document.querySelectorAll('#mailList .mitem[data-id]');
+    lignes.forEach((el, idx) => el.classList.toggle('cur', idx === this._curseur));
+    const el = lignes[this._curseur];
+    if (el && defile) el.scrollIntoView({ block: 'nearest' });
+    const m = this._list[this._curseur];
+    if (m && !m.draftId) this._prechargeMsg(m.id);
+  },
+
+  _aideClavier() {
+    const l = [
+      'j / \u2193   ligne suivante',
+      'k / \u2191   ligne précédente',
+      'Entrée  ouvrir le message',
+      'u       revenir à la liste',
+      'n       nouveau message',
+      'r / f   répondre / transférer',
+      's       favori',
+      '\u2190 / \u2192   page précédente / suivante',
+      '#       mettre à la corbeille',
+      '/       aller à la recherche'
+    ].join('\n');
+    CC.dialog({ type: 'info', title: 'Raccourcis clavier', message: 'Dans l\'onglet Mails', detail: l, buttons: ['Fermer'] });
   },
 
   // Message court dans la zone de pagination (chargement, erreur…).
@@ -264,6 +493,10 @@ CC.mailbox = {
     if (!reader) return;
     document.querySelectorAll('.mitem').forEach((x) => x.classList.remove('sel'));
     if (el) { el.classList.add('sel'); el.classList.remove('unread'); }
+    // Le curseur clavier se cale sur le message qu'on vient d'ouvrir, sans
+    // afficher de repere : la souris a deja sa propre marque (ligne selectionnee).
+    const idx = (this._list || []).findIndex((m) => m.id === id);
+    if (idx >= 0) { this._curseur = idx; if (this._clavierActif) this._majCurseur(idx, false); }
     reader.innerHTML = '<div class="mail-empty">Ouverture…</div>';
 
     // Marque le message comme lu côté Gmail (retire UNREAD) puis met à jour le
@@ -278,9 +511,15 @@ CC.mailbox = {
       }
     }
 
-    let res;
-    try { res = await window.api.gmail.get(id); }
-    catch (e) { res = { error: e.message }; }
+    // Message deja lu (ou survole) : on l'a garde, l'ouverture est immediate.
+    let res = null;
+    const enCache = this._cacheM.get(id);
+    if (enCache && enCache.res && Date.now() - enCache.at < this._TTL_M) res = enCache.res;
+    if (!res) {
+      try { res = await window.api.gmail.get(id); }
+      catch (e) { res = { error: e.message }; }
+      if (res && !res.error) this._rangeMsg(id, res);
+    }
     if (res && res.error) { reader.innerHTML = `<div class="mail-empty">${esc(res.error)}</div>`; return; }
 
     const m = res.message;
@@ -426,6 +665,8 @@ CC.mailbox = {
     if (r && r.error) { CC.toast(r.error, 'err'); return; }
 
     CC.toast(isDraft ? 'Brouillon supprimé.' : 'Message mis à la corbeille.', 'ok');
+    this._oublieListes();   // les listes gardees en memoire contiennent encore ce message
+    this._cacheM.delete(id);
     // Retire la ligne de la liste sans tout recharger
     this._list = (this._list || []).filter((m) => m.id !== id);
     const el = document.querySelector('.mitem[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
@@ -506,6 +747,7 @@ CC.mailbox = {
         <div class="mc-body-wrap"><textarea id="mc_body" rows="12" lang="fr" spellcheck="true" placeholder="Écris ton message…">${esc(pre.body || '')}</textarea><button type="button" class="mc-emoji-btn" id="mcEmoji" title="Insérer un emoji" aria-label="Insérer un emoji">🙂</button><div class="mc-emoji-pop hidden" id="mcEmojiPop"></div></div>
         <input type="file" id="mc_files" multiple hidden>
         <div id="mc_attachList" class="mc-attach-list"></div>
+        <div id="mc_sigPreview" class="mc-sig-preview hidden"></div>
       </div>
       <div class="mail-compose-actions">
         <button class="btn btn-primary mc-send" id="mcSend">Envoyer</button>
@@ -513,6 +755,7 @@ CC.mailbox = {
         <button class="mc-tool mc-tool-ai" id="mcAI" title="Laisser Gemini proposer un texte (il n'envoie jamais)"><svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><path d="M18 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg>Aide à la rédaction</button>
         <span class="mail-spin hidden" id="mcSpin">Génération…</span>
         <span class="spacer"></span>
+        <label class="mc-sig" title="Ta signature (photo et coordonnees) est ajoutee a la fin du message"><input type="checkbox" id="mc_sig"${(window.CC && CC.signature && CC.signature.actif()) ? ' checked' : ''}> Signature</label>
         <button class="btn" id="mcDraft">Enregistrer le brouillon</button>
         <button class="mc-tool danger" data-mclose title="Fermer sans envoyer" aria-label="Fermer sans envoyer">${ICO.trash}</button>
       </div>
@@ -522,6 +765,16 @@ CC.mailbox = {
     this._acRenders = [];   // les champs du composeur précédent n'existent plus
     this._attachments = [];
     this._renderAttachments();
+
+    // Apercu de la signature sous le message : ce que verra le destinataire.
+    const sigBox = document.getElementById('mc_sig');
+    const sigPrev = document.getElementById('mc_sigPreview');
+    if (sigPrev && window.CC && CC.signature) {
+      sigPrev.innerHTML = CC.signature.apercu();
+      const majSig = () => sigPrev.classList.toggle('hidden', !(sigBox && sigBox.checked));
+      majSig();
+      if (sigBox) sigBox.addEventListener('change', majSig);
+    }
 
     // Cc / Cci : afficher au clic
     const ccBtn = document.getElementById('mcCcToggle');
@@ -675,13 +928,14 @@ CC.mailbox = {
   _reply() {
     const m = this._current; if (!m) return;
     this._closeRead();   // sur mobile, on remplace la lecture par le composeur
-    const orig = (m.text || stripHtml(m.html) || '').trim();
-    const quote = orig ? '\n\n' + ('Le ' + longDate(m.date) + ', ' + persona(m.de) + ' a écrit :\n' + orig.split('\n').map((l) => '> ' + l).join('\n')) : '';
+    // Pas de citation : le message part dans le MEME fil (threadId + In-Reply-To),
+    // donc le destinataire voit deja l'echange. Recopier le corps d'origine
+    // renvoyait tout l'historique (et ses propres citations) a chaque reponse.
     this._openCompose({
       titre: 'Répondre',
       to: emailOnly(m.de),
       subject: /^re\s*:/i.test(m.sujet) ? m.sujet : 'Re: ' + m.sujet,
-      body: quote,
+      body: '',
       threadId: m.threadId,
       inReplyTo: m.messageId
     });
@@ -701,11 +955,15 @@ CC.mailbox = {
   },
 
   _payload() {
+    // Signature : cochee par defaut, decochable pour un message isole.
+    const box = document.getElementById('mc_sig');
+    const veutSig = box ? box.checked : true;
     return {
       to: val('mc_to'), cc: val('mc_cc'), bcc: val('mc_bcc'),
       subject: val('mc_subject'), body: val('mc_body'),
       threadId: this._ctx.threadId, inReplyTo: this._ctx.inReplyTo, draftId: this._ctx.draftId,
-      attachments: this._attachments || []
+      attachments: this._attachments || [],
+      signature: (veutSig && window.CC && CC.signature) ? CC.signature.payload() : null
     };
   },
 
@@ -719,6 +977,7 @@ CC.mailbox = {
     btn.disabled = false; btn.textContent = 'Envoyer';
     if (res && res.error) { CC.toast(res.error, 'err'); return; }
     CC.toast('Message envoyé ✓', 'ok');
+    this._oublieListes();
     this._closeCompose();
     // Rafraîchit la liste si on était dans Envoyés, ou si on vient d'envoyer un brouillon.
     if (this._folder === 'envoyes' || this._folder === 'brouillons') this.render();
@@ -733,6 +992,7 @@ CC.mailbox = {
     btn.disabled = false; btn.textContent = 'Enregistrer le brouillon';
     if (res && res.error) { CC.toast(res.error, 'err'); return; }
     CC.toast('Brouillon enregistré ✓', 'ok');
+    this._oublieListes();
     this._closeCompose();
     if (this._folder === 'brouillons') this.render();
   },
@@ -749,7 +1009,11 @@ CC.mailbox = {
     if (subject) prompt += `Objet : ${subject}.\n`;
     if (body.trim()) prompt += `Points à intégrer / brouillon existant :\n${body}\n`;
     prompt += '\nDonne uniquement le corps du mail (pas la ligne Objet), concis, paragraphes courts. ';
-    prompt += sig ? `Termine par cette signature exacte :\n${sig}` : 'Termine par une formule de politesse simple.';
+    // La signature est ajoutee automatiquement a l'envoi : l'IA n'en ecrit pas.
+    const sigAuto = window.CC && CC.signature && CC.signature.actif();
+    prompt += sigAuto
+      ? 'Termine par une formule de politesse simple, sans signature ni nom : ils sont ajoutes automatiquement.'
+      : (sig ? `Termine par cette signature exacte :\n${sig}` : 'Termine par une formule de politesse simple.');
     try {
       const r = await window.api.ai.generate({
         model: CC.state.settings.aiModel || 'gemini-2.0-flash',
@@ -939,14 +1203,37 @@ async function fileToB64(file) {
   for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
   return btoa(bin);
 }
+// Entites HTML : Gmail renvoie ses apercus (et beaucoup de corps de messages)
+// avec &#39; &amp; &nbsp; etc. Sans decodage, ces codes s'affichent tels quels
+// dans la liste et dans les reponses citees.
+const ENTITES = {
+  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '39': "'",
+  hellip: '\u2026', mdash: '\u2014', ndash: '\u2013', bull: '\u2022', middot: '\u00b7',
+  laquo: '\u00ab', raquo: '\u00bb', lsquo: '\u2018', rsquo: '\u2019', ldquo: '\u201c', rdquo: '\u201d',
+  euro: '\u20ac', deg: '\u00b0', times: '\u00d7', copy: '\u00a9', reg: '\u00ae', trade: '\u2122',
+  agrave: '\u00e0', acirc: '\u00e2', ccedil: '\u00e7', eacute: '\u00e9', egrave: '\u00e8',
+  ecirc: '\u00ea', euml: '\u00eb', icirc: '\u00ee', iuml: '\u00ef', ocirc: '\u00f4',
+  ugrave: '\u00f9', ucirc: '\u00fb', uuml: '\u00fc', ouml: '\u00f6', auml: '\u00e4', szlig: '\u00df'
+};
+function codePoint(n) {
+  if (!Number.isFinite(n) || n < 0 || n > 0x10ffff) return null;
+  try { return String.fromCodePoint(n); } catch (_) { return null; }
+}
+function decodeEntites(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&#x([0-9a-f]+);/gi, (m, h) => codePoint(parseInt(h, 16)) || m)
+    .replace(/&#(\d+);/g, (m, d) => codePoint(parseInt(d, 10)) || m)
+    .replace(/&([a-z]+);/gi, (m, n) => { const v = ENTITES[n.toLowerCase()]; return v == null ? m : v; });
+}
 function stripHtml(html) {
   if (!html) return '';
-  return String(html)
+  return decodeEntites(String(html)
     .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
     .replace(/<\s*br\s*\/?>/gi, '\n')
     .replace(/<\s*\/\s*(p|div|tr|li|h[1-6])\s*>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"')
+    .replace(/<[^>]+>/g, ''))
+    .replace(/\u00a0/g, ' ')
     .replace(/\n{3,}/g, '\n\n').trim();
 }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }

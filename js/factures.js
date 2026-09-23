@@ -97,6 +97,8 @@ CC.facturesView = {
     document.getElementById('btnDeleteFacture').classList.toggle('hidden', !isEdit);
     document.getElementById('modalFacture').classList.remove('hidden');
     syncPrevisionnel();
+    CC.facturesView._clientPdf = null;
+    CC.facturesView.syncClientHint();
     document.getElementById('f_libelle').focus();
   },
 
@@ -120,6 +122,17 @@ CC.facturesView = {
       const buf = await file.arrayBuffer();
       const r = await CC.pdfImporter.fromArrayBuffer(buf);
       if (r.libelle) document.getElementById('f_libelle').value = r.libelle;
+      // Indy met la NATURE de la vente en objet ; le client est dans son bloc
+      // d'adresse. On ecrit donc « Client — nature », avec le nom deja connu de
+      // la compta quand on le reconnait, et on complete sa fiche au passage.
+      CC.facturesView._clientPdf = r.client || null;
+      if (r.client && r.client.nom) {
+        const connu = CC.clientsIndy.trouver(r.client);
+        const nomClient = connu ? connu.nom : r.client.nom;
+        document.getElementById('f_libelle').value = nomClient + (r.libelle ? ' — ' + r.libelle : '');
+        const ajoutes = connu && connu.fiche ? CC.clientsIndy.completer(connu.fiche, r.client) : [];
+        if (ajoutes.length) CC.toast(`Fiche ${connu.nom} complétée depuis le PDF : ${ajoutes.join(', ')}.`, 'ok');
+      }
       if (r.montant != null) document.getElementById('f_montant').value = r.montant;
       if (r.num) document.getElementById('f_numFacture').value = r.num;
       if (r.dateEnvoi) {
@@ -132,6 +145,10 @@ CC.facturesView = {
       // Categorie automatique d'apres le libelle
       const lib = document.getElementById('f_libelle').value;
       if (lib) document.getElementById('f_categorie').value = CC.util.categoryOf(lib);
+      // Client reconnu : son activite par defaut l'emporte sur la devinette par mots-cles.
+      const fiLib = lib && CC.clients.ficheDe(lib);
+      if (fiLib && fiLib.categorie) document.getElementById('f_categorie').value = fiLib.categorie;
+      CC.facturesView.syncClientHint();
 
       if (r.isIndy) CC.toast('Facture PDF lue : ' + (r.libelle || r.num || ''), 'ok');
       else CC.toast('PDF joint, mais format non reconnu — vérifiez les champs.', 'err');
@@ -307,12 +324,140 @@ CC.facturesView = {
     CC.toast('Encaissement annulé — facture remise en attente.');
   },
 
+  // Autocompletion du champ « Client + nature de la vente » : la liste s'ouvre
+  // des qu'on tape (ou fleche bas / clic sur le champ vide pour tout voir).
+  // Elle propose les fiches clients et les clients connus des factures, un seul
+  // nom par client (voir CC.clients.liste) : c'est ce qui evite les doublons.
+  // Choisir un client remplit son nom ; il reste a ajouter la nature si besoin.
+  attachClientAC() {
+    const input = document.getElementById('f_libelle');
+    const list = document.getElementById('f_libelleAC');
+    if (!input || !list) return;
+
+    const hide = () => { list.classList.add('hidden'); list.innerHTML = ''; list._items = null; list._sel = -1; };
+    const render = (toutVoir) => {
+      if (document.activeElement !== input) return;
+      const q = normClient(input.value);
+      if (!q && !toutVoir) { hide(); return; }
+      const trouve = (c) => c.key.includes(q) || c.alias.some((a) => a.includes(q));
+      const commence = (c) => c.key.startsWith(q) || c.alias.some((a) => a.startsWith(q));
+      const items = CC.clients.suggestions()
+        .filter((c) => !q || (trouve(c) && c.key !== q))
+        .sort((a, b) => (q ? (commence(b) - commence(a)) : 0));
+      if (!items.length) { hide(); return; }
+      list._items = items; list._sel = -1;
+      list.innerHTML = items.map((c, i) => {
+        const infos = [`${c.n} facture${c.n > 1 ? 's' : ''}`];
+        if (c.categorie) infos.push(esc(c.categorie));
+        if (c.fiche && c.fiche.ville) infos.push(esc(c.fiche.ville));
+        if (c.fiche && c.fiche.chorus) infos.push('Chorus');
+        return `<div class="ac-item" data-i="${i}"><span class="ac-l">${esc(c.nom)}${c.fiche ? '' : ' <span class="cl-tag muted">sans fiche</span>'}</span><span class="ac-c">${infos.join(' · ')}</span></div>`;
+      }).join('');
+      list.scrollTop = 0;
+      list.classList.remove('hidden');
+    };
+    const choose = (c) => {
+      input.value = c.nom;
+      // Nouvelle facture : l'activite du client (fiche, sinon habituelle) est proposee.
+      if (!document.getElementById('f_id').value && c.categorie) document.getElementById('f_categorie').value = c.categorie;
+      hide();
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+      CC.facturesView.syncClientHint();
+      CC.facturesView.proposerEcheance();
+    };
+
+    input.addEventListener('input', () => { render(false); CC.facturesView.syncClientHint(); });
+    input.addEventListener('click', () => { if (!input.value.trim()) render(true); });
+    input.addEventListener('keydown', (e) => {
+      if (list.classList.contains('hidden') || !list._items) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); render(true); }
+        return;
+      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); list._sel = Math.min(list._items.length - 1, list._sel + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); list._sel = Math.max(0, list._sel - 1); }
+      else if (e.key === 'Enter' && list._sel >= 0) { e.preventDefault(); choose(list._items[list._sel]); return; }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hide(); return; }
+      else return;
+      Array.from(list.children).forEach((el, i) => el.classList.toggle('sel', i === list._sel));
+      const sel = list.children[list._sel];
+      if (sel) sel.scrollIntoView({ block: 'nearest' });
+    });
+    list.addEventListener('pointerdown', (e) => {
+      const it = e.target.closest('.ac-item'); if (!it) return;
+      e.preventDefault();   // garde le focus, evite le blur prematuré
+      choose(list._items[+it.dataset.i]);
+    });
+    input.addEventListener('blur', () => setTimeout(() => { hide(); CC.facturesView.syncClientHint(); }, 200));
+
+    // Liens de la ligne d'aide : ouvrir / creer la fiche sans quitter la facture.
+    document.getElementById('f_clientHint').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-cl]'); if (!b) return;
+      const fi = CC.clients.ficheDe(input.value);
+      if (fi) { CC.clients.ouvrir(fi); return; }
+      const c = CC.clients.liste().find((x) => x.cle === CC.util.clientKey(input.value));
+      if (c && c.n) CC.clients.creerDepuis(c.cle);
+      else {
+        // Coordonnees lues sur le PDF Indy joint, s'il y en a : la fiche nait complete.
+        const k = CC.facturesView._clientPdf || {};
+        CC.clients.ouvrir(null, {
+          nom: input.value.split(/\s*(?:—|–)/)[0].trim(), categorie: document.getElementById('f_categorie').value,
+          adresse: k.adresse || '', cp: k.cp || '', ville: k.ville || '', siret: k.siret || '',
+          type: k.siret ? 'pro' : (k.nom ? 'particulier' : 'pro')
+        });
+      }
+    });
+  },
+
+  // Ligne d'aide sous le champ client : ce que la fiche dit de ce client, ce qui
+  // lui manque pour facturer, ou l'invitation a creer sa fiche.
+  syncClientHint() {
+    const box = document.getElementById('f_clientHint');
+    const input = document.getElementById('f_libelle');
+    if (!box || !input) return;
+    const v = input.value.trim();
+    if (!v) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    const fi = CC.clients.ficheDe(v);
+    let html;
+    if (fi) {
+      const infos = [];
+      if (fi.ville) infos.push(esc(fi.ville));
+      if (fi.chorus) infos.push('<b>à déposer sur Chorus Pro</b>');
+      if (+fi.delai > 0) infos.push('paiement à ' + (+fi.delai) + ' j');
+      const manques = CC.clients.manques(fi);
+      html = `Fiche ${esc(fi.nom)}${infos.length ? ' · ' + infos.join(' · ') : ''}`
+        + (manques.length ? ` <span class="cl-hint-warn">· à compléter : ${esc(manques.join(', '))}</span>` : '')
+        + ` <button type="button" class="lnk" data-cl="ouvrir">${manques.length ? 'Compléter la fiche' : 'Voir la fiche'}</button>`;
+    } else {
+      // Tant que la liste propose des clients existants, on ne crie pas « nouveau ».
+      const ac = document.getElementById('f_libelleAC');
+      if (ac && !ac.classList.contains('hidden')) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+      const c = CC.clients.liste().find((x) => x.cle === CC.util.clientKey(v));
+      html = c && c.n
+        ? `Client connu (${c.n} facture${c.n > 1 ? 's' : ''}), sans fiche. <button type="button" class="lnk" data-cl="creer">Créer sa fiche</button>`
+        : `Nouveau client. <button type="button" class="lnk" data-cl="creer">Créer sa fiche</button>`;
+    }
+    box.innerHTML = html;
+    box.classList.remove('hidden');
+  },
+
+  // Echeance proposee = envoi + delai du client (ou delai general), seulement si
+  // elle n'est pas deja renseignee : une date saisie ou lue sur le PDF l'emporte.
+  proposerEcheance() {
+    const env = document.getElementById('f_dateEnvoi').value;
+    if (!env || document.getElementById('f_dateEcheance').value) return;
+    const d = CC.util.parseDate(env); if (!d) return;
+    const delai = CC.clients.delaiDe({ libelle: document.getElementById('f_libelle').value }, CC.state.settings);
+    CC.dp.set(CC.dp.byInput('f_dateEcheance'), CC.util.toISO(CC.util.addDays(d, delai)));
+  },
+
   bind() {
     // Remplir la liste des categories (modale + filtre)
     document.getElementById('f_categorie').innerHTML = CC.CATEGORIES.map((c) => `<option>${c}</option>`).join('');
     document.getElementById('filterCategorie').innerHTML = '<option value="all">Toutes les activités</option>' +
       CC.CATEGORIES.map((c) => `<option value="${c}">${c}</option>`).join('');
     document.getElementById('btnNewFacture').addEventListener('click', () => CC.facturesView.openModal(null));
+    CC.facturesView.attachClientAC();
     const indy = document.getElementById('btnIndy');
     if (indy) indy.addEventListener('click', () => { try { window.api.openUrl(indyUrl()); } catch (_) {} });
     // Sélecteurs de date (composant partagé, cohérent avec l'Agenda)
@@ -342,7 +487,8 @@ CC.facturesView = {
     document.getElementById('btnOpenPj').addEventListener('click', () => CC.openPj(document.getElementById('f_fichier').value));
     document.getElementById('btnDeleteFacture').addEventListener('click', () => CC.facturesView.remove());
     document.getElementById('formFacture').addEventListener('submit', (e) => { e.preventDefault(); CC.facturesView.save(); });
-    document.getElementById('modalFacture').addEventListener('click', (e) => { if (e.target.id === 'modalFacture') CC.facturesView.closeModal(); });
+    const mf = document.getElementById('modalFacture');
+    mf.addEventListener('click', (e) => { if (CC.clicFond(e, mf)) CC.facturesView.closeModal(); });
 
     // « Prévisionnel » et « paiement reçu » s'excluent : une vente encaissée est réelle.
     document.getElementById('f_previsionnel').addEventListener('change', (e) => {
@@ -363,6 +509,7 @@ CC.facturesView = {
       syncPrevisionnel();
       syncPeriode();
     });
+    document.getElementById('f_dateEnvoi').addEventListener('change', () => CC.facturesView.proposerEcheance());
     document.getElementById('f_dateEncaissement').addEventListener('change', () => {
       const paye = !!document.getElementById('f_dateEncaissement').value;
       document.getElementById('f_recue').checked = paye;
@@ -427,6 +574,8 @@ function syncPeriode() {
   document.getElementById('f_trimestre').value = CC.util.trimestreOfDate(d);
 }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+// Cle de comparaison d'un nom de client : sans accents, sans casse, espaces reduits.
+function normClient(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 function dotColor(st) { return st === 'recue' ? '#0ea371' : st === 'retard' ? '#dc2626' : st === 'prevu' ? '#6366f1' : '#c2740a'; }
 // Destination du bouton « Facturation Indy ».
 //

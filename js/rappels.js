@@ -83,7 +83,7 @@ CC.rappels = {
     if (f.dateEcheance) return CC.util.parseDate(f.dateEcheance);
     if (f.dateEnvoi) {
       const env = CC.util.parseDate(f.dateEnvoi);
-      if (env) return CC.util.addDays(env, (settings && settings.delaiPaiement) || 30);
+      if (env) return CC.util.addDays(env, CC.clients ? CC.clients.delaiDe(f, settings) : ((settings && settings.delaiPaiement) || 30));
     }
     return null;
   },

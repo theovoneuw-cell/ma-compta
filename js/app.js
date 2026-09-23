@@ -38,6 +38,21 @@ CC.markDirty = function () {
   CC.storage.scheduleRecovery();
 };
 
+// Clic sur le fond d'une fenetre : ne ferme QUE si le geste a commence ET fini
+// sur ce fond. Sans ca, selectionner du texte dans la fenetre et relacher la
+// souris en dehors declenche un clic dont la cible est le fond -> la fenetre se
+// fermait en pleine saisie.
+CC._pdCible = null;
+CC._puCible = null;
+document.addEventListener('pointerdown', (e) => { CC._pdCible = e.target; }, true);
+document.addEventListener('pointerup', (e) => { CC._puCible = e.target; }, true);
+CC.clicFond = function (e, fond) {
+  if (!fond || e.target !== fond) return false;
+  if (CC._pdCible && CC._pdCible !== fond) return false;
+  if (CC._puCible && CC._puCible !== fond) return false;
+  return true;
+};
+
 CC.updateDirtyUI = function () {
   window.api.setDirty(CC.state.dirty);
   const btn = document.getElementById('btnSave');
@@ -119,7 +134,7 @@ CC.dialog = function (opts) {
     back.onclick = (e) => {
       const b = e.target.closest('[data-dlg]');
       if (b) { finish(parseInt(b.dataset.dlg, 10)); return; }
-      if (e.target === back) finish(cancelId);
+      if (CC.clicFond(e, back)) finish(cancelId);
     };
     document.addEventListener('keydown', onKey, true);
     setTimeout(() => {
@@ -223,6 +238,7 @@ CC.switchSub = function (sub) {
   document.querySelectorAll('#tab-compta .subpanel').forEach((p) => p.classList.toggle('active', p.id === 'sub-' + sub));
   if (sub === 'dashboard') CC.renderDashboard();
   if (sub === 'factures') CC.facturesView.render();
+  if (sub === 'clients' && CC.clients) CC.clients.render();
   if (sub === 'fiscal') CC.renderFiscal();
   if (sub === 'bilan' && CC.renderBilan) CC.renderBilan();
   if (sub === 'coffre' && CC.coffre) CC.coffre.render();
@@ -283,7 +299,7 @@ CC.initMobileNav = function () {
   if (more) more.addEventListener('click', () => CC.openMoreSheet());
   // Fermeture de la feuille : clic sur le fond ou tout élément [data-close].
   const sheet = document.getElementById('moreSheet');
-  if (sheet) sheet.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === sheet) CC.closeMoreSheet(); });
+  if (sheet) sheet.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || CC.clicFond(e, sheet)) CC.closeMoreSheet(); });
 
   // --- Swipe horizontal pour changer d'onglet (téléphone uniquement) ---
   // Le panneau actif suit légèrement le doigt (retour tactile), puis à la validation

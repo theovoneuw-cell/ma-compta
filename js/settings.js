@@ -57,12 +57,27 @@ CC.util = {
     'FONDATION DE NICE': 'FONDATION DE NICE',
     'FONDATION LENVAL': 'FONDATION LENVAL'
   },
-  clientKey(libelle) {
+  // Cle d'un nom, sans les regroupements des fiches clients (sert a les construire).
+  clientKeyBrut(libelle) {
     if (!libelle) return '(SANS NOM)';
     const raw = libelle.split(/—|–| - |,|\//)[0];
     const n = raw.normalize('NFD').replace(/[̀-ͯ]/g, '')
       .toUpperCase().replace(/\s+/g, ' ').trim();
     return CC.util.ALIASES[n] || n;
+  },
+  // Cle de regroupement d'un client : une facture ecrite sous un « autre nom »
+  // d'une fiche client compte pour cette fiche (stats, top clients, relances).
+  clientKey(libelle) {
+    const k = CC.util.clientKeyBrut(libelle);
+    const fi = CC.clients && CC.state && CC.state.settings ? CC.clients.ficheDe(libelle) : null;
+    return fi ? CC.util.clientKeyBrut(fi.nom) : k;
+  },
+  // Nom a afficher pour un client : celui de sa fiche s'il en a une.
+  clientNom(libelle) {
+    const fi = CC.clients && CC.state && CC.state.settings ? CC.clients.ficheDe(libelle) : null;
+    if (fi) return fi.nom;
+    // Sans fiche : le nom tel qu'il est ecrit (avant « — nature »), pas la cle en majuscules.
+    return String(libelle || '').split(/\s*(?:—|–)/)[0].trim() || CC.util.clientKey(libelle);
   },
   uid() { return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 };
@@ -118,11 +133,15 @@ CC.defaultSettings = function () {
     seuilTvaBase: 37500,       // franchise TVA prestations de services 2025/2026
     seuilTvaMajore: 41250,
     delaiPaiement: 30,
-    plafond: 0,                // 0 = automatique selon l'annee
+    // Fiches clients (voir clients.js) : rangees dans les reglages pour que les
+    // anciennes versions de l'app (iPhone) les recopient sans les effacer.
+    clients: [],
+    plafond: 0,               // 0 = automatique selon l'annee
     objectif: 0,
     // --- Integrations (non sensible ; les cles/jetons sont stockes chiffres a part) ---
     aiModel: 'gemini-2.0-flash',
     mailSignature: '',         // signature ajoutee aux mails generes
+    mailSignatureAuto: true,   // ajoute le bloc signature (photo + coordonnees) a chaque envoi
     mailTon: 'cordial',        // ton par defaut : pro | cordial | ferme
     // --- Frais kilometriques ---
     adresseDepart: '',         // depart des trajets, a renseigner dans Parametres

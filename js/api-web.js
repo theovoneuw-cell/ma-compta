@@ -147,6 +147,34 @@ window.CC = window.CC || {};
     const bin = atob(String(data || '').replace(/-/g, '+').replace(/_/g, '/'));
     return Uint8Array.from(bin, (c) => c.charCodeAt(0));
   }
+  // Assemble une partie multipart : renvoie son en-tete Content-Type et son corps.
+  function mimeMulti(type, parts, extra) {
+    const b = 'mc_' + type.slice(0, 3) + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return {
+      head: 'Content-Type: multipart/' + type + '; ' + (extra ? extra + '; ' : '') + 'boundary="' + b + '"',
+      body: parts.map((x) => '--' + b + '\r\n' + x).join('\r\n') + '\r\n--' + b + '--'
+    };
+  }
+  function mimePart(headers, data) { return headers.join('\r\n') + '\r\n\r\n' + data; }
+  function b64Body(txt) { return btoa(unescape(encodeURIComponent(txt || ''))); }
+  function b64Lines(data) { return (String(data || '').match(/.{1,76}/g) || []).join('\r\n'); }
+  function escHtml(t) {
+    return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  // Le composeur est un champ texte : on le transpose en HTML en gardant les sauts de ligne.
+  function texteVersHtml(t) {
+    return '<div style="font-family:-apple-system,\'Helvetica Neue\',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#16181d;white-space:normal;">'
+      + escHtml(t).replace(/\r?\n/g, '<br>') + '</div>';
+  }
+  function attPart(a) {
+    const name = encHeader(a.filename || 'piece-jointe');
+    return mimePart([
+      'Content-Type: ' + (a.mimeType || 'application/octet-stream') + '; name="' + name + '"',
+      'Content-Transfer-Encoding: base64',
+      'Content-Disposition: attachment; filename="' + name + '"'
+    ], b64Lines(a.dataB64));
+  }
+
   function buildRaw(p) {
     const head = [];
     head.push('To: ' + (p.to || ''));
@@ -156,27 +184,50 @@ window.CC = window.CC || {};
     head.push('MIME-Version: 1.0');
     if (p.inReplyTo) { head.push('In-Reply-To: ' + p.inReplyTo); head.push('References: ' + p.inReplyTo); }
     const atts = p.attachments || [];
-    if (!atts.length) {
-      head.push('Content-Type: text/plain; charset="UTF-8"');
-      head.push('Content-Transfer-Encoding: base64');
-      return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + btoa(unescape(encodeURIComponent(p.body || ''))));
+    const sig = p.signature || null;
+
+    // --- Sans signature : mail texte, comme avant ---
+    if (!sig) {
+      if (!atts.length) {
+        head.push('Content-Type: text/plain; charset="UTF-8"');
+        head.push('Content-Transfer-Encoding: base64');
+        return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + b64Body(p.body));
+      }
+      const txt = mimePart(['Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64'], b64Body(p.body));
+      const mixed = mimeMulti('mixed', [txt].concat(atts.map(attPart)));
+      head.push(mixed.head);
+      return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + mixed.body);
     }
-    const boundary = 'mc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    head.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
-    let msg = head.join('\r\n') + '\r\n\r\n';
-    msg += '--' + boundary + '\r\nContent-Type: text/plain; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n';
-    msg += btoa(unescape(encodeURIComponent(p.body || ''))) + '\r\n';
-    atts.forEach((a) => {
-      const name = encHeader(a.filename || 'piece-jointe');
-      const data = (String(a.dataB64 || '').match(/.{1,76}/g) || []).join('\r\n');
-      msg += '--' + boundary + '\r\n';
-      msg += 'Content-Type: ' + (a.mimeType || 'application/octet-stream') + '; name="' + name + '"\r\n';
-      msg += 'Content-Transfer-Encoding: base64\r\n';
-      msg += 'Content-Disposition: attachment; filename="' + name + '"\r\n\r\n';
-      msg += data + '\r\n';
-    });
-    msg += '--' + boundary + '--';
-    return b64urlEncode(msg);
+
+    // --- Avec signature : texte + HTML, photo en piece jointe inline ---
+    const corpsTexte = (p.body || '') + '\n\n' + (sig.texte || '');
+    const corpsHtml  = texteVersHtml(p.body) + '<br>' + (sig.html || '');
+
+    const partTexte = mimePart(['Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64'], b64Body(corpsTexte));
+    const partHtml  = mimePart(['Content-Type: text/html; charset="UTF-8"', 'Content-Transfer-Encoding: base64'], b64Body(corpsHtml));
+    const alt = mimeMulti('alternative', [partTexte, partHtml]);
+
+    let corps = mimePart([alt.head], alt.body);
+    if (sig.image && sig.image.dataB64) {
+      const img = sig.image;
+      const partImg = mimePart([
+        'Content-Type: ' + (img.mime || 'image/jpeg') + '; name="' + (img.filename || 'photo.jpg') + '"',
+        'Content-Transfer-Encoding: base64',
+        'Content-ID: <' + img.cid + '>',
+        'Content-Disposition: inline; filename="' + (img.filename || 'photo.jpg') + '"'
+      ], b64Lines(img.dataB64));
+      const rel = mimeMulti('related', [corps, partImg], 'type="multipart/alternative"');
+      corps = mimePart([rel.head], rel.body);
+    }
+    if (atts.length) {
+      const mixed = mimeMulti('mixed', [corps].concat(atts.map(attPart)));
+      head.push(mixed.head);
+      return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + mixed.body);
+    }
+    // corps commence par sa propre ligne Content-Type : on la remonte dans les en-tetes
+    const coupe = corps.indexOf('\r\n\r\n');
+    head.push(corps.slice(0, coupe));
+    return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + corps.slice(coupe + 4));
   }
   function parseOneAddr(a) {
     const m = a.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
