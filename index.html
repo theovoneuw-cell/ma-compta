@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mudzy8by" />
+  <link rel="stylesheet" href="css/styles.css?b=mue2pu9i" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mudzy8by"></script>
+  <script src="js/theme.js?b=mue2pu9i"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -105,6 +105,11 @@
           <h3>Relances à faire</h3>
           <p class="card-sub">Factures émises en attente ou en retard de paiement.</p>
           <div id="todayRelances" class="cockpit-list"></div>
+        </div>
+        <div class="card hidden" id="todayReseauCard">
+          <h3>Démarchage à relancer</h3>
+          <p class="card-sub">Structures du Réseau dont la relance est aujourd'hui ou en retard.</p>
+          <div id="todayReseau" class="cockpit-list"></div>
         </div>
         <div class="card">
           <h3>Prochaine échéance URSSAF</h3>
@@ -516,17 +521,45 @@
     <!-- ===================== RESEAU (demarchage des structures) ===================== -->
     <section id="tab-reseau" class="panel">
       <nav class="subtabs">
-        <button class="subtab active" data-psub="structures">Structures</button>
+        <button class="subtab active" data-psub="suivi">Suivi</button>
+        <button class="subtab" data-psub="structures">Structures</button>
         <button class="subtab" data-psub="gestionnaires">Gestionnaires</button>
         <button class="subtab" data-psub="carte">Carte</button>
         <button class="subtab" data-psub="modeles">Modèles</button>
       </nav>
 
-      <!-- ---- Structures ---- -->
-      <div class="subpanel active" id="psub-structures">
+      <!-- ---- Suivi : le tableau de bord du démarchage ---- -->
+      <div class="subpanel active" id="psub-suivi">
+        <div class="ps-tete">
+          <p id="psSync" class="ps-sync"></p>
+          <div class="ps-tete-act">
+            <button id="psImportClients" class="btn" title="Tes clients hors base FINESS (espaces jeunes, mairies, SIVOM…)">Ajouter mes clients</button>
+            <button id="psAjout" class="btn btn-primary">+ Ajouter une structure</button>
+          </div>
+        </div>
         <div class="kpi-grid" id="psKpis"></div>
+        <div class="card">
+          <h3>À relancer</h3>
+          <p class="card-sub">Relances en retard, du jour et des 7 prochains jours.</p>
+          <div id="psAFaire"></div>
+        </div>
+        <div class="card">
+          <h3>Démarches en cours</h3>
+          <p class="card-sub">Chaque structure à son étape. Clique une carte pour ouvrir sa fiche.</p>
+          <div id="psPipeline" class="ps-pipe"></div>
+        </div>
+        <div class="card">
+          <h3>Clients à recontacter</h3>
+          <p class="card-sub">Ni facture ni vente prévue depuis plus de 4 mois : le bon moment pour proposer la suite.</p>
+          <div id="psFideles"></div>
+        </div>
+      </div>
+
+      <!-- ---- Structures ---- -->
+      <div class="subpanel" id="psub-structures">
         <div class="toolbar">
           <input type="search" id="psSearch" class="input" placeholder="Nom, ville, gestionnaire, interlocuteur…" />
+          <button id="psAjout2" class="btn">+ Ajouter</button>
           <span class="spacer"></span>
           <span id="psSummary" class="summary"></span>
           <button id="psExport" class="btn btn-ghost">Exporter CSV</button>
@@ -540,10 +573,12 @@
             <option value="all">Clients et prospects</option>
             <option value="client">Déjà clients</option>
             <option value="jamais">Jamais travaillé</option>
+            <option value="perso">Ajoutées par moi</option>
           </select>
           <select id="psTri">
             <option value="nom">Trier par nom</option>
             <option value="ville">Par ville</option>
+            <option value="distance">Par distance</option>
             <option value="capacite">Par capacité</option>
             <option value="relance">Par relance</option>
           </select>
@@ -601,6 +636,11 @@
       <!-- ---- Carte ---- -->
       <div class="subpanel" id="psub-carte">
         <div class="toolbar">
+          <select id="psMapVoir">
+            <option value="tous">Par domaine</option>
+            <option value="clients">Mes clients</option>
+            <option value="suivi">En démarchage</option>
+          </select>
           <select id="psMapFam"><option value="all">Tous les domaines</option></select>
           <select id="psMapColor">
             <option value="famille">Couleur : domaine</option>
@@ -616,8 +656,8 @@
       <!-- ---- Modèles ---- -->
       <div class="subpanel" id="psub-modeles">
         <div class="card">
-          <h3>Ma signature</h3>
-          <p class="card-sub">Ces champs remplacent {moi}, {montel}, {monmail} et {monsite} dans les modèles.</p>
+          <h3>Mes coordonnées</h3>
+          <p class="card-sub">Reprises de ta signature mail : ne remplis un champ que pour la remplacer. Elles alimentent {moi}, {montel}, {monmail} et {monsite}. Un message ouvert dans Mails reçoit ta signature complète : ces lignes-là en sont alors retirées.</p>
           <div class="form-grid">
             <div class="field"><label for="psSig_moi">Nom</label><input id="psSig_moi" class="input" placeholder="Prénom Nom"></div>
             <div class="field"><label for="psSig_montel">Téléphone</label><input id="psSig_montel" class="input" placeholder="06 …"></div>
@@ -1424,39 +1464,39 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mudzy8by"></script>
-  <script src="js/drive-store.js?b=mudzy8by"></script>
-  <script src="js/api-web.js?b=mudzy8by"></script>
-  <script src="js/settings.js?b=mudzy8by"></script>
-  <script src="js/datepicker.js?b=mudzy8by"></script>
-  <script src="js/stats.js?b=mudzy8by"></script>
-  <script src="js/charts.js?b=mudzy8by"></script>
-  <script src="js/import.js?b=mudzy8by"></script>
-  <script src="js/pdfimport.js?b=mudzy8by"></script>
-  <script src="js/clients.js?b=mudzy8by"></script>
-  <script src="js/factures.js?b=mudzy8by"></script>
-  <script src="js/fiscal.js?b=mudzy8by"></script>
-  <script src="js/bilan.js?b=mudzy8by"></script>
-  <script src="js/ai.js?b=mudzy8by"></script>
-  <script src="js/connections.js?b=mudzy8by"></script>
-  <script src="js/agenda.js?b=mudzy8by"></script>
-  <script src="js/signature.js?b=mudzy8by"></script>
-  <script src="js/mailbox.js?b=mudzy8by"></script>
-  <script src="js/trajets.js?b=mudzy8by"></script>
+  <script src="js/google-auth-web.js?b=mue2pu9i"></script>
+  <script src="js/drive-store.js?b=mue2pu9i"></script>
+  <script src="js/api-web.js?b=mue2pu9i"></script>
+  <script src="js/settings.js?b=mue2pu9i"></script>
+  <script src="js/datepicker.js?b=mue2pu9i"></script>
+  <script src="js/stats.js?b=mue2pu9i"></script>
+  <script src="js/charts.js?b=mue2pu9i"></script>
+  <script src="js/import.js?b=mue2pu9i"></script>
+  <script src="js/pdfimport.js?b=mue2pu9i"></script>
+  <script src="js/clients.js?b=mue2pu9i"></script>
+  <script src="js/factures.js?b=mue2pu9i"></script>
+  <script src="js/fiscal.js?b=mue2pu9i"></script>
+  <script src="js/bilan.js?b=mue2pu9i"></script>
+  <script src="js/ai.js?b=mue2pu9i"></script>
+  <script src="js/connections.js?b=mue2pu9i"></script>
+  <script src="js/agenda.js?b=mue2pu9i"></script>
+  <script src="js/signature.js?b=mue2pu9i"></script>
+  <script src="js/mailbox.js?b=mue2pu9i"></script>
+  <script src="js/trajets.js?b=mue2pu9i"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mudzy8by"></script>
-  <script src="js/prospection.js?b=mudzy8by"></script>
-  <script src="js/notes.js?b=mudzy8by"></script>
+  <script src="js/prospection-base.js?b=mue2pu9i"></script>
+  <script src="js/prospection.js?b=mue2pu9i"></script>
+  <script src="js/notes.js?b=mue2pu9i"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mudzy8by"></script>
-  <script src="js/recherche.js?b=mudzy8by"></script>
-  <script src="js/today.js?b=mudzy8by"></script>
-  <script src="js/privacy.js?b=mudzy8by"></script>
-  <script src="js/storage.js?b=mudzy8by"></script>
-  <script src="js/rappels.js?b=mudzy8by"></script>
-  <script src="js/notifs.js?b=mudzy8by"></script>
-  <script src="js/app.js?b=mudzy8by"></script>
+  <script src="js/coffre.js?b=mue2pu9i"></script>
+  <script src="js/recherche.js?b=mue2pu9i"></script>
+  <script src="js/today.js?b=mue2pu9i"></script>
+  <script src="js/privacy.js?b=mue2pu9i"></script>
+  <script src="js/storage.js?b=mue2pu9i"></script>
+  <script src="js/rappels.js?b=mue2pu9i"></script>
+  <script src="js/notifs.js?b=mue2pu9i"></script>
+  <script src="js/app.js?b=mue2pu9i"></script>
 </body>
 </html>

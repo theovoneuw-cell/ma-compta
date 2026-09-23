@@ -48,6 +48,9 @@ CC.renderToday = function () {
   // ---------- Relances ----------
   renderRelances(impayes, settings);
 
+  // ---------- Démarchage (Réseau) ----------
+  renderReseau();
+
   // ---------- URSSAF ----------
   renderUrssaf(next);
 
@@ -57,6 +60,33 @@ CC.renderToday = function () {
   // ---------- Pense-bête ----------
   if (CC.notes) CC.notes.render();
 };
+
+// Relances du démarchage dues aujourd'hui ou en retard : la carte n'apparaît
+// que s'il y en a. Un clic ouvre la fiche dans l'onglet Réseau.
+function renderReseau() {
+  const card = document.getElementById('todayReseauCard');
+  const box = document.getElementById('todayReseau');
+  if (!card || !box || !CC.prospection || !CC.prospection.base || !CC.prospection.base()) return;
+  const dues = CC.prospection.relances().filter((r) => r.due);
+  card.classList.toggle('hidden', !dues.length);
+  if (!dues.length) return;
+  box.innerHTML = dues.slice(0, 6).map(({ s, f, retard }) => `<div class="ck-row">
+      <div class="ck-main">
+        <div class="ck-t">${esc(CC.prospection.titre(s.nom))} <span class="badge ${retard > 0 ? 'retard' : 'attente'}">${retard > 0 ? 'retard ' + retard + ' j' : "aujourd'hui"}</span></div>
+        <div class="ck-s">${esc(s.catCourt || '')}${s.ville ? ' · ' + esc(CC.prospection.titre(s.ville)) : ''}${f.contactNom ? ' · ' + esc(f.contactNom) : ''}</div>
+      </div>
+      <button type="button" class="btn btn-ghost ck-relancer" data-psid="${esc(s.id)}">Ouvrir</button>
+    </div>`).join('') + (dues.length > 6 ? `<p class="ck-s">+ ${dues.length - 6} autre(s) dans Réseau › Suivi.</p>` : '');
+  if (!box._bound) {
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-psid]');
+      if (!b) return;
+      CC.switchTab('reseau');
+      setTimeout(() => CC.prospection.openFiche(b.dataset.psid), 60);
+    });
+    box._bound = true;
+  }
+}
 
 function renderRelances(impayes, settings) {
   const box = document.getElementById('todayRelances');
@@ -75,7 +105,7 @@ function renderRelances(impayes, settings) {
     const cls = st === 'retard' ? 'retard' : 'attente';
     return `<div class="ck-row">
       <div class="ck-main">
-        <div class="ck-t">${esc(CC.util.clientKey(f.libelle))} <span class="badge ${cls}">${st === 'retard' ? 'retard' : 'attente'}</span></div>
+        <div class="ck-t">${esc(CC.util.clientNom ? CC.util.clientNom(f.libelle) : CC.util.clientKey(f.libelle))} <span class="badge ${cls}">${st === 'retard' ? 'retard' : 'attente'}</span></div>
         <div class="ck-s">${f.numFacture ? 'n°' + esc(f.numFacture) + ' · ' : ''}${CC.util.eur(+f.montant || 0)}${f.dateEcheance ? ' · éch. ' + CC.util.frDate(f.dateEcheance) : ''}</div>
       </div>
       <button type="button" class="btn btn-ghost ck-relancer" data-relance="${esc(f.id)}" title="Ouvrir un mail de relance prérempli">Relancer</button>

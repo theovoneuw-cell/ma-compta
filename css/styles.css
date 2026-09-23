@@ -2323,20 +2323,22 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   #psExport { display: none; }
   #psSummary, #psGsummary { font-size: 12.5px; }
 
-  /* --- Filtres : une rangée qui défile au doigt plutôt qu'un mur de menus --- */
-  #psub-structures .filters-row {
-    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; margin: 0 -12px 14px; padding: 0 12px 2px;
-  }
-  #psub-structures .filters-row::-webkit-scrollbar { display: none; }
-  #psub-structures .filters-row select { flex: 0 0 auto; max-width: 76vw; }
+  /* --- Filtres : deux colonnes, tout visible d'un coup d'œil (une rangée qui
+         défilait cachait la moitié des menus hors de l'écran). --- */
+  #psub-structures .filters-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #psub-structures .filters-row select { width: 100%; min-width: 0; font-size: 13px; }
 
   /* --- Indicateurs : seuls les trois qui appellent une action, sur une ligne --- */
   #psKpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
   #psub-structures .toolbar, #psub-gestionnaires .toolbar { margin-bottom: 10px; }
   /* Quatre sous-onglets qui tiennent sans defiler sur un ecran de 393 px. */
   #tab-reseau .subtab { padding: 6px 11px; font-size: 13.5px; }
-  #psKpis .kpi:nth-child(1), #psKpis .kpi:nth-child(2) { display: none; }
+  /* Sur téléphone : en cours, à relancer, actées. */
+  #psKpis .kpi:nth-child(3), #psKpis .kpi:nth-child(5) { display: none; }
+  #psKpis .kpi .hint { display: none; }
+  #tab-reseau .subtabs { overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  #tab-reseau .subtabs::-webkit-scrollbar { display: none; }
+  #tab-reseau .subtab { flex: 0 0 auto; }
   #psKpis .kpi { padding: 11px 10px; border-left-width: 3px; }
   #psKpis .kpi .value { font-size: 21px; }
   #psKpis .kpi .label { font-size: 9.5px; letter-spacing: .6px; margin-bottom: 5px; }
@@ -2615,3 +2617,80 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .indy-prop-nom { font-size: 13px; font-weight: 600; color: var(--ink); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .indy-prop-champs { font-size: 12.5px; color: var(--text); }
 .indy-prop-src { font-size: 11.5px; color: var(--muted); }
+
+
+/* ===================== RÉSEAU : SUIVI ===================== */
+.ps-tete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.ps-tete-act { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.ps-sync { margin: 0; font-size: 12.5px; color: var(--muted); }
+.ps-sync.ok { color: var(--green); }
+.ps-sync.warn { color: var(--amber); font-weight: 600; }
+.ps-vide { font-size: 13px; color: var(--muted); margin: 4px 0; }
+
+/* À relancer */
+.ps-todo { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 16px; padding: 11px 4px; border-bottom: 1px solid var(--border); }
+.ps-todo:last-child { border-bottom: 0; }
+.ps-todo.due { border-left: 3px solid var(--amber); padding-left: 10px; }
+.ps-todo-main { min-width: 0; cursor: pointer; }
+.ps-todo-main:hover .ps-nom { color: var(--accent); }
+.ps-todo-etat { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ps-todo-act { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.ps-quand { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ps-quand.late { color: var(--red); font-weight: 700; }
+.ps-quand.today { color: var(--amber); font-weight: 700; }
+
+/* Démarches par étape */
+.ps-pipe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.ps-col { background: var(--surface-2); border-radius: var(--r-md); padding: 10px; min-height: 90px; }
+.ps-col-t { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ps-col-n { font-size: 12px; font-weight: 700; color: var(--muted); }
+.ps-col-vide { font-size: 12px; color: var(--soft); margin: 6px 2px; }
+.ps-carte { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 6px; cursor: pointer; font-family: inherit; color: var(--ink); }
+.ps-carte:hover { border-color: var(--accent); }
+.ps-carte .ps-nom { font-size: 12.5px; }
+.ps-carte-der { font-size: 11px; color: var(--muted); line-height: 1.35; }
+
+/* Clients à recontacter */
+.ps-fid { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+.ps-fid:last-child { border-bottom: 0; }
+
+/* Fiche : étapes, relance, journal, écrire */
+.ps-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 16px; }
+.ps-step { border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.ps-step:hover { border-color: var(--accent); color: var(--ink); }
+.ps-step.on { border-color: transparent; }
+.ps-step.on.ps-aucun { background: var(--surface-2); color: var(--ink); }
+.ps-step.on.ps-contacte { background: var(--accent-soft); color: var(--accent-strong); }
+.ps-step.on.ps-relance { background: var(--amber-soft); color: var(--amber); }
+.ps-step.on.ps-rdv { background: var(--green-soft); color: var(--green); }
+.ps-step.on.ps-devis { background: #efe9fb; color: #6d28d9; }
+.ps-step.on.ps-gagne { background: var(--green-soft); color: #047857; }
+.ps-step.on.ps-refus { background: var(--red-soft); color: var(--red); }
+:root[data-theme="dark"] .ps-step.on.ps-devis { background: #2d2350; color: #c4b5fd; }
+.ps-relance { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ps-relance .dp { flex: 1 1 200px; min-width: 180px; }
+.ps-rapides { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ps-chip { border: 1px dashed var(--border-strong); background: transparent; color: var(--text); border-radius: 20px; padding: 4px 11px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.ps-chip:hover { border-style: solid; border-color: var(--accent); color: var(--accent); }
+.ps-ecrire { display: flex; gap: 8px; flex-wrap: wrap; }
+.ps-ecrire select { flex: 1 1 220px; min-width: 0; }
+.ps-lier { display: flex; gap: 8px; }
+.ps-lier select { flex: 1; min-width: 0; }
+.ps-km { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ps-u2 { color: var(--soft); font-size: 11.5px; }
+.ps-perso { background: var(--surface-2); color: var(--muted); }
+.ps-danger { color: var(--red); }
+.btn.btn-sm { padding: 5px 11px; font-size: 12.5px; }
+.ps-perso-form .form-grid { margin-top: 6px; }
+
+@media (max-width: 1080px) { .ps-pipe { grid-template-columns: repeat(5, minmax(200px, 1fr)); overflow-x: auto; padding-bottom: 6px; } }
+@media (max-width: 720px) {
+  .ps-tete-act { width: 100%; margin-left: 0; }
+  .ps-tete-act .btn { flex: 1; }
+  .ps-todo { grid-template-columns: 1fr; gap: 6px; }
+  .ps-todo-act { justify-content: flex-start; }
+  .ps-pipe { grid-template-columns: repeat(5, 78vw); margin: 0 -4px; }
+  .ps-fid { grid-template-columns: 1fr auto; }
+  .ps-fid .ps-quand { grid-column: 1; }
+  .ps-cols { grid-template-columns: 1fr; }
+}

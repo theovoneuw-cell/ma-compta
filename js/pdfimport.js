@@ -120,6 +120,8 @@ CC.pdfImporter = {
       const m = reste[iCp].match(/^(\d{5})\s+(.+?)(?:\s*,\s*France)?$/i);
       c.cp = m[1];
       c.ville = m[2].replace(/,\s*$/, '').trim();
+      // Ville coupee en fin de ligne (« Saint-André-de- » / « la-Roche ») : on recolle.
+      if (/-$/.test(c.ville) && reste[iCp + 1]) c.ville += reste[iCp + 1].replace(/\s*,?\s*France$/i, '').trim();
       const avant = reste.slice(0, iCp);
       // La voie commence a la premiere ligne qui ressemble a une adresse (un
       // numero, « rue », « chemin »…) ; Indy la coupe parfois sur deux lignes
@@ -134,7 +136,10 @@ CC.pdfImporter = {
       c.nom = reste.join(' ');
     }
     c.nom = c.nom.replace(/\s+/g, ' ').trim();
-    c.adresse = c.adresse.replace(/\s+/g, ' ').trim();
+    // pdf.js colle parfois deux mots (« Chemindu Castel ») : on redecoupe apres
+    // un type de voie suivi d'un article.
+    c.adresse = c.adresse.replace(/\b(chemin|avenue|rue|boulevard|route|all[ée]e|impasse|place|quai|cours|square|traverse|mont[ée]e)(du|de|des|la|le|les)\b/gi, '$1 $2')
+      .replace(/\s+/g, ' ').trim();
     // Ton propre SIREN (pied de page) n'est jamais celui du client.
     if (/^910080589/.test(c.siret)) c.siret = '';
     return (c.nom || c.siret || c.cp) ? c : null;
