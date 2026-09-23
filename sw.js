@@ -11,7 +11,7 @@
 // Version du cache : à incrémenter à chaque refonte visuelle. L'ancien cache est
 // purgé à l'activation, ce qui évite de servir un mélange d'anciens et de
 // nouveaux fichiers après une mise à jour importante.
-const CACHE = 'macompta-mue2pu9i';
+const CACHE = 'macompta-mue3gano';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',

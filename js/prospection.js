@@ -25,24 +25,26 @@ const PS_STATUTS = [
 ];
 const PS_STATUT_LIB = Object.fromEntries(PS_STATUTS);
 
-// Couleurs prises dans la palette de l'app (indigo / corail / sémantique).
+// Domaines retirés du Réseau : hors de ton champ (hôpitaux, domicile, santé
+// mentale, insertion, prévention, formation). Leurs établissements FINESS ne
+// sont plus chargés du tout — listes, carte, recherche, gestionnaires.
+const PS_FAMILLES_HORS = new Set(['sante-mentale', 'social-insertion', 'ressources', 'sanitaire', 'domicile', 'formation']);
+const PS_FAMILLES = ['enfance-handicap', 'adultes-handicap', 'protection-enfance', 'personnes-agees', 'animation-jeunesse', 'autre'];
+
+// Une couleur par domaine, vérifiée (écart suffisant, y compris pour un
+// daltonien). Le VERT est réservé à tes clients, dessinés en losange.
 const PS_COUL_FAM = {
   'enfance-handicap': '#4f46e5',
-  'adultes-handicap': '#0ea371',
-  'protection-enfance': '#c2740a',
-  'personnes-agees': '#8b5cf6',
-  'sante-mentale': '#fb7185',
-  'social-insertion': '#0891b2',
-  'animation-jeunesse': '#e0670e',
-  'ressources': '#6c6890',
-  'sanitaire': '#6366f1',
-  'domicile': '#a8a29e',
-  'formation': '#65a30d',
+  'adultes-handicap': '#db2777',
+  'protection-enfance': '#ea580c',
+  'personnes-agees': '#0891b2',
+  'animation-jeunesse': '#78350f',
   'autre': '#9a96b8',
 };
+// Étapes : mêmes teintes que les domaines, et toujours pas de vert.
 const PS_COUL_STATUT = {
-  aucun: '#9a96b8', contacte: '#4f46e5', relance: '#c2740a',
-  rdv: '#0ea371', devis: '#8b5cf6', gagne: '#047857', refus: '#dc2626',
+  aucun: '#9a96b8', contacte: '#4f46e5', relance: '#ea580c',
+  rdv: '#0891b2', devis: '#db2777', gagne: '#78350f', refus: '#dc2626',
 };
 // Vert des structures déjà facturées : il prime sur toutes les autres couleurs
 // de la carte, c'est l'information qu'on cherche en premier.
@@ -67,8 +69,8 @@ const PS_VIDES = new Set(['ASSO', 'ASSOCIATION', 'FONDATION', 'LE', 'LA', 'LES',
   'COMMUNE', 'ESPACE', 'JEUNES', 'JEUNESSE', 'NICE', 'CANNES', 'ANTIBES', 'GRASSE', 'MENTON', 'CEDEX']);
 // Activité d'un client de la compta -> domaine Réseau, pour l'ajout de tes clients.
 const PS_FAM_DE_CAT = {
-  'Ateliers Musiques Urbaines': 'animation-jeunesse', 'Cours et Enseignement': 'formation',
-  'AMU Social': 'social-insertion', 'Associatif / Fondations': 'social-insertion', 'Autre': 'autre',
+  'Ateliers Musiques Urbaines': 'animation-jeunesse', 'Cours et Enseignement': 'autre',
+  'AMU Social': 'autre', 'Associatif / Fondations': 'autre', 'Autre': 'autre',
 };
 
 const PS_MODELES = [
@@ -202,6 +204,16 @@ CC.prospection = {
     if (this._base) return this._base;
     if (!window.CC_PROSPECTION_JSON) return null;
     const b = JSON.parse(window.CC_PROSPECTION_JSON);
+    b.structures = b.structures.filter((s) => !PS_FAMILLES_HORS.has(s.famille));
+    const gardees = new Set(b.structures.map((s) => s.id));
+    // Gestionnaires : seulement leurs établissements restants, et ceux qui en ont.
+    b.gestionnaires = b.gestionnaires.map((g) => {
+      const etabs = g.etabs.filter((id) => gardees.has(id));
+      const familles = {};
+      Object.entries(g.familles || {}).forEach(([f, n]) => { if (!PS_FAMILLES_HORS.has(f)) familles[f] = n; });
+      const capacite = etabs.reduce((t, id) => t + ((b.structures.find((s) => s.id === id) || {}).capacite || 0), 0);
+      return Object.assign({}, g, { etabs, nbEtabs: etabs.length, familles, capacite: capacite || g.capacite });
+    }).filter((g) => g.nbEtabs > 0);
     b.parId = {};
     b.structures.forEach((s) => { b.parId[s.id] = s; });
     b.gParId = {};
@@ -215,7 +227,10 @@ CC.prospection = {
     const b = this.base();
     if (!b) return [];
     const perso = Object.values(this.suivi().perso || {});
-    perso.forEach((p) => { b.parId[p.id] = p; });
+    perso.forEach((p) => {
+      if (PS_FAMILLES_HORS.has(p.famille)) p.famille = 'autre';   // domaine retiré
+      b.parId[p.id] = p;
+    });
     return perso.length ? b.structures.concat(perso) : b.structures;
   },
 
@@ -452,8 +467,7 @@ CC.prospection = {
     const b = this.base();
     const cnt = {};
     this.toutes().forEach((s) => { cnt[s.famille] = (cnt[s.famille] || 0) + 1; });
-    const ordre = ['enfance-handicap', 'animation-jeunesse', 'adultes-handicap', 'protection-enfance', 'sante-mentale',
-      'social-insertion', 'personnes-agees', 'ressources', 'sanitaire', 'formation', 'domicile', 'autre'];
+    const ordre = ['enfance-handicap', 'adultes-handicap', 'protection-enfance', 'personnes-agees', 'animation-jeunesse', 'autre'];
     const optsFam = (sel) => `<option value="all">Tous les domaines (${this.toutes().length})</option>` + ordre.filter((f) => cnt[f]).map((f) =>
       `<option value="${f}"${f === sel ? ' selected' : ''}>${psEsc(b.famLib[f] || f)} (${cnt[f]})</option>`).join('');
     const fam = document.getElementById('psFamille');
@@ -710,46 +724,62 @@ CC.prospection = {
       return fam === 'all' || s.famille === fam || !!cl[s.id];
     });
 
+    // Légende cliquable : chaque catégorie (domaine ou étape, tes clients, ton
+    // départ) peut être masquée puis réaffichée. Un point client suit « Tes
+    // clients » ; les autres suivent leur domaine, ou leur étape en mode suivi.
+    const masques = this._masques || (this._masques = new Set());
+    const cleDe = (s) => (cl[s.id] ? 'clients' : (parStatut ? 'st:' + this.statutDe(s.id) : 'fam:' + s.famille));
+    const compte = {};
+    pts.forEach((s) => { const k = cleDe(s); compte[k] = (compte[k] || 0) + 1; });
+
     this._couches.clearLayers();
     const bounds = [];
     const ordre = pts.slice().sort((a, x) => (cl[a.id] ? 1 : 0) - (cl[x.id] ? 1 : 0));
+    let visibles = 0;
     ordre.forEach((s) => {
+      bounds.push([s.lat, s.lon]);
+      if (masques.has(cleDe(s))) return;
+      visibles++;
       const st = this.statutDe(s.id);
       const client = cl[s.id];
-      const coul = client ? PS_CLIENT_VERT : (parStatut ? PS_COUL_STATUT[st] : (PS_COUL_FAM[s.famille] || '#9a96b8'));
-      const m = L.circleMarker([s.lat, s.lon], {
-        radius: s.capacite ? Math.min(13, 5 + Math.sqrt(s.capacite) / 2) : 6,
-        color: client ? '#08533a' : '#fff',
-        weight: client ? 2.5 : 1.5,
-        fillColor: coul,
-        fillOpacity: client ? 1 : 0.8,
-      });
+      const coul = parStatut ? PS_COUL_STATUT[st] : (PS_COUL_FAM[s.famille] || '#9a96b8');
+      // Tes clients : un LOSANGE vert, pas un rond — reconnaissables même par
+      // quelqu'un qui distingue mal les couleurs.
+      const m = client
+        ? L.marker([s.lat, s.lon], { icon: L.divIcon({ className: 'ps-pin-client', html: '<span></span>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1000 })
+        : L.circleMarker([s.lat, s.lon], {
+          radius: s.capacite ? Math.min(13, 5 + Math.sqrt(s.capacite) / 2) : 6,
+          color: '#fff', weight: 1.5, fillColor: coul, fillOpacity: 0.85,
+        });
       const d = this.distance(s);
       m.bindTooltip(psTitre(s.nom) + ' — ' + psTitre(s.ville || '')
         + (client ? ' · ton client (' + client.n + ' facture' + (client.n > 1 ? 's' : '') + ')' : '')
         + (d != null ? ' · ' + Math.round(d) + ' km' : ''), { direction: 'top' });
       m.on('click', () => CC.prospection.openFiche(s.id));
       m.addTo(this._couches);
-      bounds.push([s.lat, s.lon]);
     });
     // Ton point de départ
     const h = this.maison();
-    if (h) {
+    if (h && !masques.has('maison')) {
       L.circleMarker([h.lat, h.lon], { radius: 7, color: '#fff', weight: 3, fillColor: '#1b1733', fillOpacity: 1 })
         .bindTooltip('Ton point de départ', { direction: 'top' }).addTo(this._couches);
     }
-    const nbClients = ordre.filter((s) => cl[s.id]).length;
     const leg = document.getElementById('psMapLegend');
     if (leg) {
       const clefs = parStatut
-        ? PS_STATUTS.map(([k, l]) => [PS_COUL_STATUT[k], l])
-        : (fam === 'all' || voir !== 'tous'
-          ? Object.keys(PS_COUL_FAM).filter((f) => this.base().famLib[f] && pts.some((s) => s.famille === f)).map((f) => [PS_COUL_FAM[f], this.base().famLib[f]])
-          : [[PS_COUL_FAM[fam], this.base().famLib[fam]]]);
-      const vert = nbClients ? `<span class="ps-leg ps-leg-client"><i style="background:${PS_CLIENT_VERT}"></i>Tes clients (${nbClients})</span>` : '';
-      const maison = h ? '<span class="ps-leg"><i style="background:#1b1733"></i>Ton départ</span>' : '';
-      leg.innerHTML = vert + maison + clefs.map(([c, l]) => `<span class="ps-leg"><i style="background:${c}"></i>${psEsc(l)}</span>`).join('')
-        + `<span class="ps-leg-note">${pts.length} points · taille = capacité · fond Esri</span>`;
+        ? PS_STATUTS.filter(([k]) => compte['st:' + k]).map(([k, l]) => ['st:' + k, PS_COUL_STATUT[k], l])
+        : Object.keys(PS_COUL_FAM).filter((f) => compte['fam:' + f]).map((f) => ['fam:' + f, PS_COUL_FAM[f], this.base().famLib[f] || f]);
+      const items = [];
+      if (compte.clients) items.push(['clients', PS_CLIENT_VERT, 'Tes clients', compte.clients]);
+      if (h) items.push(['maison', '#1b1733', 'Ton départ', 0]);
+      clefs.forEach(([k, c, l]) => items.push([k, c, l, compte[k]]));
+      const nbMasques = items.filter(([k]) => masques.has(k)).length;
+      leg.innerHTML = items.map(([k, c, l, n]) => {
+        const off = masques.has(k);
+        return `<button type="button" class="ps-leg${off ? ' off' : ''}${k === 'clients' ? ' ps-leg-losange' : ''}" data-leg="${psEsc(k)}" aria-pressed="${off ? 'false' : 'true'}" title="${off ? 'Afficher' : 'Masquer'} sur la carte"><i style="--c:${c}"></i>${psEsc(l)}${n ? ` <span class="ps-leg-n">${n}</span>` : ''}</button>`;
+      }).join('')
+        + (nbMasques ? '<button type="button" class="ps-leg-tout" data-leg="__tout">Tout afficher</button>' : '')
+        + `<span class="ps-leg-note">${visibles} point${visibles > 1 ? 's' : ''} affiché${visibles > 1 ? 's' : ''}${visibles !== pts.length ? ' sur ' + pts.length : ''} · clique une catégorie pour la masquer · taille = capacité</span>`;
     }
     setTimeout(() => {
       this._map.invalidateSize();
@@ -1157,7 +1187,7 @@ CC.prospection = {
     const b = this.base();
     const s = id ? this.suivi().perso[id] : null;
     const e = s || { nom: '', famille: 'animation-jeunesse', catCourt: '', adresse: '', cp: '', ville: '', tel: '', mail: '', client: '' };
-    const fams = ['animation-jeunesse', 'enfance-handicap', 'adultes-handicap', 'protection-enfance', 'social-insertion', 'sante-mentale', 'personnes-agees', 'formation', 'ressources', 'autre'];
+    const fams = PS_FAMILLES;
     const clients = (CC.clients ? CC.clients.liste() : []).filter((c) => c.n).sort((a, x) => a.nom.localeCompare(x.nom, 'fr'));
     document.getElementById('psFicheTitre').textContent = s ? 'Modifier la structure' : 'Ajouter une structure';
     document.getElementById('psFicheSous').textContent = 'Un espace jeunes, une mairie, une école, une association… tout ce qui n’est pas dans la base FINESS.';
@@ -1229,6 +1259,24 @@ CC.prospection = {
     });
     if (r.response !== 0) return;
     const perso = this.suivi().perso;
+    // Même adresse qu'un établissement FINESS (voie + code postal) : c'est lui,
+    // on le relie au lieu de créer un doublon (ABA Carros = IME Les Coteaux d'Azur).
+    const voie = (a) => psNorm(a).replace(/\b(che|chemin|av|avenue|bd|boulevard|r|rue|rte|route|imp|impasse|all|allee|pl|place|de|du|des|la|le|les|l)\b/g, ' ')
+      .replace(/[^a-z0-9]+/g, ' ').replace(/^\d+\s*/, '').trim();
+    const liees = [];
+    for (const c of abs.slice()) {
+      const fi = c.fiche || {};
+      if (!fi.adresse || !fi.cp) continue;
+      const v = voie(fi.adresse);
+      const memes = this.base().structures.filter((s) => s.cp === fi.cp && v && voie(s.adresse || '') === v);
+      if (memes.length !== 1) continue;
+      const f = this.fiche(memes[0].id);
+      f.client = c.nom;
+      if ((PS_RANG[f.statut || 'aucun'] || 0) < PS_RANG.gagne) f.statut = 'gagne';
+      f.histo.push({ date: CC.util.toISO(new Date()), texte: 'Reliée au client ' + c.nom + ' (même adresse)' });
+      liees.push(c.nom + ' → ' + psTitre(memes[0].nom));
+      abs.splice(abs.indexOf(c), 1);
+    }
     for (const c of abs) {
       const fi = c.fiche || {};
       const n = {
@@ -1250,7 +1298,7 @@ CC.prospection = {
     }
     this._persist();
     this.render();
-    CC.toast(abs.length + ' client(s) ajouté(s) au Réseau.', 'ok');
+    CC.toast(abs.length + ' client(s) ajouté(s) au Réseau' + (liees.length ? ' · ' + liees.length + ' relié(s) à la base : ' + liees.join(', ') : '') + '.', 'ok');
   },
 
   // ---- Fiche gestionnaire ------------------------------------------------
@@ -1435,6 +1483,18 @@ CC.prospection = {
     ['psMapColor', 'psMapFam', 'psMapVoir'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', () => this.renderCarte());
+    });
+    // Légende : un clic masque la catégorie sur la carte, un second la réaffiche.
+    const leg = document.getElementById('psMapLegend');
+    if (leg) leg.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-leg]');
+      if (!b) return;
+      const m = this._masques || (this._masques = new Set());
+      const k = b.dataset.leg;
+      if (k === '__tout') m.clear();
+      else if (m.has(k)) m.delete(k);
+      else m.add(k);
+      this.renderCarte();
     });
 
     // Modèles
