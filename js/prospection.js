@@ -643,7 +643,7 @@ CC.prospection = {
       if (F.ouvertes && !(psOuverture(s) || {}).ouvert) return false;
       if (q.length) {
         const f = this.suivi().fiches[s.id] || {};
-        const blob = psNorm([s.nom, s.ville, s.catLib, s.catCourt, s.adresse, s.cp, s.secteur, s.mail, s.note,
+        const blob = psNorm([s.nom, s.ville, s.catLib, s.catCourt, s.adresse, s.cp, s.secteur, s.mail, s.note, s.siret, s.siretNom,
           (this.base().gParId[s.ej] || {}).nom, f.contactNom, f.notes, cl[s.id] && cl[s.id].nom].filter(Boolean).join(' '));
         if (!q.every((t) => blob.includes(t))) return false;
       }
@@ -974,6 +974,12 @@ CC.prospection = {
     if ((s.modes || []).length) infos.push(lg('Accueil', psEsc(s.modes.join(', '))));
     if ((s.clienteles || []).length) infos.push(lg('Déficiences', psEsc(s.clienteles.join(' · '))));
     if (s.statut) infos.push(lg('Statut', psEsc(s.statut)));
+    if (s.siret) {
+      infos.push(lg('SIRET', `<span class="ps-tel">${psEsc(psSiret(s.siret))}</span> <button type="button" class="mini-btn" data-copier="${psEsc(s.siret)}">Copier</button><div class="ps-sub">${psEsc(s.siretNom || '')}</div>`));
+      infos.push(lg('Facturation', s.siretType === 'commune'
+        ? 'Collectivité : facture à déposer sur Chorus Pro (SIRET de la commune)'
+        : 'Association : facture classique, par mail ou courrier'));
+    }
     if (s.note) infos.push(lg('À savoir', psEsc(s.note)));
     if (s.perso) infos.push(lg('Source', 'Ajoutée par toi'));
     else if (s.verifieLe) infos.push(lg('Source', `<a href="#" class="lnk" data-ext="${psEsc(s.source)}">site de la structure</a> · vérifié le ${CC.util.frDate(s.verifieLe)}`));
@@ -1214,6 +1220,11 @@ CC.prospection = {
     box.querySelectorAll('[data-ext]').forEach((b) => b.addEventListener('click', (e) => {
       e.preventDefault();
       psOuvrir(b.dataset.ext);
+    }));
+    box.querySelectorAll('[data-copier]').forEach((b) => b.addEventListener('click', (e) => {
+      e.preventDefault();
+      psCopier(b.dataset.copier);
+      CC.toast('SIRET copié', 'ok');
     }));
     box.querySelectorAll('[data-gid]').forEach((b) => b.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1479,7 +1490,7 @@ CC.prospection = {
     const cl = this.clients();
     const col = ['Nom', 'Catégorie', 'Domaine', 'Publics', 'Capacité', 'Adresse', 'CP', 'Ville', 'Secteur', 'Distance (km)',
       'Téléphone', 'E-mail', 'Gestionnaire', 'Tél. gestionnaire', 'Mail gestionnaire',
-      'Étape', 'Interlocuteur', 'Relance', 'Client', 'Notes', 'FINESS'];
+      'Étape', 'Interlocuteur', 'Relance', 'Client', 'Notes', 'FINESS', 'SIRET', 'Entité facturée'];
     const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     const lignes = [col.map(q).join(';')];
     r.forEach((s) => {
@@ -1493,7 +1504,7 @@ CC.prospection = {
         psTel(f.telDirect || s.tel), f.mail || s.mail || '',
         psTitre(g.nom || ''), psTel(g.tel || ''), g.mail || '',
         PS_STATUT_LIB[this.statutDe(s.id)], f.contactNom || '', f.relanceLe || '',
-        cl[s.id] ? cl[s.id].nom : '', (f.notes || '').replace(/\r?\n/g, ' · '), s.perso || s.verifieLe ? '' : s.id,
+        cl[s.id] ? cl[s.id].nom : '', (f.notes || '').replace(/\r?\n/g, ' · '), s.perso || s.verifieLe ? '' : s.id, s.siret || '', s.siretNom || '',
       ].map(q).join(';'));
     });
     const contenu = '﻿' + lignes.join('\r\n');
@@ -1756,6 +1767,10 @@ function psOuvHtml(s) {
   return `<div class="ps-ouv ${o.ouvert ? 'on' : 'off'}">${psEsc(psOuvTexte(o) + psOuvQuoi(s, o))}</div>`;
 }
 
+function psSiret(t) {
+  const d = String(t || '').replace(/\D/g, '');
+  return d.length === 14 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{5})$/, '$1 $2 $3 $4') : (t || '');
+}
 function psTel(t) {
   const d = String(t || '').replace(/\D/g, '');
   return d.length === 10 ? d.replace(/(\d\d)(?=\d)/g, '$1 ').trim() : (t || '');
