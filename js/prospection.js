@@ -640,6 +640,7 @@ CC.prospection = {
       if (F.relation === 'client' && !cl[s.id]) return false;
       if (F.relation === 'jamais' && cl[s.id]) return false;
       if (F.relation === 'perso' && !s.perso) return false;
+      if (F.ouvertes && !(psOuverture(s) || {}).ouvert) return false;
       if (q.length) {
         const f = this.suivi().fiches[s.id] || {};
         const blob = psNorm([s.nom, s.ville, s.catLib, s.catCourt, s.adresse, s.cp, s.secteur, s.mail, s.note,
@@ -684,13 +685,14 @@ CC.prospection = {
         ? `<span class="ps-rel${f.relanceLe <= auj ? ' late' : ''}">${CC.util.frDate(f.relanceLe)}</span>` : '';
       const d = this.distance(s);
       const km = d != null ? `<span class="ps-km">${d < 10 ? d.toFixed(1).replace('.', ',') : Math.round(d)} km</span>` : '';
-      return `<tr data-id="${psEsc(s.id)}">
+      const ouv = psOuverture(s);
+      return `<tr data-id="${psEsc(s.id)}"${ouv && !ouv.ouvert ? ' class="ps-ferme"' : ''}>
         <td class="ps-c-nom"><span class="ps-nom">${psEsc(psTitre(s.nom))}</span>${client ? `<span class="ps-client" title="${psEsc(client.nom)} · ${client.n} facture(s)">client</span>` : ''}${s.perso ? '<span class="ps-client ps-perso" title="Ajoutée par toi">ajoutée</span>' : ''}
             <div class="ps-sub">${psEsc(s.catCourt || '')}<span class="ps-v"> · ${psEsc(psTitre(s.ville || ''))}</span></div></td>
         <td class="ps-c-ville">${psEsc(psTitre(s.ville || ''))}<div class="ps-sub">${km || psEsc(s.secteur || '')}</div></td>
         <td class="ps-c-pub">${psEsc(pubs)}</td>
         <td class="ps-c-places num">${s.capacite || '—'}</td>
-        <td class="ps-c-tel ps-tel">${s.tel ? psEsc(psTel(s.tel)) : '—'}</td>
+        <td class="ps-c-tel ps-tel">${s.tel ? psEsc(psTel(s.tel)) : '—'}${psOuvHtml(s)}</td>
         <td class="ps-c-suivi"><span class="stpill ps-${st}">${psEsc(PS_STATUT_LIB[st])}</span> ${rel}</td>
       </tr>`;
     }).join('');
@@ -784,18 +786,19 @@ CC.prospection = {
       const st = this.statutDe(s.id);
       const client = cl[s.id];
       const coul = parStatut ? PS_COUL_STATUT[st] : (PS_COUL_FAM[s.famille] || '#9a96b8');
+      const ouv = psOuverture(s);
       // Tes clients : un LOSANGE vert, pas un rond — reconnaissables même par
       // quelqu'un qui distingue mal les couleurs.
       const m = client
         ? L.marker([s.lat, s.lon], { icon: L.divIcon({ className: 'ps-pin-client', html: '<span></span>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1000 })
         : L.circleMarker([s.lat, s.lon], {
           radius: s.capacite ? Math.min(13, 5 + Math.sqrt(s.capacite) / 2) : 6,
-          color: '#fff', weight: 1.5, fillColor: coul, fillOpacity: 0.85,
+          color: '#fff', weight: 1.5, fillColor: coul, fillOpacity: ouv && !ouv.ouvert ? 0.3 : 0.85,
         });
       const d = this.distance(s);
       m.bindTooltip(psTitre(s.nom) + ' — ' + psTitre(s.ville || '')
         + (client ? ' · ton client (' + client.n + ' facture' + (client.n > 1 ? 's' : '') + ')' : '')
-        + (d != null ? ' · ' + Math.round(d) + ' km' : ''), { direction: 'top' });
+        + (d != null ? ' · ' + Math.round(d) + ' km' : '') + (ouv ? ' · ' + psOuvTexte(ouv) : ''), { direction: 'top' });
       m.on('click', () => CC.prospection.openFiche(s.id));
       m.addTo(this._couches);
     });
@@ -1038,6 +1041,7 @@ CC.prospection = {
               ${s.perso ? '<button type="button" class="btn btn-ghost btn-sm" id="psF_modif">Modifier</button><button type="button" class="btn btn-ghost btn-sm ps-danger" id="psF_suppr">Supprimer</button>' : ''}
             </div>
           </div>
+          ${this._blocHoraires(s)}
           <div class="ps-bloc"><h4>Informations</h4><dl class="ps-dl">${infos.join('')}</dl></div>
           ${blocG}
         </div>
@@ -1226,9 +1230,48 @@ CC.prospection = {
     else CC.clients.creerDepuis(c.cle);
   },
 
+  // Fiche : l'état du moment, puis chaque grille (période scolaire / vacances),
+  // avec la colonne de la période en cours et la ligne du jour mises en avant.
+  _blocHoraires(s) {
+    if (!s.verifieLe && !s.horaires) return '';
+    const note = s.horairesNote ? `<p class="ps-note">${psEsc(s.horairesNote)}</p>` : '';
+    const src = s.horairesSource ? `<p class="ps-note"><a href="#" class="lnk" data-ext="${psEsc(s.horairesSource)}">Source des horaires</a></p>` : '';
+    if (!s.horaires || !s.horaires.length) {
+      return `<div class="ps-bloc"><h4>Horaires</h4><p class="ps-note">${s.horairesNote ? '' : 'Horaires non publiés sur le site : à demander au premier appel.'}</p>${note}</div>`;
+    }
+    const auj = new Date();
+    const per = psPeriode(CC.util.toISO(auj));
+    const o = psOuverture(s, auj);
+    let ctx = per.nom;
+    if (per.reprise) ctx += ' · reprise le ' + CC.util.frDate(per.reprise);
+    else if (per.suivantes) ctx += ' · ' + per.suivantes.nom.charAt(0).toLowerCase() + per.suivantes.nom.slice(1) + ' dès le ' + CC.util.frDate(per.suivantes.debut);
+    const cell = (h, c, j) => {
+      const g = psGrille(h, c === 'annee' ? 'scolaire' : c);
+      const pl = g && g[j];
+      return pl && pl.length ? pl.map(([a, b]) => `<span class="ps-hor-p">${psHeure(a)}–${psHeure(b)}</span>`).join(' ') : '<span class="ps-hor-x">fermé</span>';
+    };
+    const grilles = s.horaires.map((h) => {
+      // Mêmes horaires toute l'année : une seule colonne.
+      const cols = !h.ete && JSON.stringify(h.scolaire) === JSON.stringify(h.vacances) ? [['annee', 'Toute l’année']]
+        : [['scolaire', 'Période scolaire'], ['vacances', 'Vacances']].concat(h.ete ? [['ete', 'Juillet-août']] : []);
+      const actif = cols[0][0] === 'annee' ? 'annee' : (per.cle === 'ete' && !h.ete ? 'vacances' : per.cle);
+      const lignes = [1, 2, 3, 4, 5, 6, 0].map((j) => `<tr${j === auj.getDay() ? ' class="ps-hor-auj"' : ''}><th>${PS_JOURS[j]}</th>`
+        + cols.map(([c]) => `<td${c === actif ? ' class="ps-hor-act"' : ''}>${cell(h, c, j)}</td>`).join('') + '</tr>').join('');
+      return `${s.horaires.length > 1 ? `<div class="ps-hor-quoi">${psEsc(h.quoi)}</div>` : ''}
+        <table class="ps-hor"><thead><tr><th></th>${cols.map(([c, l]) => `<th${c === actif ? ' class="ps-hor-act"' : ''}>${l}</th>`).join('')}</tr></thead><tbody>${lignes}</tbody></table>`;
+    }).join('');
+    return `<div class="ps-bloc"><h4>Horaires</h4>
+      <p class="ps-ouv-fiche ${o.ouvert ? 'on' : 'off'}">${psEsc(psOuvTexte(o))}${o.quoi && s.horaires.length > 1 ? ' · ' + psEsc(o.quoi) : ''}</p>
+      <p class="ps-note">${psEsc(ctx)}${per.cle === 'ferie' ? ' : fermé' : ''}</p>
+      ${grilles}${note}${src}
+      <p class="ps-note">Relevés le ${CC.util.frDate(s.verifieLe)} ; les horaires changent les jours de sortie et à certaines périodes.</p></div>`;
+  },
+
   // Raccourci : les espaces jeunes recensés autour de Lagny, dans la liste.
   voirEspacesJeunes77() {
-    Object.assign(this._filtres, { texte: '', famille: 'animation-jeunesse', public: 'all', secteur: 'dep:77', statut: 'all', relation: 'all' });
+    Object.assign(this._filtres, { texte: '', famille: 'animation-jeunesse', public: 'all', secteur: 'dep:77', statut: 'all', relation: 'all', ouvertes: false });
+    const ouv = document.getElementById('psOuvertes');
+    if (ouv) ouv.checked = false;
     this._tri = 'ville';
     const val = { psSearch: '', psFamille: 'animation-jeunesse', psPublic: 'all', psSecteur: 'dep:77', psStatut: 'all', psRelation: 'all', psTri: 'ville' };
     Object.entries(val).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
@@ -1521,6 +1564,18 @@ CC.prospection = {
       if (el) el.addEventListener('change', () => { this._filtres[cle] = el.value; this.renderStructures(); });
     });
     document.getElementById('psTri').addEventListener('change', (e) => { this._tri = e.target.value; this.renderStructures(); });
+    const ouvertes = document.getElementById('psOuvertes');
+    if (ouvertes) ouvertes.addEventListener('change', () => { this._filtres.ouvertes = ouvertes.checked; this.renderStructures(); });
+    // Ouvert / fermé suit l'heure : la liste et la fiche ouverte se remettent
+    // à jour chaque minute tant que l'onglet est affiché.
+    setInterval(() => {
+      const tab = document.getElementById('tab-reseau');
+      if (document.hidden || !tab || !tab.classList.contains('active')) return;
+      if (this._sub === 'structures') this.renderStructures();
+      const modal = document.getElementById('modalProspection');
+      const bloc = modal && !modal.classList.contains('hidden') && this._sel && this.base().parId[this._sel];
+      if (bloc && bloc.horaires) { const el = modal.querySelector('.ps-ouv-fiche'); const o = psOuverture(bloc); if (el && o) { el.textContent = psOuvTexte(o) + (o.quoi && bloc.horaires.length > 1 ? ' · ' + o.quoi : ''); el.className = 'ps-ouv-fiche ' + (o.ouvert ? 'on' : 'off'); } }
+    }, 60000);
     document.getElementById('psExport').addEventListener('click', () => this.exportCsv());
 
     document.getElementById('psBody').addEventListener('click', (e) => {
@@ -1638,6 +1693,69 @@ function psMemeType(a, b) {
   if (!a.length && !b.length) return true;
   return a.some((t) => b.includes(t));
 }
+// ---- Horaires d'ouverture (structures qui les publient) -------------------
+// Chaque grille a une version « période scolaire », « vacances » et parfois
+// « été » : la bonne est choisie d'après le calendrier de la zone C et les
+// jours fériés (prospection-jeunesse77.js). Heure de l'appareil.
+const PS_JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const PS_JOURS_C = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+function psHeure(m) { return Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : ''); }
+function psPeriode(iso) {
+  const cal = window.CC_CALENDRIER_SCOLAIRE;
+  if (!cal) return { cle: 'scolaire', nom: 'Période scolaire' };
+  if (cal.feries.includes(iso)) return { cle: 'ferie', nom: 'Jour férié' };
+  const v = cal.vacances.find(([a, b]) => iso >= a && iso < b);
+  if (v) return { cle: /été/.test(v[2]) ? 'ete' : 'vacances', nom: v[2], debut: v[0], reprise: v[1] };
+  const suiv = cal.vacances.find(([a]) => a > iso);
+  return { cle: 'scolaire', nom: 'Période scolaire', suivantes: suiv ? { nom: suiv[2], debut: suiv[0] } : null };
+}
+function psGrille(h, cle) { return cle === 'ferie' ? null : (h[cle] || (cle === 'ete' ? h.vacances : null)); }
+function psPlages(h, date) {
+  const g = psGrille(h, psPeriode(CC.util.toISO(date)).cle);
+  return (g && g[date.getDay()]) || [];
+}
+// État à l'instant `now` : null si les horaires ne sont pas connus ; sinon
+// ouvert (jusqu'à quand) ou fermé (et la prochaine ouverture sur 3 semaines).
+function psOuverture(s, now) {
+  if (!s || !s.horaires || !s.horaires.length) return null;
+  now = now || new Date();
+  const m = now.getHours() * 60 + now.getMinutes();
+  let o = null;
+  s.horaires.forEach((h) => psPlages(h, now).forEach(([a, b]) => {
+    if (m >= a && m < b && (!o || b > o.fin)) o = { ouvert: true, quoi: h.quoi, fin: b };
+  }));
+  if (o) return o;
+  for (let j = 0; j < 21; j++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + j);
+    let best = null;
+    s.horaires.forEach((h) => psPlages(h, d).forEach(([a]) => {
+      if ((j > 0 || a > m) && (!best || a < best.debut)) best = { ouvert: false, jours: j, date: d, debut: a, quoi: h.quoi };
+    }));
+    if (best) return best;
+  }
+  return { ouvert: false };
+}
+function psOuvTexte(o) {
+  if (!o) return '';
+  if (o.ouvert) return 'Ouvert jusqu’à ' + psHeure(o.fin);
+  if (!o.date) return 'Fermé';
+  const quand = o.jours === 0 ? 'à ' : o.jours === 1 ? 'demain ' : o.jours < 7 ? PS_JOURS_C[o.date.getDay()] + ' '
+    : 'le ' + o.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ';
+  return 'Fermé · ouvre ' + quand + psHeure(o.debut);
+}
+// Quand une structure a plusieurs grilles (accueil des jeunes + bureau), on
+// précise laquelle est ouverte si ce n'est pas la première.
+function psOuvQuoi(s, o) {
+  if (!o || !o.quoi || s.horaires.length < 2 || o.quoi === s.horaires[0].quoi) return '';
+  const q = o.quoi.replace(/\s*\(.*\)/, '');
+  return ' (' + q.charAt(0).toLowerCase() + q.slice(1) + ')';
+}
+function psOuvHtml(s) {
+  const o = psOuverture(s);
+  if (!o) return '';
+  return `<div class="ps-ouv ${o.ouvert ? 'on' : 'off'}">${psEsc(psOuvTexte(o) + psOuvQuoi(s, o))}</div>`;
+}
+
 function psTel(t) {
   const d = String(t || '').replace(/\D/g, '');
   return d.length === 10 ? d.replace(/(\d\d)(?=\d)/g, '$1 ').trim() : (t || '');

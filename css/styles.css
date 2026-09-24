@@ -2180,6 +2180,25 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .ps-sub { color: var(--soft); font-size: 11.5px; margin-top: 2px; }
 .ps-pub { color: var(--muted); font-size: 12px; max-width: 250px; }
 .ps-tel { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Ouvert / fermé (structures dont on connaît les horaires) */
+#psBody tr.ps-ferme td { opacity: .5; }
+#psBody tr.ps-ferme:hover td { opacity: .8; }
+.ps-ouv { font-size: 11.5px; font-weight: 600; margin-top: 3px; white-space: nowrap; }
+.ps-ouv.on { color: var(--green); }
+.ps-ouv.off { color: var(--muted); font-weight: 500; }
+.ps-ouv-fiche { margin: 0 0 4px; font-weight: 700; }
+.ps-ouv-fiche.on { color: var(--green); }
+.ps-ouv-fiche.off { color: var(--muted); }
+.ps-hor { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ps-hor th, .ps-hor td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.ps-hor thead th { color: var(--soft); font-weight: 600; font-size: 11.5px; }
+.ps-hor tbody th { color: var(--muted); font-weight: 500; width: 84px; }
+.ps-hor .ps-hor-act { background: var(--accent-soft); }
+.ps-hor thead .ps-hor-act { color: var(--accent-strong); }
+.ps-hor tr.ps-hor-auj th, .ps-hor tr.ps-hor-auj td { font-weight: 700; color: var(--text); }
+.ps-hor-x { color: var(--soft); font-weight: 400; }
+.ps-hor-p { white-space: nowrap; }
+.ps-hor-quoi { margin-top: 12px; font-weight: 600; font-size: 12.5px; }
 
 /* Marqueur « déjà facturé » : discret, il ne doit pas concurrencer le nom. */
 .ps-client {
