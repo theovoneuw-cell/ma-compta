@@ -307,7 +307,7 @@ CC.initMobileNav = function () {
   const main = document.querySelector('main');
   if (!main) return;
   // Zones à ignorer : elles gèrent leur propre défilement/geste horizontal.
-  const EXCLUDE = '.leaflet-container, .table-wrap, .chart-box, .subtabs, .dp, input, textarea, select, .mobile-sheet';
+  const EXCLUDE = '.leaflet-container, .table-wrap, .chart-box, .subtabs, .dp, input, textarea, select, .mobile-sheet, .ps-pipe, .ps-pipe-nav';
   let x0 = null, y0 = null, tracking = false, dragPanel = null, horiz = false;
   let edgeLeft = false, edgeRight = false;
 

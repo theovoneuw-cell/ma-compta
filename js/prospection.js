@@ -24,6 +24,8 @@ const PS_STATUTS = [
   ['refus', 'Sans suite'],
 ];
 const PS_STATUT_LIB = Object.fromEntries(PS_STATUTS);
+// Colonnes du tableau « Démarches en cours ».
+const PS_PIPE_COLS = [['contacte', 'Contacté'], ['relance', 'À relancer'], ['rdv', 'Rendez-vous'], ['devis', 'Devis envoyé'], ['gagne', 'Actée']];
 
 // Domaines retirés du Réseau : hors de ton champ (hôpitaux, domicile, santé
 // mentale, insertion, prévention, formation). Leurs établissements FINESS ne
@@ -581,29 +583,42 @@ CC.prospection = {
       }
     }
 
-    // Démarches en cours, par étape
+    // Démarches en cours, par étape : un tableau à la Trello. On glisse une
+    // carte d'une colonne à l'autre (souris, ou appui long au doigt) pour
+    // changer d'étape ; la croix la retire de la liste (annulable).
     const pipe = document.getElementById('psPipeline');
     if (pipe) {
-      const cols = [['contacte', 'Contacté'], ['relance', 'À relancer'], ['rdv', 'Rendez-vous'], ['devis', 'Devis envoyé'], ['gagne', 'Actée']];
-      pipe.innerHTML = cols.map(([k, l]) => {
+      const nav = document.getElementById('psPipeNav');
+      if (nav) {
+        nav.innerHTML = PS_PIPE_COLS.map(([k, l], i) => `<button type="button" class="ps-pipe-go" data-col-go="${i}">
+          <span class="stpill ps-${k}">${l}</span><b>${n(k)}</b></button>`).join('');
+      }
+      pipe.innerHTML = PS_PIPE_COLS.map(([k, l]) => {
         const items = (par[k] || []).slice().sort((a, x) => {
           const da = ((fiches[a.id] || {}).histo || []).slice(-1)[0], dx = ((fiches[x.id] || {}).histo || []).slice(-1)[0];
           return ((dx && dx.date) || '').localeCompare((da && da.date) || '');
         });
-        return `<div class="ps-col">
+        return `<div class="ps-col" data-col="${k}">
           <div class="ps-col-t"><span class="stpill ps-${k}">${l}</span><span class="ps-col-n">${items.length}</span></div>
-          ${items.slice(0, 12).map((s) => {
+          <div class="ps-col-cartes">
+          ${items.slice(0, 40).map((s) => {
             const f = fiches[s.id] || {};
             const der = (f.histo || []).slice(-1)[0];
-            return `<button type="button" class="ps-carte" data-ouvrir="${psEsc(s.id)}">
-              <span class="ps-nom">${psEsc(psTitre(s.nom))}</span>
+            const nom = psTitre(s.nom);
+            return `<div class="ps-carte" role="button" tabindex="0" data-carte="${psEsc(s.id)}" data-ouvrir="${psEsc(s.id)}"
+                aria-label="${psEsc(nom)} — ${psEsc(l)}. Flèches gauche et droite pour changer d’étape.">
+              <button type="button" class="ps-carte-x" data-retirer="${psEsc(s.id)}" title="Retirer des démarches en cours" aria-label="Retirer ${psEsc(nom)} des démarches en cours">×</button>
+              <span class="ps-nom">${psEsc(nom)}</span>
               <span class="ps-sub">${psEsc(psTitre(s.ville || ''))}${f.relanceLe ? ' · relance ' + CC.util.frDate(f.relanceLe) : ''}</span>
               ${der ? `<span class="ps-carte-der">${CC.util.frDate(der.date)} — ${psEsc(der.texte.slice(0, 60))}</span>` : ''}
-            </button>`;
-          }).join('') || '<p class="ps-col-vide">—</p>'}
-          ${items.length > 12 ? `<p class="ps-col-vide">+ ${items.length - 12} autre(s) : filtre « ${l} » dans Structures.</p>` : ''}
+            </div>`;
+          }).join('') || '<p class="ps-col-vide">Glisse une carte ici</p>'}
+          ${items.length > 40 ? `<p class="ps-col-vide">+ ${items.length - 40} autre(s) : filtre « ${l} » dans Structures.</p>` : ''}
+          </div>
         </div>`;
       }).join('');
+      this._majAnnul();
+      this._majPipeNav();
     }
 
     // Clients à recontacter : plus rien de facturé ni de prévu depuis 4 mois.
@@ -624,6 +639,207 @@ CC.prospection = {
         </div>`;
       }).join('') : '<p class="ps-vide">Tous tes clients ont eu une facture ou une vente prévue ces 4 derniers mois.</p>';
     }
+  },
+
+  // ---- Tableau des démarches : déplacer, retirer, glisser -----------------
+  deplacer(id, statut) {
+    const f = this.fiche(id);
+    if ((f.statut || 'aucun') === statut) return false;
+    f.statut = statut;
+    f.histo.push({ date: CC.util.toISO(new Date()), texte: 'Étape : ' + PS_STATUT_LIB[statut] });
+    if (statut === 'refus' || statut === 'gagne') f.relanceLe = '';
+    this._persist();
+    this.renderSuivi();
+    return true;
+  },
+  // Retire la structure du tableau (retour à « À contacter ») sans effacer son
+  // journal ni ses notes ; « Annuler » remet tout comme avant pendant 8 s.
+  retirerDemarche(id) {
+    const s = this.base().parId[id];
+    const f = this.fiche(id);
+    clearTimeout(this._annulT);
+    this._annul = { id, nom: s ? psTitre(s.nom) : '', statut: f.statut || 'aucun', relanceLe: f.relanceLe || '', n: f.histo.length };
+    f.statut = 'aucun';
+    f.relanceLe = '';
+    f.histo.push({ date: CC.util.toISO(new Date()), texte: 'Retirée des démarches en cours' });
+    this._persist();
+    this.renderSuivi();
+    this._annulT = setTimeout(() => { this._annul = null; this._majAnnul(); }, 8000);
+  },
+  annulerRetrait() {
+    const a = this._annul;
+    if (!a) return;
+    const f = this.fiche(a.id);
+    f.statut = a.statut;
+    f.relanceLe = a.relanceLe;
+    f.histo.length = a.n;
+    this._annul = null;
+    clearTimeout(this._annulT);
+    this._persist();
+    this.renderSuivi();
+  },
+  _majAnnul() {
+    const el = document.getElementById('psPipeAnnul');
+    if (!el) return;
+    const a = this._annul;
+    el.classList.toggle('hidden', !a);
+    if (a) el.innerHTML = `<span><b>${psEsc(a.nom)}</b> retirée des démarches en cours.</span><button type="button" class="mini-btn" data-annuler>Annuler</button>`;
+  },
+  // Téléphone : une colonne à la fois ; les pastilles du haut montrent laquelle
+  // est affichée et y mènent d'un geste.
+  _majPipeNav() {
+    const pipe = document.getElementById('psPipeline');
+    const nav = document.getElementById('psPipeNav');
+    if (!pipe || !nav) return;
+    const col = pipe.querySelector('.ps-col');
+    const i = col ? Math.round(pipe.scrollLeft / (col.offsetWidth + 10)) : 0;
+    nav.querySelectorAll('.ps-pipe-go').forEach((b, j) => b.classList.toggle('on', j === i));
+  },
+  _allerCol(i) {
+    const pipe = document.getElementById('psPipeline');
+    const col = pipe && pipe.querySelectorAll('.ps-col')[i];
+    if (col) pipe.scrollTo({ left: col.offsetLeft - pipe.firstElementChild.offsetLeft, behavior: 'smooth' });
+  },
+
+  // Glisser-déposer. Souris : on attrape la carte et on la lâche sur une autre
+  // colonne. Doigt : appui long (≈ 0,3 s), puis on glisse ; un geste immédiat
+  // reste un défilement normal. Près des bords du tableau, il défile tout seul.
+  _initGlisser() {
+    const pipe = document.getElementById('psPipeline');
+    if (!pipe || pipe._glisser) return;
+    pipe._glisser = true;
+    let d = null;
+    const colSous = (x, y) => {
+      const el = document.elementFromPoint(x, y);
+      return el && el.closest('#psPipeline .ps-col');
+    };
+    const placer = () => {
+      d.fantome.style.transform = `translate(${d.x - d.dx}px, ${d.y - d.dy}px) rotate(2deg)`;
+      const c = colSous(d.x, d.y);
+      pipe.querySelectorAll('.ps-col.ps-cible').forEach((e) => { if (e !== c) e.classList.remove('ps-cible'); });
+      if (c && c.dataset.col !== d.depart) c.classList.add('ps-cible');
+      d.col = c;
+    };
+    const defiler = () => {
+      if (!d || !d.fantome) return;
+      // Plus le doigt est près du bord, plus ça défile (jusqu'à ~8 px par image).
+      const r = pipe.getBoundingClientRect();
+      const zone = 48;
+      const g = d.x - r.left, dr = r.right - d.x;
+      const v = g < zone ? -Math.ceil(8 * (1 - Math.max(0, g) / zone)) : (dr < zone ? Math.ceil(8 * (1 - Math.max(0, dr) / zone)) : 0);
+      if (v) { pipe.scrollLeft += v; placer(); }
+      d.raf = requestAnimationFrame(defiler);
+    };
+    const demarrer = () => {
+      const r = d.carte.getBoundingClientRect();
+      const g = d.carte.cloneNode(true);
+      g.classList.add('ps-fantome');
+      g.classList.remove('ps-appui');
+      g.style.width = r.width + 'px';
+      d.dx = d.x - r.left; d.dy = d.y - r.top;
+      document.body.appendChild(g);
+      d.fantome = g;
+      d.carte.classList.add('ps-drag-src');
+      d.carte.classList.remove('ps-appui');
+      pipe.classList.add('ps-glisse');
+      document.body.classList.add('ps-glisse-page');
+      try { window.getSelection().removeAllRanges(); } catch (_) {}
+      placer();
+      d.raf = requestAnimationFrame(defiler);
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (_) {} }
+    };
+    const finir = (ok) => {
+      if (!d) return;
+      const x = d; d = null;
+      clearTimeout(x.timer);
+      cancelAnimationFrame(x.raf);
+      x.carte.classList.remove('ps-drag-src', 'ps-appui');
+      pipe.classList.remove('ps-glisse');
+      document.body.classList.remove('ps-glisse-page');
+      pipe.querySelectorAll('.ps-cible').forEach((e) => e.classList.remove('ps-cible'));
+      if (!x.fantome) return;
+      x.fantome.remove();
+      this._vientDeGlisser = Date.now();
+      const st = ok && x.col && x.col.dataset.col;
+      if (st && this.deplacer(x.id, st)) CC.toast('Étape : ' + PS_STATUT_LIB[st], 'ok');
+    };
+    const saisir = (carte, cx, cy, touch) => {
+      d = { id: carte.dataset.carte, carte, x: cx, y: cy, x0: cx, y0: cy, touch, depart: carte.closest('.ps-col').dataset.col };
+    };
+
+    // Souris / stylet
+    pipe.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' || e.button !== 0) return;
+      const carte = e.target.closest('.ps-carte');
+      if (!carte || e.target.closest('.ps-carte-x')) return;
+      saisir(carte, e.clientX, e.clientY, false);
+      const bouge = (ev) => {
+        if (!d) return;
+        d.x = ev.clientX; d.y = ev.clientY;
+        if (!d.fantome) { if (Math.hypot(d.x - d.x0, d.y - d.y0) < 6) return; demarrer(); }
+        ev.preventDefault();
+        placer();
+      };
+      const lache = (ev) => {
+        window.removeEventListener('pointermove', bouge);
+        window.removeEventListener('pointerup', lache);
+        window.removeEventListener('pointercancel', lache);
+        finir(ev.type === 'pointerup');
+      };
+      window.addEventListener('pointermove', bouge);
+      window.addEventListener('pointerup', lache);
+      window.addEventListener('pointercancel', lache);
+    });
+
+    // Doigt
+    pipe.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { finir(false); return; }
+      const carte = e.target.closest('.ps-carte');
+      if (!carte || e.target.closest('.ps-carte-x')) return;
+      const t = e.touches[0];
+      saisir(carte, t.clientX, t.clientY, true);
+      carte.classList.add('ps-appui');
+      d.timer = setTimeout(() => { if (d && !d.fantome) demarrer(); }, 320);
+    }, { passive: true });
+    pipe.addEventListener('touchmove', (e) => {
+      if (!d || !d.touch) return;
+      const t = e.touches[0];
+      d.x = t.clientX; d.y = t.clientY;
+      if (!d.fantome) {
+        // Le doigt a bougé avant la fin de l'appui long : c'est un défilement.
+        if (Math.hypot(d.x - d.x0, d.y - d.y0) > 8) { clearTimeout(d.timer); d.carte.classList.remove('ps-appui'); d = null; }
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      placer();
+    }, { passive: false });
+    pipe.addEventListener('touchend', (e) => {
+      if (!d || !d.touch) return;
+      if (d.fantome && e.cancelable) e.preventDefault();   // pas de « clic » après un glisser
+      finir(true);
+    });
+    pipe.addEventListener('touchcancel', () => { if (d && d.touch) finir(false); });
+    pipe.addEventListener('contextmenu', (e) => { if (e.target.closest('.ps-carte')) e.preventDefault(); });
+
+    // Clavier : Entrée ouvre la fiche, flèches gauche / droite changent d'étape.
+    pipe.addEventListener('keydown', (e) => {
+      const carte = e.target.closest('.ps-carte');
+      if (!carte || e.target.closest('.ps-carte-x')) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openFiche(carte.dataset.carte); return; }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const i = PS_PIPE_COLS.findIndex(([k]) => k === carte.closest('.ps-col').dataset.col);
+      const j = i + (e.key === 'ArrowRight' ? 1 : -1);
+      if (j < 0 || j >= PS_PIPE_COLS.length) return;
+      e.preventDefault();
+      const id = carte.dataset.carte;
+      if (this.deplacer(id, PS_PIPE_COLS[j][0])) {
+        const el = pipe.querySelector(`.ps-carte[data-carte="${CSS.escape(id)}"]`);
+        if (el) el.focus();
+      }
+    });
+
+    let t = null;
+    pipe.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(() => this._majPipeNav(), 60); }, { passive: true });
   },
 
   // ---- Structures --------------------------------------------------------
@@ -1536,6 +1752,10 @@ CC.prospection = {
     if (suivi) suivi.addEventListener('click', (e) => {
       const t = e.target.closest('button, [data-ouvrir]');
       if (!t) return;
+      if (Date.now() - (this._vientDeGlisser || 0) < 400) return;   // fin d'un glisser, pas un clic
+      if (t.dataset.retirer) { this.retirerDemarche(t.dataset.retirer); return; }
+      if (t.hasAttribute('data-annuler')) { this.annulerRetrait(); return; }
+      if (t.dataset.colGo != null) { this._allerCol(+t.dataset.colGo); return; }
       const auj = CC.util.toISO(new Date());
       if (t.dataset.appel) { psOuvrir('tel:' + t.dataset.appel); return; }
       if (t.dataset.ecrire) {
@@ -1561,6 +1781,7 @@ CC.prospection = {
       if (t.dataset.client) { this._ouvrirClient(t.dataset.client); return; }
       if (t.dataset.ouvrir) this.openFiche(t.dataset.ouvrir);
     });
+    this._initGlisser();
     ['psAjout', 'psAjout2'].forEach((id) => { const el = document.getElementById(id); if (el) el.addEventListener('click', () => this.editerPerso(null)); });
     document.querySelectorAll('#tab-reseau [data-ej77]').forEach((el) => el.addEventListener('click', () => this.voirEspacesJeunes77()));
     const imp = document.getElementById('psImportClients');

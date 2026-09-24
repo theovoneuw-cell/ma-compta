@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mufl7dqt" />
+  <link rel="stylesheet" href="css/styles.css?b=muflt9tu" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mufl7dqt"></script>
+  <script src="js/theme.js?b=muflt9tu"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -546,7 +546,9 @@
         </div>
         <div class="card">
           <h3>Démarches en cours</h3>
-          <p class="card-sub">Chaque structure à son étape. Clique une carte pour ouvrir sa fiche.</p>
+          <p class="card-sub">Glisse une carte vers une autre colonne pour changer d’étape (au doigt : appui long, puis glisse). La croix la retire de la liste. Clique une carte pour ouvrir sa fiche.</p>
+          <div id="psPipeNav" class="ps-pipe-nav"></div>
+          <div id="psPipeAnnul" class="ps-pipe-annul hidden" role="status"></div>
           <div id="psPipeline" class="ps-pipe"></div>
         </div>
         <div class="card">
@@ -1468,40 +1470,40 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mufl7dqt"></script>
-  <script src="js/drive-store.js?b=mufl7dqt"></script>
-  <script src="js/api-web.js?b=mufl7dqt"></script>
-  <script src="js/settings.js?b=mufl7dqt"></script>
-  <script src="js/datepicker.js?b=mufl7dqt"></script>
-  <script src="js/stats.js?b=mufl7dqt"></script>
-  <script src="js/charts.js?b=mufl7dqt"></script>
-  <script src="js/import.js?b=mufl7dqt"></script>
-  <script src="js/pdfimport.js?b=mufl7dqt"></script>
-  <script src="js/clients.js?b=mufl7dqt"></script>
-  <script src="js/factures.js?b=mufl7dqt"></script>
-  <script src="js/fiscal.js?b=mufl7dqt"></script>
-  <script src="js/bilan.js?b=mufl7dqt"></script>
-  <script src="js/ai.js?b=mufl7dqt"></script>
-  <script src="js/connections.js?b=mufl7dqt"></script>
-  <script src="js/agenda.js?b=mufl7dqt"></script>
-  <script src="js/signature.js?b=mufl7dqt"></script>
-  <script src="js/mailbox.js?b=mufl7dqt"></script>
-  <script src="js/trajets.js?b=mufl7dqt"></script>
+  <script src="js/google-auth-web.js?b=muflt9tu"></script>
+  <script src="js/drive-store.js?b=muflt9tu"></script>
+  <script src="js/api-web.js?b=muflt9tu"></script>
+  <script src="js/settings.js?b=muflt9tu"></script>
+  <script src="js/datepicker.js?b=muflt9tu"></script>
+  <script src="js/stats.js?b=muflt9tu"></script>
+  <script src="js/charts.js?b=muflt9tu"></script>
+  <script src="js/import.js?b=muflt9tu"></script>
+  <script src="js/pdfimport.js?b=muflt9tu"></script>
+  <script src="js/clients.js?b=muflt9tu"></script>
+  <script src="js/factures.js?b=muflt9tu"></script>
+  <script src="js/fiscal.js?b=muflt9tu"></script>
+  <script src="js/bilan.js?b=muflt9tu"></script>
+  <script src="js/ai.js?b=muflt9tu"></script>
+  <script src="js/connections.js?b=muflt9tu"></script>
+  <script src="js/agenda.js?b=muflt9tu"></script>
+  <script src="js/signature.js?b=muflt9tu"></script>
+  <script src="js/mailbox.js?b=muflt9tu"></script>
+  <script src="js/trajets.js?b=muflt9tu"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mufl7dqt"></script>
-  <script src="js/prospection-jeunesse77.js?b=mufl7dqt"></script>
-  <script src="js/prospection.js?b=mufl7dqt"></script>
-  <script src="js/notes.js?b=mufl7dqt"></script>
+  <script src="js/prospection-base.js?b=muflt9tu"></script>
+  <script src="js/prospection-jeunesse77.js?b=muflt9tu"></script>
+  <script src="js/prospection.js?b=muflt9tu"></script>
+  <script src="js/notes.js?b=muflt9tu"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mufl7dqt"></script>
-  <script src="js/recherche.js?b=mufl7dqt"></script>
-  <script src="js/today.js?b=mufl7dqt"></script>
-  <script src="js/privacy.js?b=mufl7dqt"></script>
-  <script src="js/storage.js?b=mufl7dqt"></script>
-  <script src="js/rappels.js?b=mufl7dqt"></script>
-  <script src="js/notifs.js?b=mufl7dqt"></script>
-  <script src="js/app.js?b=mufl7dqt"></script>
+  <script src="js/coffre.js?b=muflt9tu"></script>
+  <script src="js/recherche.js?b=muflt9tu"></script>
+  <script src="js/today.js?b=muflt9tu"></script>
+  <script src="js/privacy.js?b=muflt9tu"></script>
+  <script src="js/storage.js?b=muflt9tu"></script>
+  <script src="js/rappels.js?b=muflt9tu"></script>
+  <script src="js/notifs.js?b=muflt9tu"></script>
+  <script src="js/app.js?b=muflt9tu"></script>
 </body>
 </html>

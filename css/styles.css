@@ -2670,13 +2670,30 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 
 /* Démarches par étape */
 .ps-pipe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.ps-col { background: var(--surface-2); border-radius: var(--r-md); padding: 10px; min-height: 90px; }
+.ps-col { background: var(--surface-2); border-radius: var(--r-md); padding: 10px; min-height: 90px; transition: background .15s ease, box-shadow .15s ease; }
+.ps-col-cartes { min-height: 54px; }
+.ps-col.ps-cible { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
 .ps-col-t { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .ps-col-n { font-size: 12px; font-weight: 700; color: var(--muted); }
 .ps-col-vide { font-size: 12px; color: var(--soft); margin: 6px 2px; }
-.ps-carte { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 6px; cursor: pointer; font-family: inherit; color: var(--ink); }
+.ps-carte { position: relative; display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 30px 8px 10px; margin-bottom: 6px; cursor: grab; font-family: inherit; color: var(--ink);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .25s ease, box-shadow .25s ease, opacity .15s ease; }
 .ps-carte:hover { border-color: var(--accent); }
+.ps-carte:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ps-carte .ps-nom { font-size: 12.5px; }
+.ps-carte-x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--soft);
+  font-size: 17px; line-height: 1; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; }
+.ps-carte-x:hover, .ps-carte-x:focus-visible { background: var(--red-soft); color: var(--red); }
+.ps-carte.ps-appui { transform: scale(.97); box-shadow: 0 0 0 2px var(--accent-soft); }
+.ps-carte.ps-drag-src { opacity: .35; }
+.ps-fantome { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; pointer-events: none; cursor: grabbing; border-color: var(--accent);
+  box-shadow: 0 14px 34px rgba(20, 16, 50, .28); opacity: .96; transition: none; }
+.ps-glisse { scroll-snap-type: none !important; }
+.ps-glisse-page, .ps-glisse-page * { -webkit-user-select: none !important; user-select: none !important; cursor: grabbing !important; }
+.ps-glisse .ps-carte { cursor: grabbing; }
+.ps-pipe-nav { display: none; }
+.ps-pipe-annul { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 8px 10px 8px 14px;
+  border-radius: var(--r-sm); background: var(--surface-2); font-size: 13px; }
 .ps-carte-der { font-size: 11px; color: var(--muted); line-height: 1.35; }
 
 /* Clients à recontacter */
@@ -2718,7 +2735,19 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   .ps-tete-act .btn { flex: 1; }
   .ps-todo { grid-template-columns: 1fr; gap: 6px; }
   .ps-todo-act { justify-content: flex-start; }
-  .ps-pipe { grid-template-columns: repeat(5, 78vw); margin: 0 -4px; }
+  .ps-pipe { grid-template-columns: repeat(5, 84%); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 4px; }
+  .ps-pipe::-webkit-scrollbar { display: none; }
+  .ps-col { scroll-snap-align: start; }
+  .ps-carte { padding: 11px 38px 11px 12px; }
+  .ps-carte .ps-nom { font-size: 14px; }
+  .ps-carte-x { width: 34px; height: 34px; top: 3px; right: 3px; font-size: 20px; }
+  .ps-pipe-nav { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 10px; scrollbar-width: none; }
+  .ps-pipe-nav::-webkit-scrollbar { display: none; }
+  .ps-pipe-go { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface);
+    border-radius: 20px; padding: 3px 10px 3px 3px; font-family: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .ps-pipe-go b { font-variant-numeric: tabular-nums; }
+  .ps-pipe-go.on { border-color: var(--accent); color: var(--ink); }
   .ps-fid { grid-template-columns: 1fr auto; }
   .ps-fid .ps-quand { grid-column: 1; }
   .ps-cols { grid-template-columns: 1fr; }
