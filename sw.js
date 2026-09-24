@@ -11,7 +11,7 @@
 // Version du cache : à incrémenter à chaque refonte visuelle. L'ancien cache est
 // purgé à l'activation, ce qui évite de servir un mélange d'anciens et de
 // nouveaux fichiers après une mise à jour importante.
-const CACHE = 'macompta-mue3gano';
+const CACHE = 'macompta-mufg2x25';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
@@ -24,7 +24,7 @@ const SHELL = [
   'js/settings.js', 'js/datepicker.js', 'js/stats.js', 'js/charts.js', 'js/import.js', 'js/pdfimport.js',
   'js/clients.js', 'js/factures.js', 'js/fiscal.js', 'js/bilan.js', 'js/ai.js', 'js/connections.js',
   'js/agenda.js', 'js/signature.js', 'js/mailbox.js', 'js/trajets.js', 'js/notes.js', 'js/today.js',
-  'js/prospection-base.js', 'js/prospection.js',
+  'js/prospection-base.js', 'js/prospection-jeunesse77.js', 'js/prospection.js',
   // Outils de bureau : leurs onglets sont masqués sur téléphone, mais les
   // fichiers sont chargés par index.html — sans eux, la page casse hors ligne.
   'js/coffre.js', 'js/recherche.js',

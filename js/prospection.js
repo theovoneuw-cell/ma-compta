@@ -178,6 +178,29 @@ Bien cordialement,
 {moi}
 {montel} — {monmail}`,
   },
+  {
+    id: 'm6',
+    nom: 'Premier contact — espace jeunes (musiques urbaines)',
+    objet: 'Ateliers musiques urbaines pour vos jeunes — {structure}',
+    corps: `Bonjour,
+
+Je suis {moi}, mixeur son et sound designer. Depuis 2022, j’anime des Ateliers de Création de Musiques Urbaines (centres de loisirs, fondations, établissements) : écriture de textes, beatmaking, pose de voix et enregistrement, jusqu’au morceau fini que les jeunes repartent écouter chez eux.
+
+Je vous écris parce que vous accueillez à {ville} exactement le public avec qui ces ateliers prennent : des jeunes qui écoutent du rap et de la musique urbaine toute la journée et qui ont envie de passer de l’autre côté, sans prérequis musical.
+
+J’apporte tout le matériel (ordinateur, micro, casques, enceintes) ; il suffit d’une salle au calme. Plusieurs formats sont possibles :
+• un stage pendant les vacances scolaires (3 à 5 demi-journées, un morceau enregistré à la fin) ;
+• un atelier régulier le mercredi ou le samedi sur un trimestre ;
+• une séance découverte, pour tester avec un groupe.
+
+Seriez-vous d’accord pour en parler quelques minutes au téléphone ? Je peux aussi passer vous présenter le projet et faire écouter des morceaux créés lors d’ateliers précédents.
+
+Bien cordialement,
+
+{moi}
+{montel} — {monmail}
+{monsite}`,
+  },
 ];
 
 CC.prospection = {
@@ -205,6 +228,11 @@ CC.prospection = {
     if (!window.CC_PROSPECTION_JSON) return null;
     const b = JSON.parse(window.CC_PROSPECTION_JSON);
     b.structures = b.structures.filter((s) => !PS_FAMILLES_HORS.has(s.famille));
+    // Espaces jeunes du 77 (hors FINESS, recensés à la main) : mêmes champs
+    // qu'une structure FINESS, plus un second numéro, une note et leur source.
+    const ej77 = window.CC_JEUNESSE_77 || [];
+    b.structures = b.structures.concat(ej77);
+    ej77.forEach((s) => { if (!b.secteurs.includes(s.secteur)) b.secteurs.push(s.secteur); });
     const gardees = new Set(b.structures.map((s) => s.id));
     // Gestionnaires : seulement leurs établissements restants, et ceux qui en ont.
     b.gestionnaires = b.gestionnaires.map((g) => {
@@ -248,6 +276,13 @@ CC.prospection = {
     if (!p.perso) p.perso = {};
     if (!p.reglages) p.reglages = {};
     if (!Array.isArray(p.modeles) || !p.modeles.length) p.modeles = JSON.parse(JSON.stringify(PS_MODELES));
+    // Modèles ajoutés après coup : proposés une fois, sans ressusciter ceux que tu as supprimés.
+    if (!p.reglages.modelesVus) p.reglages.modelesVus = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    PS_MODELES.forEach((m) => {
+      if (p.reglages.modelesVus.includes(m.id)) return;
+      if (!p.modeles.some((x) => x.id === m.id)) p.modeles.push(JSON.parse(JSON.stringify(m)));
+      p.reglages.modelesVus.push(m.id);
+    });
     return p;
   },
   _normaliser(s) {
@@ -478,7 +513,10 @@ CC.prospection = {
     this._filtresRemplis = true;
     const sel = (id, opts) => { const el = document.getElementById(id); if (el) el.insertAdjacentHTML('beforeend', opts); };
     sel('psPublic', Object.entries(b.pubLib).map(([k, v]) => `<option value="${k}">${psEsc(v)}</option>`).join(''));
-    sel('psSecteur', b.secteurs.map((s) => `<option value="${psEsc(s)}">${psEsc(s)}</option>`).join(''));
+    const deps = [...new Set(this.toutes().map((s) => (s.cp || '').slice(0, 2)).filter((d) => /^\d\d$/.test(d)))].sort();
+    if (deps.length > 1) sel('psMapZone', deps.map((d) => `<option value="${d}">Seulement le ${d}</option>`).join(''));
+    sel('psSecteur', (deps.length > 1 ? deps.map((d) => `<option value="dep:${d}">Tout le ${d}</option>`).join('') : '')
+      + b.secteurs.map((s) => `<option value="${psEsc(s)}">${psEsc(s)}</option>`).join(''));
     sel('psStatut', PS_STATUTS.map(([k, l]) => `<option value="${k}">${psEsc(l)}</option>`).join(''));
   },
 
@@ -596,14 +634,15 @@ CC.prospection = {
     let r = this.toutes().filter((s) => {
       if (F.famille !== 'all' && s.famille !== F.famille) return false;
       if (F.public !== 'all' && !(s.publics || []).includes(F.public)) return false;
-      if (F.secteur !== 'all' && s.secteur !== F.secteur) return false;
+      if (F.secteur.startsWith('dep:')) { if ((s.cp || '').slice(0, 2) !== F.secteur.slice(4)) return false; }
+      else if (F.secteur !== 'all' && s.secteur !== F.secteur) return false;
       if (F.statut !== 'all' && this.statutDe(s.id) !== F.statut) return false;
       if (F.relation === 'client' && !cl[s.id]) return false;
       if (F.relation === 'jamais' && cl[s.id]) return false;
       if (F.relation === 'perso' && !s.perso) return false;
       if (q.length) {
         const f = this.suivi().fiches[s.id] || {};
-        const blob = psNorm([s.nom, s.ville, s.catLib, s.catCourt, s.adresse, s.cp, s.secteur,
+        const blob = psNorm([s.nom, s.ville, s.catLib, s.catCourt, s.adresse, s.cp, s.secteur, s.mail, s.note,
           (this.base().gParId[s.ej] || {}).nom, f.contactNom, f.notes, cl[s.id] && cl[s.id].nom].filter(Boolean).join(' '));
         if (!q.every((t) => blob.includes(t))) return false;
       }
@@ -716,9 +755,11 @@ CC.prospection = {
     const parStatut = document.getElementById('psMapColor') && document.getElementById('psMapColor').value === 'statut';
     const fam = document.getElementById('psMapFam') ? document.getElementById('psMapFam').value : 'enfance-handicap';
     const voir = document.getElementById('psMapVoir') ? document.getElementById('psMapVoir').value : 'tous';
+    const zone = document.getElementById('psMapZone') ? document.getElementById('psMapZone').value : 'all';
     const cl = this.clients();
     const pts = this.toutes().filter((s) => {
       if (s.lat == null) return false;
+      if (zone !== 'all' && (s.cp || '').slice(0, 2) !== zone) return false;
       if (voir === 'clients') return !!cl[s.id];
       if (voir === 'suivi') return this.statutDe(s.id) !== 'aucun';
       return fam === 'all' || s.famille === fam || !!cl[s.id];
@@ -783,7 +824,7 @@ CC.prospection = {
     }
     setTimeout(() => {
       this._map.invalidateSize();
-      const cle = fam + '|' + voir;
+      const cle = fam + '|' + voir + '|' + zone;
       if (bounds.length && this._cadre !== cle) { this._map.fitBounds(bounds, { padding: [30, 30], maxZoom: 13 }); this._cadre = cle; }
     }, 60);
   },
@@ -911,6 +952,7 @@ CC.prospection = {
     const lg = (dt, dd) => `<dt>${dt}</dt><dd>${dd}</dd>`;
     const coord = [];
     if (s.tel) coord.push(lg('Téléphone', `<a href="#" class="lnk" data-ext="tel:${psEsc(s.tel)}">${psEsc(psTel(s.tel))}</a>`));
+    if (s.tel2) coord.push(lg('Autre numéro', `<a href="#" class="lnk" data-ext="tel:${psEsc(s.tel2)}">${psEsc(psTel(s.tel2))}</a>`));
     if (f.telDirect) coord.push(lg('Ligne directe', `<a href="#" class="lnk" data-ext="tel:${psEsc(f.telDirect)}">${psEsc(psTel(f.telDirect))}</a>`));
     const mailAff = f.mail || s.mail || '';
     if (mailAff) coord.push(lg('E-mail', `<a href="#" class="lnk" data-ext="mailto:${psEsc(mailAff)}">${psEsc(mailAff)}</a>`));
@@ -929,7 +971,9 @@ CC.prospection = {
     if ((s.modes || []).length) infos.push(lg('Accueil', psEsc(s.modes.join(', '))));
     if ((s.clienteles || []).length) infos.push(lg('Déficiences', psEsc(s.clienteles.join(' · '))));
     if (s.statut) infos.push(lg('Statut', psEsc(s.statut)));
+    if (s.note) infos.push(lg('À savoir', psEsc(s.note)));
     if (s.perso) infos.push(lg('Source', 'Ajoutée par toi'));
+    else if (s.verifieLe) infos.push(lg('Source', `<a href="#" class="lnk" data-ext="${psEsc(s.source)}">site de la structure</a> · vérifié le ${CC.util.frDate(s.verifieLe)}`));
     else infos.push(lg('N° FINESS', psEsc(s.id)));
 
     let blocG = '';
@@ -1023,7 +1067,7 @@ CC.prospection = {
           <div class="ps-bloc"><h4>Écrire</h4>
             <div class="ps-ecrire">
               <select id="psF_modele" class="input">${this.suivi().modeles.map((m) =>
-                `<option value="${psEsc(m.id)}"${(st === 'aucun' ? 'm1' : (st === 'relance' || st === 'contacte' ? 'm3' : (st === 'rdv' ? 'm5' : ''))) === m.id ? ' selected' : ''}>${psEsc(m.nom)}</option>`).join('')}</select>
+                `<option value="${psEsc(m.id)}"${(st === 'aucun' ? (s.famille === 'animation-jeunesse' && this.suivi().modeles.some((x) => x.id === 'm6') ? 'm6' : 'm1') : (st === 'relance' || st === 'contacte' ? 'm3' : (st === 'rdv' ? 'm5' : ''))) === m.id ? ' selected' : ''}>${psEsc(m.nom)}</option>`).join('')}</select>
               <button type="button" class="btn btn-primary" id="psF_mailto">Écrire dans Mails</button>
               <button type="button" class="btn btn-ghost" id="psF_copier">Copier</button>
             </div>
@@ -1180,6 +1224,15 @@ CC.prospection = {
     document.getElementById('modalProspection').classList.add('hidden');
     if (c.fiche) CC.clients.ouvrir(c.fiche);
     else CC.clients.creerDepuis(c.cle);
+  },
+
+  // Raccourci : les espaces jeunes recensés autour de Lagny, dans la liste.
+  voirEspacesJeunes77() {
+    Object.assign(this._filtres, { texte: '', famille: 'animation-jeunesse', public: 'all', secteur: 'dep:77', statut: 'all', relation: 'all' });
+    this._tri = 'ville';
+    const val = { psSearch: '', psFamille: 'animation-jeunesse', psPublic: 'all', psSecteur: 'dep:77', psStatut: 'all', psRelation: 'all', psTri: 'ville' };
+    Object.entries(val).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+    this.switchSub('structures');
   },
 
   // ---- Structures ajoutées par toi (hors FINESS) --------------------------
@@ -1397,7 +1450,7 @@ CC.prospection = {
         psTel(f.telDirect || s.tel), f.mail || s.mail || '',
         psTitre(g.nom || ''), psTel(g.tel || ''), g.mail || '',
         PS_STATUT_LIB[this.statutDe(s.id)], f.contactNom || '', f.relanceLe || '',
-        cl[s.id] ? cl[s.id].nom : '', (f.notes || '').replace(/\r?\n/g, ' · '), s.perso ? '' : s.id,
+        cl[s.id] ? cl[s.id].nom : '', (f.notes || '').replace(/\r?\n/g, ' · '), s.perso || s.verifieLe ? '' : s.id,
       ].map(q).join(';'));
     });
     const contenu = '﻿' + lignes.join('\r\n');
@@ -1455,6 +1508,7 @@ CC.prospection = {
       if (t.dataset.ouvrir) this.openFiche(t.dataset.ouvrir);
     });
     ['psAjout', 'psAjout2'].forEach((id) => { const el = document.getElementById(id); if (el) el.addEventListener('click', () => this.editerPerso(null)); });
+    document.querySelectorAll('#tab-reseau [data-ej77]').forEach((el) => el.addEventListener('click', () => this.voirEspacesJeunes77()));
     const imp = document.getElementById('psImportClients');
     if (imp) imp.addEventListener('click', () => this.importerClients());
 
@@ -1480,7 +1534,7 @@ CC.prospection = {
     ['psGsearch'].forEach((id) => document.getElementById(id).addEventListener('input', () => this.renderGestionnaires()));
     ['psGmulti', 'psGcoeur'].forEach((id) => document.getElementById(id).addEventListener('change', () => this.renderGestionnaires()));
 
-    ['psMapColor', 'psMapFam', 'psMapVoir'].forEach((id) => {
+    ['psMapColor', 'psMapFam', 'psMapVoir', 'psMapZone'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', () => this.renderCarte());
     });
@@ -1589,7 +1643,7 @@ function psTel(t) {
   return d.length === 10 ? d.replace(/(\d\d)(?=\d)/g, '$1 ').trim() : (t || '');
 }
 // FINESS écrit tout en capitales : on rend ça lisible sans casser les sigles.
-const PS_SIGLES = /\b(Ime|Sessad|Itep|Iem|Esat|Mas|Fam|Eam|Eanm|Camsp|Cmpp|Cmp|Mecs|Ehpad|Chrs|Savs|Samsah|Ugecam|Adsea|Adapei|Afpjr|Apreh|Pep|Apf|Apajh|Alc|Psp|Lva|Cada|Act|Sos|Ch|Chu|Ccas|Cias|Bapu|Ueros|Mdph|Clic|Dac|Ssiad|Saad|Cph|Fjt|Sas|Mjc|Pij|Bij|Ufcv|Ifac|Evs|Ass|Aj)\b/g;
+const PS_SIGLES = /\b(Ime|Sessad|Itep|Iem|Esat|Mas|Fam|Eam|Eanm|Camsp|Cmpp|Cmp|Mecs|Ehpad|Chrs|Savs|Samsah|Ugecam|Adsea|Adapei|Afpjr|Apreh|Pep|Apf|Apajh|Alc|Psp|Lva|Cada|Act|Sos|Ch|Chu|Ccas|Cias|Bapu|Ueros|Mdph|Clic|Dac|Ssiad|Saad|Cph|Fjt|Sas|Mjc|Pij|Bij|Ufcv|Ifac|Evs|Ass|Aj|Omac|Qj|Mpt|Sij)\b/g;
 function psTitre(t) {
   return String(t || '').trim().toLowerCase()
     .replace(/([a-zà-ÿ0-9])([a-zà-ÿ0-9']*)/g, (m, a, b) => a.toUpperCase() + b)

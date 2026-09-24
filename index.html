@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mue3gano" />
+  <link rel="stylesheet" href="css/styles.css?b=mufg2x25" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mue3gano"></script>
+  <script src="js/theme.js?b=mufg2x25"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -533,6 +533,7 @@
         <div class="ps-tete">
           <p id="psSync" class="ps-sync"></p>
           <div class="ps-tete-act">
+            <button type="button" class="btn" data-ej77 title="Accueils jeunes et ados autour de Lagny-sur-Marne, recensés pour les ateliers musiques urbaines">Espaces jeunes 77</button>
             <button id="psImportClients" class="btn" title="Tes clients hors base FINESS (espaces jeunes, mairies, SIVOM…)">Ajouter mes clients</button>
             <button id="psAjout" class="btn btn-primary">+ Ajouter une structure</button>
           </div>
@@ -560,6 +561,7 @@
         <div class="toolbar">
           <input type="search" id="psSearch" class="input" placeholder="Nom, ville, gestionnaire, interlocuteur…" />
           <button id="psAjout2" class="btn">+ Ajouter</button>
+          <button type="button" class="btn btn-ghost" data-ej77 title="Accueils jeunes et ados autour de Lagny-sur-Marne">Espaces jeunes 77</button>
           <span class="spacer"></span>
           <span id="psSummary" class="summary"></span>
           <button id="psExport" class="btn btn-ghost">Exporter CSV</button>
@@ -642,6 +644,7 @@
             <option value="suivi">En démarchage</option>
           </select>
           <select id="psMapFam"><option value="all">Tous les domaines</option></select>
+          <select id="psMapZone"><option value="all">Toutes les zones</option></select>
           <select id="psMapColor">
             <option value="famille">Couleur : domaine</option>
             <option value="statut">Couleur : suivi</option>
@@ -1464,39 +1467,40 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mue3gano"></script>
-  <script src="js/drive-store.js?b=mue3gano"></script>
-  <script src="js/api-web.js?b=mue3gano"></script>
-  <script src="js/settings.js?b=mue3gano"></script>
-  <script src="js/datepicker.js?b=mue3gano"></script>
-  <script src="js/stats.js?b=mue3gano"></script>
-  <script src="js/charts.js?b=mue3gano"></script>
-  <script src="js/import.js?b=mue3gano"></script>
-  <script src="js/pdfimport.js?b=mue3gano"></script>
-  <script src="js/clients.js?b=mue3gano"></script>
-  <script src="js/factures.js?b=mue3gano"></script>
-  <script src="js/fiscal.js?b=mue3gano"></script>
-  <script src="js/bilan.js?b=mue3gano"></script>
-  <script src="js/ai.js?b=mue3gano"></script>
-  <script src="js/connections.js?b=mue3gano"></script>
-  <script src="js/agenda.js?b=mue3gano"></script>
-  <script src="js/signature.js?b=mue3gano"></script>
-  <script src="js/mailbox.js?b=mue3gano"></script>
-  <script src="js/trajets.js?b=mue3gano"></script>
+  <script src="js/google-auth-web.js?b=mufg2x25"></script>
+  <script src="js/drive-store.js?b=mufg2x25"></script>
+  <script src="js/api-web.js?b=mufg2x25"></script>
+  <script src="js/settings.js?b=mufg2x25"></script>
+  <script src="js/datepicker.js?b=mufg2x25"></script>
+  <script src="js/stats.js?b=mufg2x25"></script>
+  <script src="js/charts.js?b=mufg2x25"></script>
+  <script src="js/import.js?b=mufg2x25"></script>
+  <script src="js/pdfimport.js?b=mufg2x25"></script>
+  <script src="js/clients.js?b=mufg2x25"></script>
+  <script src="js/factures.js?b=mufg2x25"></script>
+  <script src="js/fiscal.js?b=mufg2x25"></script>
+  <script src="js/bilan.js?b=mufg2x25"></script>
+  <script src="js/ai.js?b=mufg2x25"></script>
+  <script src="js/connections.js?b=mufg2x25"></script>
+  <script src="js/agenda.js?b=mufg2x25"></script>
+  <script src="js/signature.js?b=mufg2x25"></script>
+  <script src="js/mailbox.js?b=mufg2x25"></script>
+  <script src="js/trajets.js?b=mufg2x25"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mue3gano"></script>
-  <script src="js/prospection.js?b=mue3gano"></script>
-  <script src="js/notes.js?b=mue3gano"></script>
+  <script src="js/prospection-base.js?b=mufg2x25"></script>
+  <script src="js/prospection-jeunesse77.js?b=mufg2x25"></script>
+  <script src="js/prospection.js?b=mufg2x25"></script>
+  <script src="js/notes.js?b=mufg2x25"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mue3gano"></script>
-  <script src="js/recherche.js?b=mue3gano"></script>
-  <script src="js/today.js?b=mue3gano"></script>
-  <script src="js/privacy.js?b=mue3gano"></script>
-  <script src="js/storage.js?b=mue3gano"></script>
-  <script src="js/rappels.js?b=mue3gano"></script>
-  <script src="js/notifs.js?b=mue3gano"></script>
-  <script src="js/app.js?b=mue3gano"></script>
+  <script src="js/coffre.js?b=mufg2x25"></script>
+  <script src="js/recherche.js?b=mufg2x25"></script>
+  <script src="js/today.js?b=mufg2x25"></script>
+  <script src="js/privacy.js?b=mufg2x25"></script>
+  <script src="js/storage.js?b=mufg2x25"></script>
+  <script src="js/rappels.js?b=mufg2x25"></script>
+  <script src="js/notifs.js?b=mufg2x25"></script>
+  <script src="js/app.js?b=mufg2x25"></script>
 </body>
 </html>
