@@ -35,14 +35,14 @@ CC.signature = {
           '<img src="cid:' + this.cid + '" width="100" height="100" alt="' + i.nomAff + '" ' +
           'style="display:block;width:100px;height:100px;border:0;outline:none;text-decoration:none;">' +
         '</td>' : '') +
-        '<td style="vertical-align:middle;padding:2px 0 2px 18px;border-left:2px solid #7d5a79;" valign="middle">' +
+        '<td style="vertical-align:middle;padding:2px 0 2px 18px;border-left:2px solid #4B3AA6;" valign="middle">' +
           '<div style="' + F + 'font-size:17px;line-height:22px;font-weight:700;color:#16181d;">' + i.nomAff + '</div>' +
-          '<div style="' + F + 'font-size:13px;line-height:19px;font-weight:600;color:#7d5a79;padding-top:2px;">' + i.titre + '</div>' +
+          '<div style="' + F + 'font-size:13px;line-height:19px;font-weight:600;color:#4B3AA6;padding-top:2px;">' + i.titre + '</div>' +
           '<div style="' + F + 'font-size:12px;line-height:18px;color:#5f636e;padding-top:1px;">' + i.role + '</div>' +
           '<div style="font-size:9px;line-height:9px;">&nbsp;</div>' +
           '<div style="' + F + 'font-size:13px;line-height:20px;color:#5f636e;">' +
             '<a href="tel:' + i.telUri + '" style="color:#16181d;text-decoration:none;font-weight:600;">' + i.tel + '</a>' +
-            '<span style="color:#e2dde1;">&nbsp;|&nbsp;</span>' +
+            '<span style="color:#e1d9f3;">&nbsp;|&nbsp;</span>' +
             '<a href="mailto:' + i.mail + '" style="color:#16181d;text-decoration:none;font-weight:600;">' + i.mail + '</a>' +
           '</div>' +
           '<div style="' + F + 'font-size:11px;line-height:17px;color:#9aa0ab;padding-top:3px;">' + i.lieu + '</div>' +

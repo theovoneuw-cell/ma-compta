@@ -1384,7 +1384,7 @@ body:has(#tab-mails.active) main { overflow: hidden; display: flex; flex-directi
 
 /* Case « Signature » du composeur + apercu dans les reglages */
 .mc-sig { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
-.mc-sig input { accent-color: var(--accent, #7d5a79); }
+.mc-sig input { accent-color: var(--accent, #4B3AA6); }
 .sig-preview { padding: 16px; border: 1px dashed var(--border); border-radius: 10px; background: #fff; overflow-x: auto; }
 .sig-preview table { max-width: 100%; }
 .mc-sig-preview { margin: 4px 18px 0; padding: 14px 0 2px; border-top: 1px dashed var(--border); opacity: .92; overflow-x: auto; }
