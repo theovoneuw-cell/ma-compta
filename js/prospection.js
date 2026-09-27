@@ -16,6 +16,7 @@ window.CC = window.CC || {};
 
 const PS_STATUTS = [
   ['aucun', 'À contacter'],
+  ['demande', 'Demande reçue'],
   ['contacte', 'Contacté'],
   ['relance', 'À relancer'],
   ['rdv', 'Rendez-vous'],
@@ -25,7 +26,7 @@ const PS_STATUTS = [
 ];
 const PS_STATUT_LIB = Object.fromEntries(PS_STATUTS);
 // Colonnes du tableau « Démarches en cours ».
-const PS_PIPE_COLS = [['contacte', 'Contacté'], ['relance', 'À relancer'], ['rdv', 'Rendez-vous'], ['devis', 'Devis envoyé'], ['gagne', 'Actée']];
+const PS_PIPE_COLS = [['demande', 'Demande reçue'], ['contacte', 'Contacté'], ['relance', 'À relancer'], ['rdv', 'Rendez-vous'], ['devis', 'Devis envoyé'], ['gagne', 'Actée']];
 
 // Domaines retirés du Réseau : hors de ton champ (hôpitaux, domicile, santé
 // mentale, insertion, prévention, formation). Leurs établissements FINESS ne
@@ -45,7 +46,7 @@ const PS_COUL_FAM = {
 };
 // Étapes : mêmes teintes que les domaines, et toujours pas de vert.
 const PS_COUL_STATUT = {
-  aucun: '#9a96b8', contacte: '#4f46e5', relance: '#ea580c',
+  aucun: '#9a96b8', demande: '#7c3aed', contacte: '#4f46e5', relance: '#ea580c',
   rdv: '#0891b2', devis: '#db2777', gagne: '#78350f', refus: '#dc2626',
 };
 // Vert des structures déjà facturées : il prime sur toutes les autres couleurs
@@ -54,7 +55,7 @@ const PS_CLIENT_VERT = '#12b76a';
 
 // Ordre d'avancement : un raccourci du journal ne fait jamais reculer une
 // démarche (« Appelé » ne ramène pas un rendez-vous à « Contacté »).
-const PS_RANG = { aucun: 0, contacte: 1, relance: 2, rdv: 3, devis: 4, gagne: 5, refus: 6 };
+const PS_RANG = { aucun: 0, demande: 0.5, contacte: 1, relance: 2, rdv: 3, devis: 4, gagne: 5, refus: 6 };
 // Raccourcis du journal : [texte, statut atteint].
 const PS_RAPIDES = [
   ['Appelé', 'contacte'], ['Message laissé', 'contacte'], ['Mail envoyé', 'contacte'],
@@ -179,6 +180,24 @@ Bien cordialement,
 
 {moi}
 {montel} — {monmail}`,
+  },
+  {
+    id: 'm7',
+    nom: 'Réponse à une demande du site',
+    objet: 'Votre demande d’atelier — {structure}',
+    corps: `Bonjour,
+
+Merci pour votre message et pour l’intérêt que vous portez aux Ateliers Musiques Urbaines.
+
+Je serais ravi d’en discuter avec vous pour construire un atelier adapté à {structure} : le public, le rythme, la durée et les objectifs se définissent ensemble.
+
+Quand seriez-vous disponible pour un échange par téléphone ? Vous pouvez aussi me joindre directement au {montel}.
+
+Bien cordialement,
+
+{moi}
+{montel} — {monmail}
+{monsite}`,
   },
   {
     id: 'm6',
@@ -379,6 +398,10 @@ CC.prospection = {
     }
     this._pulled = true;
     this._majSync();
+    // Le suivi de Drive est là : on peut relever les demandes du site sans risque de doublon.
+    this._suiviArrive = true;
+    this.importerDemandes();
+    if (!this._demandesT) this._demandesT = setInterval(() => this.importerDemandes(), 10 * 60 * 1000);
     const tab = document.getElementById('tab-reseau');
     if (tab && tab.classList.contains('active')) this.render();
     // L'accueil affiche les relances dues : il a besoin du suivi arrivé de Drive.
@@ -548,7 +571,7 @@ CC.prospection = {
     const reponses = n('rdv') + n('devis') + n('gagne') + n('refus');
     const kpi = document.getElementById('psKpis');
     if (kpi) kpi.innerHTML = [
-      ['En cours', n('contacte') + n('relance') + n('rdv') + n('devis'), 'démarches ouvertes', ''],
+      ['En cours', n('demande') + n('contacte') + n('relance') + n('rdv') + n('devis'), n('demande') ? n('demande') + ' demande' + (n('demande') > 1 ? 's' : '') + ' du site à traiter' : 'démarches ouvertes', n('demande') ? 'amber' : ''],
       ['À relancer', dues.length, dues.length ? 'aujourd’hui ou en retard' : 'rien en retard', dues.length ? 'amber' : ''],
       ['RDV & devis', n('rdv') + n('devis'), 'en discussion', ''],
       ['Actées', n('gagne'), 'interventions / clients', 'green'],
@@ -1197,7 +1220,7 @@ CC.prospection = {
         : 'Association : facture classique, par mail ou courrier'));
     }
     if (s.note) infos.push(lg('À savoir', psEsc(s.note)));
-    if (s.perso) infos.push(lg('Source', 'Ajoutée par toi'));
+    if (s.perso) infos.push(lg('Source', s.source === 'site' ? 'Demande reçue par ton site' : 'Ajoutée par toi'));
     else if (s.verifieLe) infos.push(lg('Source', `<a href="#" class="lnk" data-ext="${psEsc(s.source)}">site de la structure</a> · vérifié le ${CC.util.frDate(s.verifieLe)}`));
     else infos.push(lg('N° FINESS', psEsc(s.id)));
 
@@ -1293,7 +1316,7 @@ CC.prospection = {
           <div class="ps-bloc"><h4>Écrire</h4>
             <div class="ps-ecrire">
               <select id="psF_modele" class="input">${this.suivi().modeles.map((m) =>
-                `<option value="${psEsc(m.id)}"${(st === 'aucun' ? (s.famille === 'animation-jeunesse' && this.suivi().modeles.some((x) => x.id === 'm6') ? 'm6' : 'm1') : (st === 'relance' || st === 'contacte' ? 'm3' : (st === 'rdv' ? 'm5' : ''))) === m.id ? ' selected' : ''}>${psEsc(m.nom)}</option>`).join('')}</select>
+                `<option value="${psEsc(m.id)}"${(st === 'demande' ? 'm7' : st === 'aucun' ? (s.famille === 'animation-jeunesse' && this.suivi().modeles.some((x) => x.id === 'm6') ? 'm6' : 'm1') : (st === 'relance' || st === 'contacte' ? 'm3' : (st === 'rdv' ? 'm5' : ''))) === m.id ? ' selected' : ''}>${psEsc(m.nom)}</option>`).join('')}</select>
               <button type="button" class="btn btn-primary" id="psF_mailto">Écrire dans Mails</button>
               <button type="button" class="btn btn-ghost" id="psF_copier">Copier</button>
             </div>
@@ -1503,6 +1526,107 @@ CC.prospection = {
     const val = { psSearch: '', psFamille: 'animation-jeunesse', psPublic: 'all', psSecteur: 'dep:77', psStatut: 'all', psRelation: 'all', psTri: 'ville' };
     Object.entries(val).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
     this.switchSub('structures');
+  },
+
+  // ---- Demandes reçues par le formulaire du site ---------------------------
+  // Le site envoie chaque demande par mail à ta boîte pro (objet « [Demande
+  // site] … », script Google Apps Script : ~/Sites/theo-von-euw/formulaire-google).
+  // Le mail porte les données entre DEMANDE-SITE-DEBUT et DEMANDE-SITE-FIN
+  // (JSON en base64, coupé en lignes courtes). On les relit dans Gmail et on
+  // crée — ou complète — la fiche de la structure à l'étape « Demande reçue ».
+  // Les mails déjà traités sont retenus dans les réglages du suivi, synchronisés
+  // par Drive : le Mac et l'iPhone ne créent jamais deux fois la même fiche.
+  async importerDemandes(manuel) {
+    if (this._importEnCours) return;
+    if (!(window.api && window.api.gmail && window.api.gmail.list)) {
+      if (manuel) CC.toast('La boîte Gmail n’est pas disponible ici.', 'err');
+      return;
+    }
+    // Automatique : seulement une fois le suivi de Drive arrivé (sinon doublons possibles).
+    if (!manuel && !this._suiviArrive) return;
+    this._importEnCours = true;
+    let crees = 0;
+    try {
+      const R = this.suivi().reglages;
+      const vus = new Set(R.demandesVues || []);
+      const nouveaux = new Map();
+      let erreur = '';
+      // Un mail qu'on s'envoie à soi-même est à la fois dans la boîte et dans les envoyés.
+      for (const dossier of ['boite', 'envoyes']) {
+        let res;
+        try { res = await window.api.gmail.list({ dossier, maxResults: 30, recherche: 'subject:"[Demande site]" newer_than:90d' }); } catch (e) { res = { error: e.message }; }
+        if (res && res.error) { erreur = res.error; continue; }
+        ((res && res.messages) || []).forEach((m) => {
+          if (!vus.has(m.id) && /^\[Demande site\]/.test(m.sujet || '')) nouveaux.set(m.id, m);
+        });
+      }
+      if (erreur && !nouveaux.size) { if (manuel) CC.toast('Gmail : ' + erreur, 'err'); return; }
+      const ordre = [...nouveaux.values()].sort((a, x) => (a.dateMs || 0) - (x.dateMs || 0));
+      for (const m of ordre) {
+        let msg;
+        try { msg = await window.api.gmail.get(m.id); } catch (_) { msg = null; }
+        if (!msg || msg.error) continue;
+        const d = psLireDemande(msg.text || '');
+        vus.add(m.id);
+        if (!d) continue;                        // mail sans bloc de données : on ne le relira plus
+        await this._ajouterDemande(d, m);
+        crees++;
+      }
+      R.demandesVues = [...vus].slice(-300);
+      if (crees || nouveaux.size) this._persist();
+    } finally {
+      this._importEnCours = false;
+    }
+    if (crees) {
+      const tab = document.getElementById('tab-reseau');
+      if (tab && tab.classList.contains('active')) this.render();
+      try { if (CC.renderToday) CC.renderToday(); } catch (_) {}
+      CC.toast(crees + (crees > 1 ? ' nouvelles demandes reçues' : ' nouvelle demande reçue') + ' par le site · onglet Réseau', 'ok');
+    } else if (manuel) {
+      CC.toast('Aucune nouvelle demande du site.', 'ok');
+    }
+  },
+
+  async _ajouterDemande(d, m) {
+    const nomStruct = (d.structure || '').trim();
+    const cible = nomStruct ? psNorm(nomStruct) : '';
+    // La structure est-elle déjà dans le Réseau (base FINESS ou ajoutée par toi) ?
+    let s = cible ? this.toutes().find((x) => psNorm(x.nom) === cible
+      && (!d.ville || !x.ville || psNorm(x.ville) === psNorm(d.ville))) : null;
+    if (!s) {
+      const jeunes = d.profil === 'jeunes';
+      s = {
+        id: 'p' + CC.util.uid(), perso: true, source: 'site', publics: [],
+        nom: nomStruct || d.nom,
+        famille: psFamilleDemande(nomStruct, d.profil),
+        catCourt: jeunes ? 'Espace jeunes' : (d.profil === 'medico' ? 'Médico-social' : ''),
+        catLib: jeunes ? 'Animation / espaces jeunes' : (d.profil === 'medico' ? 'Médico-social / protection de l’enfance' : ''),
+        adresse: '', cp: '', ville: d.ville || '', tel: (d.telephone || '').replace(/\s/g, ''), mail: d.email || '',
+      };
+      if (s.ville) await this._geocoder(s);
+      this.suivi().perso[s.id] = s;
+      this.toutes();                             // enregistre la nouvelle structure dans l'index
+    }
+    const f = this.fiche(s.id);
+    if ((PS_RANG[f.statut || 'aucun'] || 0) < PS_RANG.demande) f.statut = 'demande';
+    const qui = d.nom + (d.fonction ? ', ' + d.fonction : '');
+    if (!f.contactNom) f.contactNom = qui;
+    if (!f.mail && d.email) f.mail = d.email;
+    if (!f.telDirect && d.telephone) f.telDirect = d.telephone.replace(/\s/g, '');
+    const jour = (d.recueLe || '').slice(0, 10) || CC.util.toISO(new Date(m.dateMs || Date.now()));
+    const bloc = [
+      '— Demande du site, ' + CC.util.frDate(jour) + ' —',
+      'De : ' + qui,
+      d.public ? 'Public : ' + d.public : '',
+      d.periode ? 'Période : ' + d.periode : '',
+      d.message,
+    ].filter(Boolean).join('\n');
+    f.notes = f.notes ? bloc + '\n\n' + f.notes : bloc;
+    f.histo.push({ date: jour, texte: 'Demande reçue par le site — ' + qui });
+    // À traiter tout de suite : elle remonte dans « À relancer » et sur l'accueil.
+    const auj = CC.util.toISO(new Date());
+    if (!f.relanceLe || f.relanceLe > auj) f.relanceLe = auj;
+    f.demandeMail = m.id;
   },
 
   // ---- Structures ajoutées par toi (hors FINESS) --------------------------
@@ -1786,6 +1910,8 @@ CC.prospection = {
     document.querySelectorAll('#tab-reseau [data-ej77]').forEach((el) => el.addEventListener('click', () => this.voirEspacesJeunes77()));
     const imp = document.getElementById('psImportClients');
     if (imp) imp.addEventListener('click', () => this.importerClients());
+    const dem = document.getElementById('psDemandesSite');
+    if (dem) dem.addEventListener('click', () => this.importerDemandes(true));
 
     const maj = () => { this._filtres.texte = document.getElementById('psSearch').value; this.renderStructures(); };
     let t = null;
@@ -1902,6 +2028,33 @@ CC.prospection = {
 };
 
 // ---- Petits utilitaires locaux ---------------------------------------------
+// Domaine d'une structure venue du site, d'après son nom (sigle ou type).
+function psFamilleDemande(nom, profil) {
+  const n = ' ' + psNorm(nom).toUpperCase() + ' ';
+  if (/\bMECS\b|FOYER DE L.?ENFANCE|PROTECTION DE L.?ENFANCE|\bASE\b|LIEU DE VIE|\bLVA\b|\bPJJ\b/.test(n)) return 'protection-enfance';
+  if (/\bIME\b|\bSESSAD\b|\bITEP\b|\bIEM\b|\bIES\b|\bCAMSP\b|\bDITEP\b/.test(n)) return 'enfance-handicap';
+  if (/\bFAM\b|\bMAS\b|\bESAT\b|\bEAM\b|\bSAVS\b|\bSAMSAH\b|FOYER DE VIE|FOYER D.?HEBERGEMENT/.test(n)) return 'adultes-handicap';
+  if (profil === 'jeunes' || /ESPACE JEUNES|CENTRE DE LOISIRS|\bSIVOM\b|\bMJC\b|ACCUEIL DE LOISIRS/.test(n)) return 'animation-jeunesse';
+  return 'autre';
+}
+
+// Bloc DEMANDE-SITE-DEBUT … DEMANDE-SITE-FIN d'un mail du site → objet demande.
+function psLireDemande(texte) {
+  const m = String(texte || '').match(/DEMANDE-SITE-DEBUT([\s\S]*?)DEMANDE-SITE-FIN/);
+  if (!m) return null;
+  try {
+    const b64 = m[1].replace(/[^A-Za-z0-9+/=]/g, '');
+    const octets = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const d = JSON.parse(new TextDecoder('utf-8').decode(octets));
+    if (!d || typeof d !== 'object' || !d.nom) return null;
+    ['profil', 'structure', 'nom', 'fonction', 'email', 'telephone', 'ville', 'public', 'periode', 'message', 'recueLe']
+      .forEach((k) => { d[k] = String(d[k] == null ? '' : d[k]).trim(); });
+    return d;
+  } catch (_) {
+    return null;
+  }
+}
+
 function psEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

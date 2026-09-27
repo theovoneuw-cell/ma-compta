@@ -2213,6 +2213,8 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 
 /* Pastilles de statut — mêmes formes que .stpill des factures. */
 .stpill.ps-aucun { background: var(--surface-2); color: var(--muted); }
+.stpill.ps-demande { background: #f1eaff; color: #6d28d9; font-weight: 700; }
+:root[data-theme="dark"] .stpill.ps-demande { background: #2d2350; color: #c4b5fd; }
 .stpill.ps-contacte { background: var(--accent-soft); color: var(--accent-strong); }
 .stpill.ps-relance { background: var(--amber-soft); color: var(--amber); }
 .stpill.ps-rdv { background: var(--green-soft); color: var(--green); }
@@ -2706,6 +2708,8 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .ps-step:hover { border-color: var(--accent); color: var(--ink); }
 .ps-step.on { border-color: transparent; }
 .ps-step.on.ps-aucun { background: var(--surface-2); color: var(--ink); }
+.ps-step.on.ps-demande { background: #f1eaff; color: #6d28d9; }
+:root[data-theme="dark"] .ps-step.on.ps-demande { background: #2d2350; color: #c4b5fd; }
 .ps-step.on.ps-contacte { background: var(--accent-soft); color: var(--accent-strong); }
 .ps-step.on.ps-relance { background: var(--amber-soft); color: var(--amber); }
 .ps-step.on.ps-rdv { background: var(--green-soft); color: var(--green); }
