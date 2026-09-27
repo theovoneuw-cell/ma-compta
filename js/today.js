@@ -40,11 +40,20 @@ CC.renderToday = function () {
   const encAn = fy.filter(CC.stats.isPaid).reduce((a, f) => a + (+f.montant || 0), 0);
   void totalPrev;
   const kpis = [
-    // Chiffre principal : ce qui est rentré ce mois-ci (demande de Théo, 27/09/2026).
-    { cls: 'green kpi-hero', label: 'Encaissé en ' + MOIS_FR[month].toLowerCase(), value: CC.util.eur0(encMois), hint: CC.util.eur0(encAn) + ' depuis le début de ' + year },
+    { cls: 'green', label: 'Encaissé en ' + year, value: CC.util.eur0(encAn), hint: 'depuis le 1er janvier' },
     { cls: 'amber', label: 'On te doit', value: CC.util.eur0(totalImp), hint: impayes.length ? impayes.length + ' facture(s) en attente' : 'tout est payé' },
     { cls: 'red', label: 'URSSAF à prévoir', value: next ? CC.util.eur0(next.urssaf) : '—', hint: next ? 'prélevé vers ' + MOIS_FR[next.due.mois].toLowerCase() + ' ' + next.due.annee : 'rien à venir' }
   ];
+  // Chiffre principal, centré au-dessus des cartes : ce qui est rentré ce mois-ci.
+  const payesMois = S.factures.filter((f) => {
+    if (!CC.stats.isPaid(f)) return false;
+    const d = CC.util.parseDate(f.dateEncaissement);
+    return d && d.getFullYear() === year && d.getMonth() === month;
+  }).length;
+  const hero = document.getElementById('todayHero');
+  if (hero) hero.innerHTML = `<p class="today-hero-l">Encaissé en ${MOIS_FR[month].toLowerCase()}</p>
+    <p class="today-hero-v">${CC.util.eur0(encMois)}</p>
+    <p class="today-hero-d">${payesMois ? payesMois + ' paiement' + (payesMois > 1 ? 's' : '') + ' reçu' + (payesMois > 1 ? 's' : '') + ' ce mois-ci' : 'aucun paiement reçu ce mois-ci pour l’instant'}</p>`;
   const kg = document.getElementById('todayKpis');
   if (kg) kg.innerHTML = kpis.map((k) => `<div class="kpi ${k.cls}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="hint">${k.hint}</div></div>`).join('');
 
