@@ -576,7 +576,7 @@ function syncPeriode() {
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 // Cle de comparaison d'un nom de client : sans accents, sans casse, espaces reduits.
 function normClient(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
-function dotColor(st) { return st === 'recue' ? '#0ea371' : st === 'retard' ? '#dc2626' : st === 'prevu' ? '#6366f1' : '#c2740a'; }
+function dotColor(st) { return st === 'recue' ? '#0ea371' : st === 'retard' ? '#dc2626' : st === 'prevu' ? '#7c5cf0' : '#c2740a'; }
 // Destination du bouton « Facturation Indy ».
 //
 // Indy publie des « liens universels » (app.indy.fr/.well-known/apple-app-site-association)

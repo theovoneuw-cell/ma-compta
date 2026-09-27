@@ -228,7 +228,7 @@ CC.trajets = {
       // claire, indigo nuit sur carte sombre (une gaine blanche y éblouissait).
       const dark = document.documentElement.getAttribute('data-theme') === 'dark';
       const cs = getComputedStyle(document.documentElement);
-      const accent = (cs.getPropertyValue('--accent') || '').trim() || '#4f46e5';
+      const accent = (cs.getPropertyValue('--accent') || '').trim() || '#6b4ce6';
       CC.trajets._routeCasing = L.polyline(latlngs, { color: dark ? '#12101f' : '#ffffff', weight: 10, opacity: dark ? 0.75 : 0.9, lineJoin: 'round', lineCap: 'round' }).addTo(map);
       CC.trajets._route = L.polyline(latlngs, { color: accent, weight: 5, opacity: 0.98, lineJoin: 'round', lineCap: 'round' }).addTo(map);
     }

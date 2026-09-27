@@ -243,7 +243,7 @@ function paintAgenda(box, events, savedAt, errStr) {
 
 // Palette officielle Google Agenda (mêmes valeurs que la vue Agenda).
 const TODAY_GCAL_COLORS = { '1': '#7986cb', '2': '#33b679', '3': '#8e24aa', '4': '#e67c73', '5': '#f6bf26', '6': '#f4511e', '7': '#039be5', '8': '#616161', '9': '#3f51b5', '10': '#0b8043', '11': '#d50000' };
-function colorOf(id) { return TODAY_GCAL_COLORS[id] || '#4f46e5'; }
+function colorOf(id) { return TODAY_GCAL_COLORS[id] || '#6b4ce6'; }
 
 function todayKey(d) { const z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; }
 function saveTodayCache(day, events) {

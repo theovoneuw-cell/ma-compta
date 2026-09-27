@@ -28,7 +28,7 @@ window.CC = window.CC || {};
     var eff = resolve(pref);
     document.documentElement.setAttribute('data-theme', eff);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', eff === 'dark' ? '#14121f' : '#4f46e5');
+    if (meta) meta.setAttribute('content', eff === 'dark' ? '#120e24' : '#f6f1fb');
     updateBtn(eff);
     // Les graphiques sont peints dans un <canvas> : ils ne suivent pas le CSS et
     // doivent être retracés avec la palette du nouveau thème. (Absent au premier

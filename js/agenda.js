@@ -14,7 +14,7 @@ const IC_PIN = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stro
 
 // Palette officielle des "couleurs d'événement" Google Agenda (colorId 1..11).
 // On la rend de façon sobre (liseré + fond léger) pour rester dans l'esprit de l'app.
-const AG_ACCENT = '#4f46e5';            // couleur par défaut (indigo de l'app)
+const AG_ACCENT = '#6b4ce6';            // couleur par défaut (indigo de l'app)
 const GCAL_COLORS = {
   '1':  { nom: 'Lavande',   hex: '#7986cb' },
   '2':  { nom: 'Sauge',     hex: '#33b679' },

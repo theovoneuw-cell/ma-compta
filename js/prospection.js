@@ -37,7 +37,7 @@ const PS_FAMILLES = ['enfance-handicap', 'adultes-handicap', 'protection-enfance
 // Une couleur par domaine, vérifiée (écart suffisant, y compris pour un
 // daltonien). Le VERT est réservé à tes clients, dessinés en losange.
 const PS_COUL_FAM = {
-  'enfance-handicap': '#4f46e5',
+  'enfance-handicap': '#6b4ce6',
   'adultes-handicap': '#db2777',
   'protection-enfance': '#ea580c',
   'personnes-agees': '#0891b2',
@@ -46,7 +46,7 @@ const PS_COUL_FAM = {
 };
 // Étapes : mêmes teintes que les domaines, et toujours pas de vert.
 const PS_COUL_STATUT = {
-  aucun: '#9a96b8', demande: '#7c3aed', contacte: '#4f46e5', relance: '#ea580c',
+  aucun: '#9a96b8', demande: '#7c3aed', contacte: '#6b4ce6', relance: '#ea580c',
   rdv: '#0891b2', devis: '#db2777', gagne: '#78350f', refus: '#dc2626',
 };
 // Vert des structures déjà facturées : il prime sur toutes les autres couleurs
@@ -76,23 +76,24 @@ const PS_FAM_DE_CAT = {
   'AMU Social': 'autre', 'Associatif / Fondations': 'autre', 'Autre': 'autre',
 };
 
+// Modèles de mail. Ils sont copiés dans ton suivi à la première ouverture ;
+// ensuite ce sont TES modèles (modifiables dans l'onglet Modèles).
 const PS_MODELES = [
   {
     id: 'm1',
-    nom: 'Premier contact — établissement',
-    objet: 'Proposition d’ateliers musicaux — {structure}',
+    nom: "Premier contact — établissement",
+    objet: "Atelier de création musicale pour {structure}",
     corps: `Bonjour,
 
-Je suis {moi}, musicien intervenant, et je propose des ateliers et des interventions musicales auprès des publics accompagnés en établissement médico-social.
+Je suis {moi}, ingénieur du son et sound designer. Depuis 2022, j’anime des Ateliers Musiques Urbaines (rap, RnB) en établissement médico-social et en protection de l’enfance : IME, SESSAD, foyers de vie, MECS, lieux ressources.
 
-Je me permets de vous écrire parce que {structure}, à {ville}, accueille un public ({public}) avec lequel ce travail a beaucoup de sens : pratique collective, écoute, rythme, voix, création sonore — des séances conçues avec l’équipe éducative et adaptées aux capacités de chacun.
+Je me permets de vous écrire parce que {structure}, à {ville}, accueille un public ({public}) avec qui cet atelier a beaucoup de sens. J’installe un studio d’enregistrement dans vos locaux, et chacun avance à son rythme :
+• pour un public porteur de handicap, une progression suivie sur l’année : d’abord la mélodie de la voix (fredonner, vocaliser, sans avoir besoin de mots), puis les premiers mots, puis, si c’est possible, sa propre chanson ;
+• en foyer ou en MECS, un atelier tourné vers l’écriture, pour s’exprimer et reprendre confiance, jusqu’à l’enregistrement d’une vraie chanson.
 
-Concrètement, je peux intervenir sous plusieurs formes :
-• un atelier régulier (hebdomadaire ou bimensuel) sur un cycle de plusieurs séances ;
-• un projet ponctuel autour d’une création, d’un enregistrement ou d’une restitution ;
-• une intervention unique de découverte, pour tester avec un groupe.
+J’apporte tout le matériel, et le rythme se cale avec votre équipe : chaque semaine, tous les quinze jours ou une fois par mois. Je conserve tous les enregistrements, et je peux faire un bilan à la demande de l’équipe.
 
-Seriez-vous disponible pour un échange rapide, par téléphone ou sur place, afin que je vous présente le contenu et que l’on regarde si cela correspond à vos projets d’activité ?
+Seriez-vous disponible pour un échange rapide, par téléphone ou sur place, afin que je vous présente l’atelier ?
 
 Bien cordialement,
 
@@ -102,17 +103,15 @@ Bien cordialement,
   },
   {
     id: 'm2',
-    nom: 'Premier contact — siège / gestionnaire',
-    objet: 'Interventions musicales dans vos établissements — {gestionnaire}',
+    nom: "Premier contact — siège / gestionnaire",
+    objet: "Ateliers de création musicale dans vos établissements — {gestionnaire}",
     corps: `Bonjour,
 
-Je suis {moi}, musicien intervenant dans les Alpes-Maritimes. Je m’adresse à vous au niveau du siège car {gestionnaire} gère plusieurs établissements dans le département, et il me semble plus simple de vous présenter une fois ce que je propose plutôt que d’écrire à chaque structure.
+Je suis {moi}, ingénieur du son et sound designer, et j’interviens dans le Var, les Alpes-Maritimes, en Seine-et-Marne et alentours. Je m’adresse au siège car {gestionnaire} gère plusieurs établissements, et il me semble plus simple de vous présenter une fois ce que je propose plutôt que d’écrire à chaque structure.
 
-J’anime des ateliers musicaux auprès des publics accompagnés en établissement : pratique collective, percussions, voix, création sonore, enregistrement. Les séances sont construites avec les équipes et adaptées à chaque groupe.
+J’anime des Ateliers Musiques Urbaines (rap, RnB) en établissement médico-social et en protection de l’enfance. J’installe un studio d’enregistrement sur place, et les participants chantent, écrivent et enregistrent, chacun à son rythme. Pour un public porteur de handicap, l’atelier suit une progression sur l’année ; en foyer ou en MECS, il fait une grande place à l’écriture. Les objectifs et le rythme se construisent avec les équipes.
 
-Je peux intervenir ponctuellement ou sur un cycle, et me déplacer sur l’ensemble du département.
-
-Y a-t-il une personne en charge des projets d’animation ou de la vie sociale à qui je peux transmettre un dossier ? Je peux aussi venir présenter le projet en réunion de directeurs si cela vous semble pertinent.
+Y a-t-il une personne en charge des projets d’animation ou de la vie sociale à qui je peux transmettre ma plaquette ? Je peux aussi venir présenter l’atelier en réunion de directeurs, si cela vous semble utile.
 
 Bien cordialement,
 
@@ -122,13 +121,13 @@ Bien cordialement,
   },
   {
     id: 'm3',
-    nom: 'Relance (10 à 15 jours après)',
-    objet: 'Re : ateliers musicaux — {structure}',
+    nom: "Relance (10 à 15 jours après)",
+    objet: "Re : atelier de création musicale — {structure}",
     corps: `Bonjour,
 
-Je me permets de revenir vers vous au sujet de ma proposition d’ateliers musicaux pour {structure}.
+Je me permets de revenir vers vous au sujet de ma proposition d’atelier de création musicale pour {structure}.
 
-Je sais que la période est chargée : si le sujet vous intéresse mais que ce n’est pas le bon moment, dites-le-moi simplement et je vous recontacterai plus tard dans l’année. Et si ce n’est pas d’actualité, ça ne me vexera pas — je préfère le savoir.
+Je sais que la période est chargée : si le sujet vous intéresse mais que ce n’est pas le bon moment, dites-le-moi simplement et je vous recontacterai plus tard dans l’année. Et si ce n’est pas d’actualité, ça ne me vexera pas : je préfère le savoir.
 
 Je reste joignable au {montel}.
 
@@ -138,43 +137,43 @@ Bien cordialement,
   },
   {
     id: 'm4',
-    nom: 'Script d’appel téléphonique',
-    objet: '(appel) {structure} — {tel}',
-    corps: `« Bonjour, {moi} à l’appareil, je suis musicien intervenant.
+    nom: "Script d’appel téléphonique",
+    objet: "(appel) {structure} — {tel}",
+    corps: `« Bonjour, {moi} à l’appareil. Je suis ingénieur du son et j’anime des ateliers de création musicale, en rap et en RnB.
 Je cherche à joindre la personne qui s’occupe des activités ou des projets d’animation, c’est bien vous ? »
 
 → Si non : « Vous pouvez me dire à qui je dois m’adresser, et à quel moment on la joint le plus facilement ? »
    Noter : nom, fonction, créneau, mail direct.
 
 → Si oui, en une phrase :
-« J’anime des ateliers musicaux en établissement — pratique collective, percussions, voix, création sonore.
-Je travaille avec les équipes pour adapter les séances au groupe. Je démarche les structures du 06 pour la saison qui vient. »
+« J’installe un studio d’enregistrement dans votre structure : les participants chantent, écrivent et enregistrent leurs propres morceaux, chacun à son rythme. J’apporte tout le matériel, et on construit l’atelier avec votre équipe. »
 
 Trois questions à poser (et à noter) :
 1. « Vous avez déjà des intervenants extérieurs, ou des activités culturelles en place ? »
-2. « Comment ça se décide chez vous — c’est vous, la direction, un budget projet, un appel à projets ? »
+2. « Comment ça se décide chez vous : vous, la direction, un budget projet, un appel à projets ? »
 3. « À quelle période vous calez vos activités pour l’année ? »
 
 Conclure sur un pas concret :
-« Je vous envoie une présentation par mail aujourd’hui, et je vous rappelle la semaine du ___ pour savoir ce que vous en pensez ? »`,
+« Je vous envoie ma plaquette par mail aujourd’hui, et je vous rappelle la semaine du ___ pour savoir ce que vous en pensez ? »`,
   },
   {
     id: 'm5',
-    nom: 'Après le rendez-vous',
-    objet: 'Suite à notre échange — {structure}',
+    nom: "Après le rendez-vous",
+    objet: "Suite à notre échange — {structure}",
     corps: `Bonjour,
 
 Merci pour le temps que vous m’avez accordé.
 
 Comme convenu, voici ce que je retiens de notre échange et ce que je vous propose :
 • Public concerné : {public}
-• Format : ___ séances de ___ minutes, groupe de ___ personnes
+• Rythme : chaque semaine / tous les quinze jours / une fois par mois — ou stage de ___ (6 heures au minimum)
+• Groupe : ___ personnes
 • Période envisagée : ___
-• Tarif : ___ € la séance (déplacement et matériel compris)
+• Tarif : ___ € (déplacement et matériel compris)
 
 Je reste ouvert à ajuster le format selon vos contraintes d’organisation.
 
-Dites-moi ce qu’il vous faut de mon côté pour avancer (devis, attestation d’assurance, présentation écrite pour l’équipe).
+Dites-moi ce qu’il vous faut de mon côté pour avancer : devis, attestation d’assurance, plaquette pour l’équipe.
 
 Bien cordialement,
 
@@ -201,20 +200,20 @@ Bien cordialement,
   },
   {
     id: 'm6',
-    nom: 'Premier contact — espace jeunes (musiques urbaines)',
-    objet: 'Ateliers musiques urbaines pour vos jeunes — {structure}',
+    nom: "Premier contact — espace jeunes (musiques urbaines)",
+    objet: "Stage de création musicale pour vos jeunes — {structure}",
     corps: `Bonjour,
 
-Je suis {moi}, mixeur son et sound designer. Depuis 2022, j’anime des Ateliers de Création de Musiques Urbaines (centres de loisirs, fondations, établissements) : écriture de textes, beatmaking, pose de voix et enregistrement, jusqu’au morceau fini que les jeunes repartent écouter chez eux.
+Je suis {moi}, ingénieur du son et sound designer. Depuis 2022, j’anime des Ateliers Musiques Urbaines en espaces jeunes et centres de loisirs (Sanary-sur-Mer, Bormes-les-Mimosas, Antibes, Anima’Nice…).
 
-Je vous écris parce que vous accueillez à {ville} exactement le public avec qui ces ateliers prennent : des jeunes qui écoutent du rap et de la musique urbaine toute la journée et qui ont envie de passer de l’autre côté, sans prérequis musical.
+Je vous écris parce que vous accueillez à {ville} exactement le public avec qui ces stages prennent : des jeunes qui écoutent du rap et du RnB toute la journée et qui ont envie de passer de l’autre côté, sans prérequis musical.
 
-J’apporte tout le matériel (ordinateur, micro, casques, enceintes) ; il suffit d’une salle au calme. Plusieurs formats sont possibles :
-• un stage pendant les vacances scolaires (3 à 5 demi-journées, un morceau enregistré à la fin) ;
-• un atelier régulier le mercredi ou le samedi sur un trimestre ;
-• une séance découverte, pour tester avec un groupe.
+Le principe : j’installe un studio d’enregistrement dans votre structure, et le groupe crée son propre morceau. On choisit une instrumentale, on trouve la mélodie du refrain, on écrit les paroles (sans grossièretés), on enregistre, et le dernier jour on écoute le morceau ensemble. Je le mixe ensuite dans mon studio.
+• de 8 à 18 ans et plus, idéalement par groupes de 8 à 10 ;
+• pendant les vacances scolaires ou le week-end ;
+• une durée à définir avec vous, 6 heures au minimum.
 
-Seriez-vous d’accord pour en parler quelques minutes au téléphone ? Je peux aussi passer vous présenter le projet et faire écouter des morceaux créés lors d’ateliers précédents.
+J’apporte tout le matériel : il suffit d’une salle au calme. Seriez-vous d’accord pour en parler quelques minutes au téléphone ? Je peux aussi passer vous présenter le projet et faire écouter des morceaux créés lors de stages précédents.
 
 Bien cordialement,
 
@@ -223,6 +222,14 @@ Bien cordialement,
 {monsite}`,
   },
 ];
+// Empreintes des premiers modèles (« musicien intervenant… percussions ») : un
+// modèle resté identique à sa version d'origine est remplacé par la nouvelle
+// (rap/RnB, nouveau secteur) ; un modèle que tu as retouché n'est jamais touché.
+const PS_MODELES_ORIGINE = { m1: '19z2ccg', m2: 'kbaf6p', m3: '1qxid1d', m4: '1f9d1m4', m5: '5lo87y', m6: '925y1j' };
+function psEmpreinte(t) { let x = 5381; for (const c of String(t).replace(/\r/g, '')) x = ((x * 33) ^ c.codePointAt(0)) >>> 0; return x.toString(36); }
+// Adresses réservées aux essais du formulaire du site : jamais une vraie demande.
+const PS_MAIL_TEST = /@exemple\.(fr|com|org)$/i;
+
 
 CC.prospection = {
   _base: null,
@@ -304,7 +311,22 @@ CC.prospection = {
       if (!p.modeles.some((x) => x.id === m.id)) p.modeles.push(JSON.parse(JSON.stringify(m)));
       p.reglages.modelesVus.push(m.id);
     });
+    if (this._migrerModeles(p) && !this._migrationPrevue) {
+      this._migrationPrevue = true;
+      setTimeout(() => { this._migrationPrevue = false; this._persist(); }, 0);
+    }
     return p;
+  },
+  // Remplace les modèles restés dans leur version d'origine (voir PS_MODELES_ORIGINE).
+  _migrerModeles(p) {
+    let n = 0;
+    p.modeles.forEach((m) => {
+      const neuf = PS_MODELES.find((x) => x.id === m.id);
+      if (!neuf || PS_MODELES_ORIGINE[m.id] !== psEmpreinte(m.corps)) return;
+      Object.assign(m, JSON.parse(JSON.stringify(neuf)));
+      n++;
+    });
+    return n;
   },
   _normaliser(s) {
     return {
@@ -1547,6 +1569,7 @@ CC.prospection = {
     this._importEnCours = true;
     let crees = 0;
     try {
+      await this._nettoyerEssais();
       const R = this.suivi().reglages;
       const vus = new Set(R.demandesVues || []);
       const nouveaux = new Map();
@@ -1569,6 +1592,10 @@ CC.prospection = {
         const d = psLireDemande(msg.text || '');
         vus.add(m.id);
         if (!d) continue;                        // mail sans bloc de données : on ne le relira plus
+        if (PS_MAIL_TEST.test(d.email || '')) {  // essai du formulaire : pas de fiche, mail à la corbeille
+          try { await window.api.gmail.trash({ id: m.id }); } catch (_) {}
+          continue;
+        }
         await this._ajouterDemande(d, m);
         crees++;
       }
@@ -1585,6 +1612,34 @@ CC.prospection = {
     } else if (manuel) {
       CC.toast('Aucune nouvelle demande du site.', 'ok');
     }
+  },
+
+  // Retire une fois pour toutes les fiches et les mails des essais du formulaire
+  // (adresses @exemple.fr) : ceux d'avant la règle qui les ignore.
+  async _nettoyerEssais() {
+    const S = this.suivi();
+    if (S.reglages.essaisNettoyes) return;
+    const aJeter = new Set();
+    Object.values(S.perso).forEach((p) => {
+      const f = S.fiches[p.id] || {};
+      if (p.source !== 'site' || !PS_MAIL_TEST.test(f.mail || p.mail || '')) return;
+      if (f.demandeMail) aJeter.add(f.demandeMail);
+      delete S.perso[p.id];
+      delete S.fiches[p.id];
+    });
+    let res;
+    try { res = await window.api.gmail.list({ dossier: 'boite', maxResults: 30, recherche: 'subject:"[Demande site]" newer_than:90d' }); } catch (_) { res = null; }
+    if (!res || res.error) return;               // Gmail injoignable : on réessaiera
+    for (const m of res.messages || []) {
+      if (aJeter.has(m.id)) continue;
+      let msg;
+      try { msg = await window.api.gmail.get(m.id); } catch (_) { msg = null; }
+      const d = msg && !msg.error ? psLireDemande(msg.text || '') : null;
+      if (d && PS_MAIL_TEST.test(d.email || '')) aJeter.add(m.id);
+    }
+    for (const id of aJeter) { try { await window.api.gmail.trash({ id }); } catch (_) {} }
+    S.reglages.essaisNettoyes = true;
+    this._persist();
   },
 
   async _ajouterDemande(d, m) {

@@ -11,15 +11,13 @@
 // Version du cache : à incrémenter à chaque refonte visuelle. L'ancien cache est
 // purgé à l'activation, ce qui évite de servir un mélange d'anciens et de
 // nouveaux fichiers après une mise à jour importante.
-const CACHE = 'macompta-mujibkhk';
+const CACHE = 'macompta-mujmm83i';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'css/styles.css', 'vendor/leaflet/leaflet.css',
   'assets/icon.png', 'assets/icon-192.png', 'assets/icon-256.png', 'assets/icon-180.png', 'assets/icon-32.png',
-  'assets/fonts/manrope-400.woff2', 'assets/fonts/manrope-500.woff2',
-  'assets/fonts/manrope-600.woff2', 'assets/fonts/manrope-700.woff2',
-  'assets/fonts/sora-500.woff2', 'assets/fonts/sora-600.woff2', 'assets/fonts/sora-700.woff2',
+  'assets/fonts/plus-jakarta-sans-latin.woff2', 'assets/fonts/plus-jakarta-sans-latin-ext.woff2',
   'vendor/chart.umd.js', 'vendor/xlsx.full.min.js', 'vendor/pdf.min.js', 'vendor/leaflet/leaflet.js',
   'js/settings.js', 'js/datepicker.js', 'js/stats.js', 'js/charts.js', 'js/import.js', 'js/pdfimport.js',
   'js/clients.js', 'js/factures.js', 'js/fiscal.js', 'js/bilan.js', 'js/ai.js', 'js/connections.js',

@@ -96,6 +96,31 @@ CC.coffre = {
     if (r && r.fichiers) r.fichiers.forEach((f) => { this._fichiers[f.nom] = f; });
     if (r && r.dir) this._dir = r.dir;
     this._charge = true;
+    if (r && r.fichiers) this._adopter();
+  },
+
+  // Un fichier déposé directement dans le dossier du coffre (Finder, ou par
+  // Claude) reçoit sa fiche tout seul. On retient les noms déjà vus : une fiche
+  // retirée en gardant le fichier ne revient donc pas.
+  _adopter() {
+    const S = CC.state.settings || (CC.state.settings = {});
+    const docs = this.docs();
+    if (!Array.isArray(S.coffreVus)) S.coffreVus = docs.map((d) => d.nom);
+    const vus = new Set(S.coffreVus);
+    const refs = new Set(docs.map((d) => d.nom));
+    const nouveaux = Object.keys(this._fichiers).filter((nom) => !vus.has(nom) && !refs.has(nom) && !nom.startsWith('.'));
+    if (!nouveaux.length) return;
+    nouveaux.forEach((nom) => {
+      const type = devineType(nom);
+      docs.push({
+        id: CC.util.uid(), nom, titre: titreDepuis(nom), type: type.id,
+        expire: type.moisValidite ? CC.util.toISO(dansMois(type.moisValidite)) : '',
+        rappelJours: CO_RAPPEL_DEFAUT, notes: '', ajoute: CC.util.toISO(new Date())
+      });
+      S.coffreVus.push(nom);
+    });
+    CC.markDirty();
+    CC.toast(nouveaux.length + (nouveaux.length > 1 ? ' documents ajoutés' : ' document ajouté') + ' au Coffre : ' + nouveaux.map(titreDepuis).join(', '), 'ok');
   },
 
   async render() {
@@ -213,6 +238,8 @@ CC.coffre = {
         ajoute: CC.util.toISO(new Date())
       };
       this.docs().push(d);
+      const S = CC.state.settings || (CC.state.settings = {});
+      if (Array.isArray(S.coffreVus) && !S.coffreVus.includes(f.nom)) S.coffreVus.push(f.nom);
       nouveaux.push(d);
     });
     CC.markDirty();
@@ -308,6 +335,8 @@ CC.coffre = {
       if (r && r.error) { CC.toast(r.error, 'err'); return; }
       delete this._fichiers[d.nom];
     }
+    const S = CC.state.settings || (CC.state.settings = {});
+    if (Array.isArray(S.coffreVus) && !S.coffreVus.includes(d.nom)) S.coffreVus.push(d.nom);
     CC.state.documents = this.docs().filter((x) => x.id !== id);
     delete this._sel[id];
     CC.markDirty();

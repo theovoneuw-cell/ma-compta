@@ -18,14 +18,14 @@ CC._charts = {};
 // ---------------------------------------------------------------------------
 const PAL = {
   light: {
-    paye: '#0ea371', attente: '#c2740a', prevu: '#6366f1', retard: '#dc2626',
-    accent: '#4f46e5', contexte: '#9690b3', fond: '#ffffff',
-    annees: ['#9aa6fb', '#818cf8', '#6366f1', '#4f46e5', '#3730a3']
+    paye: '#0ea371', attente: '#c2740a', prevu: '#7c5cf0', retard: '#dc2626',
+    accent: '#6b4ce6', contexte: '#9690b3', fond: '#ffffff',
+    annees: ['#c4b5fd', '#9d86f5', '#7c5cf0', '#6b4ce6', '#4b3aa6']
   },
   dark: {
-    paye: '#059669', attente: '#d97706', prevu: '#6366f1', retard: '#dc2626',
-    accent: '#6366f1', contexte: '#6b6590', fond: '#201c36',
-    annees: ['#4f46e5', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe']
+    paye: '#059669', attente: '#d97706', prevu: '#7c5cf0', retard: '#dc2626',
+    accent: '#7c5cf0', contexte: '#6b6590', fond: '#201c36',
+    annees: ['#6b4ce6', '#7c5cf0', '#9d86f5', '#c4b5fd', '#ddd6fe']
   }
 };
 let P = PAL.light;

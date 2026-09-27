@@ -239,7 +239,7 @@ CC.bilan.buildPrintHTML = function (year) {
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #1b1733; margin: 0; font-size: 12px; line-height: 1.5; }
-  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #4f46e5; padding-bottom: 12px; margin-bottom: 20px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #6b4ce6; padding-bottom: 12px; margin-bottom: 20px; }
   .head h1 { margin: 0; font-size: 26px; letter-spacing: -.4px; }
   .head .sub { color: #6b7280; margin-top: 4px; }
   .head .who { text-align: right; color: #374151; font-size: 11.5px; }
@@ -250,7 +250,7 @@ CC.bilan.buildPrintHTML = function (year) {
   .fig .v { font-size: 19px; font-weight: 700; margin-top: 4px; }
   .fig .h { font-size: 10px; color: #9ca3af; margin-top: 3px; }
   section { margin-bottom: 20px; break-inside: avoid; }
-  h2 { font-size: 12px; margin: 0 0 9px; color: #4f46e5; text-transform: uppercase; letter-spacing: .6px; }
+  h2 { font-size: 12px; margin: 0 0 9px; color: #6b4ce6; text-transform: uppercase; letter-spacing: .6px; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; color: #6b7280; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid #e5e7eb; padding: 6px 8px; }
   td { padding: 6px 8px; border-bottom: 1px solid #f1f1f5; }
@@ -258,7 +258,7 @@ CC.bilan.buildPrintHTML = function (year) {
   tr.total td { font-weight: 700; border-top: 2px solid #e5e7eb; border-bottom: none; }
   .barcell { width: 32%; }
   .barwrap { display: inline-block; width: 100%; height: 7px; background: #eef0f6; border-radius: 4px; overflow: hidden; vertical-align: middle; }
-  .bar { display: block; height: 100%; background: #4f46e5; }
+  .bar { display: block; height: 100%; background: #6b4ce6; }
   .bar.warn { background: #d97706; } .bar.danger { background: #dc2626; }
   .seuil { margin-bottom: 11px; }
   .seuil-top { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
@@ -277,7 +277,7 @@ CC.bilan.buildPrintHTML = function (year) {
   <div class="figs">
     <div class="fig" style="border-top:3px solid #16a34a"><div class="l">CA encaissé</div><div class="v">${eur0(enc)}</div><div class="h">${yoyPct == null ? nbFac + ' facture(s)' : (yoyPct >= 0 ? '+' : '') + pct(yoyPct, 1) + ' vs ' + (year - 1)}</div></div>
     <div class="fig" style="border-top:3px solid #d97706"><div class="l">Cotisations URSSAF</div><div class="v">${eur0(urssaf)}</div><div class="h">taux moyen ${pct(tauxMoyen, 1)}</div></div>
-    <div class="fig" style="border-top:3px solid #4f46e5"><div class="l">Impôt sur le revenu</div><div class="v">${impot ? eur0(impot) : '—'}</div><div class="h">${impotHint}</div></div>
+    <div class="fig" style="border-top:3px solid #6b4ce6"><div class="l">Impôt sur le revenu</div><div class="v">${impot ? eur0(impot) : '—'}</div><div class="h">${impotHint}</div></div>
     <div class="fig" style="border-top:3px solid #16a34a"><div class="l">Résultat net estimé</div><div class="v">${eur0(net)}</div><div class="h">après URSSAF &amp; impôt</div></div>
   </div>
 

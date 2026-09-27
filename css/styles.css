@@ -1,35 +1,37 @@
+/* Charte « Théo Von Euw » (27/09/2026) : mêmes codes que le site et les plaquettes —
+   Plus Jakarta Sans, encre violet nuit, lilas, voyant rouge, verre dépoli, pilules.
+   Police sous licence libre OFL (assets/fonts/LICENCE-OFL.txt). */
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap;
+  src: url('../assets/fonts/plus-jakarta-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap;
+  src: url('../assets/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 /* ===================== POLICES (locales, hors-ligne) ===================== */
 /* Corps : Manrope — Titres : Sora */
-@font-face { font-family: 'Manrope'; font-weight: 400; font-style: normal; font-display: swap; src: url('../assets/fonts/manrope-400.woff2') format('woff2'); }
-@font-face { font-family: 'Manrope'; font-weight: 500; font-style: normal; font-display: swap; src: url('../assets/fonts/manrope-500.woff2') format('woff2'); }
-@font-face { font-family: 'Manrope'; font-weight: 600; font-style: normal; font-display: swap; src: url('../assets/fonts/manrope-600.woff2') format('woff2'); }
-@font-face { font-family: 'Manrope'; font-weight: 700; font-style: normal; font-display: swap; src: url('../assets/fonts/manrope-700.woff2') format('woff2'); }
-@font-face { font-family: 'Sora'; font-weight: 500; font-style: normal; font-display: swap; src: url('../assets/fonts/sora-500.woff2') format('woff2'); }
-@font-face { font-family: 'Sora'; font-weight: 600; font-style: normal; font-display: swap; src: url('../assets/fonts/sora-600.woff2') format('woff2'); }
-@font-face { font-family: 'Sora'; font-weight: 700; font-style: normal; font-display: swap; src: url('../assets/fonts/sora-700.woff2') format('woff2'); }
 
 /* ===================== IDENTITÉ COULEUR : Indigo nuit & Corail ===================== */
 :root {
   /* Neutres (teintés indigo, chauds-froids) */
-  --paper: #f4f3fa;
+  --paper: #f6f1fb;
   --surface: #ffffff;
-  --surface-2: #efedf8;
-  --border: #e5e2f1;
-  --border-strong: #d3cee6;
-  --ink: #1b1733;
-  --text: #2f2b48;
-  --muted: #6c6890;
-  --soft: #9a96b8;
+  --surface-2: #f1ecfb;
+  --border: #e8e1f3;
+  --border-strong: #d8cdea;
+  --ink: #1a1530;
+  --text: #342e4d;
+  --muted: #6c6682;
+  --soft: #9993ad;
 
   /* Marque : indigo */
-  --accent: #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-soft: #e8e6fb;
+  --accent: #6b4ce6;
+  --accent-strong: #4b3aa6;
+  --accent-soft: #ebe6fb;
 
   /* Accent vif : corail */
-  --coral: #fb7185;
-  --coral-strong: #f43f5e;
-  --coral-soft: #ffe4ea;
+  --coral: #f0622d;
+  --coral-strong: #c2410c;
+  --coral-soft: #fde8da;
 
   /* Sémantique */
   --green: #0ea371;        /* encaissé / reçue */
@@ -38,10 +40,13 @@
   --amber-soft: #fbedd6;
   --red: #dc2626;          /* en retard */
   --red-soft: #fce4e4;
-  --blue: #6366f1;         /* prévisionnel (indigo clair) */
+  --blue: #7c5cf0;         /* prévisionnel (indigo clair) */
 
-  --serif: 'Sora', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --sans: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --serif: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --sans: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --nuit: #1f1747;           /* nuit studio : boutons principaux, logo */
+  --lilas: #d9cffd; --lilas-encre: #4b3aa6;
+  --peche: #ffd6bd; --peche-encre: #a53a0e;
   --shadow: 0 1px 2px rgba(27,23,51,.05), 0 4px 14px rgba(27,23,51,.07);
   /* Ombres "signature" teintées indigo : du relief sans lourdeur */
   --shadow-soft: 0 1px 2px rgba(27,23,51,.04), 0 4px 14px rgba(27,23,51,.05);
@@ -51,11 +56,11 @@
   /* ---- Échelle de rayons (esprit iOS : généreux et cohérent) ----
      Un seul endroit à toucher pour rendre toute l'app plus ou moins arrondie. */
   --r-xs: 8px;     /* pastilles, mini-boutons */
-  --r-sm: 11px;    /* champs, boutons */
-  --r-md: 14px;    /* petites cartes internes (qcell, fc, chips) */
-  --r-lg: 18px;    /* cartes, tableaux, panneaux */
-  --r-xl: 24px;    /* modales, grandes surfaces */
-  --r-2xl: 28px;   /* feuilles mobiles */
+  --r-sm: 13px;    /* champs, boutons */
+  --r-md: 16px;    /* petites cartes internes (qcell, fc, chips) */
+  --r-lg: 22px;    /* cartes, tableaux, panneaux */
+  --r-xl: 28px;    /* modales, grandes surfaces */
+  --r-2xl: 32px;   /* feuilles mobiles */
   --r-pill: 999px;
 
   /* ---- Verre dépoli (« liquid glass ») ----
@@ -85,10 +90,10 @@
   /* ---- Fond « aurore » ----
      Halos larges et très désaturés : c'est LE décor que le verre révèle. */
   --aurora:
-    radial-gradient(1180px 620px at 88% -12%, rgba(99,102,241,.22), transparent 62%),
-    radial-gradient(980px 600px at -8% 8%,   rgba(129,140,248,.16), transparent 58%),
-    radial-gradient(900px 640px at 12% 106%, rgba(251,113,133,.16), transparent 58%),
-    radial-gradient(760px 520px at 96% 88%,  rgba(244,63,94,.10),  transparent 55%);
+    radial-gradient(1100px 700px at -8% -10%, rgba(212,198,255,.85), transparent 60%),
+    radial-gradient(900px 620px at 104% 4%,  rgba(255,201,166,.75), transparent 58%),
+    radial-gradient(760px 560px at 78% 108%, rgba(255,159,122,.35), transparent 56%),
+    radial-gradient(820px 600px at 12% 110%, rgba(191,224,255,.45), transparent 58%);
 }
 
 /* ===================== THÈME SOMBRE ===================== */
@@ -98,28 +103,28 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --paper: #14121f;
-  --surface: #1c1930;
-  --surface-2: #262239;
-  --border: #302b47;
-  --border-strong: #3d3757;
+  --paper: #120e24;
+  --surface: #1b1636;
+  --surface-2: #251f45;
+  --border: #312a55;
+  --border-strong: #403766;
   --ink: #f2f0fa;
   --text: #d8d5ea;
   --muted: #a19dc0;
   --soft: #7b7799;
 
-  --accent: #8b82f2;
-  --accent-strong: #a49cf6;
-  --accent-soft: #2a2550;
+  --accent: #a48cf7;
+  --accent-strong: #c4b5fd;
+  --accent-soft: #2d2350;
 
-  --coral: #fb7185;
-  --coral-strong: #fb7185;
-  --coral-soft: #3a2230;
+  --coral: #ff8a5b;
+  --coral-strong: #ffb08a;
+  --coral-soft: #3a2320;
 
   --green: #34d399;  --green-soft: #123a2d;
   --amber: #fbbf24;  --amber-soft: #3a2e12;
   --red: #f87171;    --red-soft: #3a1f22;
-  --blue: #818cf8;
+  --blue: #9d86f5;
 
   --shadow: 0 1px 2px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.55);
   --shadow-soft: 0 1px 2px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.45);
@@ -142,10 +147,9 @@
 
   /* Aurore de nuit : mêmes halos, plus saturés car le fond très sombre les absorbe. */
   --aurora:
-    radial-gradient(1180px 620px at 88% -12%, rgba(99,102,241,.26), transparent 62%),
-    radial-gradient(980px 600px at -8% 8%,   rgba(79,70,229,.20),  transparent 58%),
-    radial-gradient(900px 640px at 12% 106%, rgba(244,63,94,.14),  transparent 58%),
-    radial-gradient(760px 520px at 96% 88%,  rgba(251,113,133,.10), transparent 55%);
+    radial-gradient(1100px 700px at 100% -10%, rgba(240,98,45,.22), transparent 58%),
+    radial-gradient(1000px 700px at -10% 110%, rgba(107,76,230,.38), transparent 60%),
+    radial-gradient(800px 560px at -6% 0%,    rgba(75,58,166,.30), transparent 58%);
 }
 :root[data-theme="dark"] .topbar { box-shadow: 0 6px 22px rgba(0,0,0,.45); }
 /* Pense-bête : le dégradé clair codé en dur (#fffdf4) devient une teinte ambrée discrète. */
@@ -221,7 +225,7 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
   /* 22 % = exactement l'arrondi du SVG (rx 114 sur 512), pour que l'ombre portée
      épouse la silhouette réelle du logo quelle que soit sa taille. */
   border-radius: 22%;
-  box-shadow: 0 4px 12px rgba(79,70,229,.32);
+  box-shadow: 0 4px 12px rgba(107,76,230,.32);
 }
 .brand .logo svg { display: block; width: 100%; height: 100%; }
 .brand h1 { font-family: var(--serif); font-size: 17px; margin: 0; letter-spacing: -.2px; color: var(--ink); font-weight: 600; white-space: nowrap; }
@@ -234,7 +238,7 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
 .tab { background: transparent; border: none; color: var(--muted); padding: 7px 13px; border-radius: var(--r-pill); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; display: inline-flex; align-items: center; white-space: nowrap; transition: background .16s ease, color .16s ease, box-shadow .16s ease; }
 .tab:hover { color: var(--ink); background: rgba(27,23,51,.05); }
 /* Onglet actif : pastille de verre surélevée (le « segmented control » iOS). */
-.tab.active { color: var(--accent); background: var(--glass-bg-strong); font-weight: 700; box-shadow: var(--glass-shine), 0 1px 3px rgba(27,23,51,.10), 0 4px 12px rgba(79,70,229,.10); }
+.tab.active { color: var(--accent); background: var(--glass-bg-strong); font-weight: 700; box-shadow: var(--glass-shine), 0 1px 3px rgba(27,23,51,.10), 0 4px 12px rgba(107,76,230,.10); }
 :root[data-theme="dark"] .tab:hover { background: rgba(255,255,255,.06); }
 /* Pastille "mails non lus" (boîte principale uniquement) — pensée pour attirer
    l'œil sans agresser : pilule dégradée corail, halo qui pulse doucement. */
@@ -243,10 +247,10 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 19px; height: 19px; padding: 0 6px; margin-left: 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #ff8da3 0%, var(--coral-strong) 100%);
+  background: linear-gradient(135deg, #ff9a6b 0%, var(--coral-strong) 100%);
   color: #fff; font-size: 11px; font-weight: 800; line-height: 1;
   letter-spacing: -.2px; font-variant-numeric: tabular-nums;
-  box-shadow: 0 2px 7px rgba(244,63,94,.45), inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 2px var(--surface);
+  box-shadow: 0 2px 7px rgba(240,98,45,.45), inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 2px var(--surface);
   animation: badgePop .34s cubic-bezier(.34,1.56,.64,1);
 }
 /* Halo concentrique qui pulse (anneau qui s'évanouit) */
@@ -254,13 +258,13 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   animation: badgePulse 2.4s ease-out infinite;
 }
-.tab.active .tab-badge { box-shadow: 0 2px 7px rgba(244,63,94,.45), inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 2px var(--accent-soft); }
+.tab.active .tab-badge { box-shadow: 0 2px 7px rgba(240,98,45,.45), inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 2px var(--accent-soft); }
 .tab-badge.hidden { display: none; }
 @keyframes badgePop { 0% { transform: scale(.2); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes badgePulse {
-  0%   { box-shadow: 0 0 0 0 rgba(244,63,94,.5); }
-  70%  { box-shadow: 0 0 0 7px rgba(244,63,94,0); }
-  100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(240,98,45,.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(240,98,45,0); }
+  100% { box-shadow: 0 0 0 0 rgba(240,98,45,0); }
 }
 @media (prefers-reduced-motion: reduce) { .tab-badge, .tab-badge::after { animation: none; } }
 
@@ -281,9 +285,9 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
 .mtab-badge {
   position: absolute; top: 2px; left: 50%; margin-left: 4px; min-width: 16px; height: 16px;
   padding: 0 4px; display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 999px; background: linear-gradient(135deg, #ff8da3 0%, var(--coral-strong) 100%);
+  border-radius: 999px; background: linear-gradient(135deg, #ff9a6b 0%, var(--coral-strong) 100%);
   color: #fff; font-size: 10px; font-weight: 800; line-height: 1;
-  box-shadow: 0 1px 4px rgba(244,63,94,.45), 0 0 0 2px var(--surface);
+  box-shadow: 0 1px 4px rgba(240,98,45,.45), 0 0 0 2px var(--surface);
 }
 .mtab-badge.hidden { display: none; }
 /* Feuille "Plus" */
@@ -334,8 +338,8 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
 .btn:disabled:hover, .btn[disabled]:hover { background: var(--surface); border-color: var(--border-strong); }
 .btn-primary:disabled:hover, .btn-coral:disabled:hover { filter: saturate(.55); }
 .btn:disabled:active, .btn[disabled]:active { transform: none; }
-.btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%); border-color: var(--accent-strong); color: #fff; font-weight: 600; box-shadow: 0 2px 9px rgba(79,70,229,.28); }
-.btn-primary:hover { background: linear-gradient(135deg, var(--accent-strong) 0%, #36309f 100%); border-color: #36309f; box-shadow: 0 3px 12px rgba(79,70,229,.34); }
+.btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%); border-color: var(--accent-strong); color: #fff; font-weight: 600; box-shadow: 0 2px 9px rgba(107,76,230,.28); }
+.btn-primary:hover { background: linear-gradient(135deg, var(--accent-strong) 0%, #3a2d85 100%); border-color: #3a2d85; box-shadow: 0 3px 12px rgba(107,76,230,.34); }
 /* Bouton "Facturation Indy" : aux couleurs d'Indy (noir #171514, rose #FA5D89),
    avec leur logo. C'est un raccourci vers app.indy.fr, d'où l'identité distincte. */
 .btn-indy {
@@ -369,8 +373,8 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
 .btn-danger { background: #fff; border-color: #f0c2cb; color: var(--red); }
 .btn-danger:hover { background: var(--red-soft); }
 /* Bouton "action magique" (générer un mail IA) : accent corail */
-.btn-coral { background: linear-gradient(135deg, var(--coral) 0%, var(--coral-strong) 100%); border-color: var(--coral-strong); color: #fff; font-weight: 700; box-shadow: 0 2px 9px rgba(244,63,94,.26); }
-.btn-coral:hover { background: linear-gradient(135deg, var(--coral-strong) 0%, #e11d48 100%); border-color: #e11d48; box-shadow: 0 3px 12px rgba(244,63,94,.32); }
+.btn-coral { background: linear-gradient(135deg, var(--coral) 0%, var(--coral-strong) 100%); border-color: var(--coral-strong); color: #fff; font-weight: 700; box-shadow: 0 2px 9px rgba(240,98,45,.26); }
+.btn-coral:hover { background: linear-gradient(135deg, var(--coral-strong) 0%, #b53a10 100%); border-color: #b53a10; box-shadow: 0 3px 12px rgba(240,98,45,.32); }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 /* Icônes SVG inline dans les boutons (trombone, etc.) */
 .ic { vertical-align: -2px; }
@@ -379,7 +383,7 @@ body.readonly #btnSave { opacity: .45; cursor: not-allowed; }
 .pj-btn .ic { vertical-align: 0; }
 
 input, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--r-sm); padding: 9px 12px; font-size: 13px; font-family: inherit; transition: border-color .14s, box-shadow .14s; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(79,70,229,.16); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(107,76,230,.16); }
 select { cursor: pointer; }
 .input { width: 100%; }
 
@@ -457,8 +461,8 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .kpi.green { border-left-color: var(--green); background: linear-gradient(180deg, rgba(14,163,113,.10), transparent 46%), var(--card-bg); }
 .kpi.amber { border-left-color: var(--amber); background: linear-gradient(180deg, rgba(194,116,10,.10), transparent 46%), var(--card-bg); }
 .kpi.red { border-left-color: var(--red); background: linear-gradient(180deg, rgba(220,38,38,.10), transparent 46%), var(--card-bg); }
-.kpi.blue { border-left-color: var(--blue); background: linear-gradient(180deg, rgba(99,102,241,.10), transparent 46%), var(--card-bg); }
-.kpi.indigo { border-left-color: var(--accent); background: linear-gradient(180deg, rgba(79,70,229,.11), transparent 46%), var(--card-bg); }
+.kpi.blue { border-left-color: var(--blue); background: linear-gradient(180deg, rgba(107,76,230,.10), transparent 46%), var(--card-bg); }
+.kpi.indigo { border-left-color: var(--accent); background: linear-gradient(180deg, rgba(107,76,230,.11), transparent 46%), var(--card-bg); }
 .kpi.indigo .value { color: var(--accent); }
 /* Étiquette : petite capitale très espacée — elle doit se lire comme une légende,
    pas concurrencer le chiffre. */
@@ -497,7 +501,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .qcell:hover { transform: translateY(-2px); }
 /* Case « Total » : indigo dense plutôt qu'un aplat noir. Elle doit trancher avec
    les trimestres sans casser la translucidité générale. */
-.qcell.total { background: linear-gradient(160deg, rgba(79,70,229,.95) 0%, rgba(67,56,202,.92) 100%); border-color: rgba(255,255,255,.35); box-shadow: var(--card-shine), 0 6px 20px rgba(79,70,229,.28); }
+.qcell.total { background: linear-gradient(160deg, rgba(107,76,230,.95) 0%, rgba(75,58,166,.92) 100%); border-color: rgba(255,255,255,.35); box-shadow: var(--card-shine), 0 6px 20px rgba(107,76,230,.28); }
 .qcell .qt { font-size: 10.5px; color: var(--soft); font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px; }
 .qcell .qv { font-family: var(--serif); font-size: 23px; font-weight: 600; color: var(--ink); margin-top: 6px; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
 .qcell .qd { font-size: 11px; color: var(--muted); margin-top: 3px; }
@@ -561,7 +565,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .table thead th:hover { color: var(--ink); }
 .table th.num, .table td.num { text-align: right; }
 .table tbody tr:last-child td { border-bottom: none; }
-.table tbody tr:hover { background: rgba(79,70,229,.05); }
+.table tbody tr:hover { background: rgba(107,76,230,.05); }
 .table td.montant { font-weight: 600; font-variant-numeric: tabular-nums; }
 .table td.client { font-weight: 500; color: var(--ink); }
 
@@ -613,7 +617,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 :root[data-theme="dark"] #ddBanner { background: linear-gradient(90deg, var(--coral-soft) 0%, var(--amber-soft) 100%); }
 
 /* Carte « À déclarer à l'URSSAF » (aide à la déclaration trimestrielle) */
-.urssaf-now { border-left: 4px solid var(--accent); background: linear-gradient(180deg, rgba(79,70,229,.05), transparent 38%), var(--surface); }
+.urssaf-now { border-left: 4px solid var(--accent); background: linear-gradient(180deg, rgba(107,76,230,.05), transparent 38%), var(--surface); }
 .un-grid { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
 .un-info { min-width: 200px; }
 .un-trim { font-size: 13px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -744,7 +748,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
   border-color: var(--accent-strong);
 }
 .field .check input[type="checkbox"]:checked::after { transform: translateX(17px); }
-.field .check input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3.5px rgba(79,70,229,.22); }
+.field .check input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3.5px rgba(107,76,230,.22); }
 @media (prefers-reduced-motion: reduce) {
   .field .check input[type="checkbox"], .field .check input[type="checkbox"]::after { transition: none; }
 }
@@ -839,7 +843,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .subtab.active {
   color: var(--accent); font-weight: 700;
   background: var(--surface);
-  box-shadow: var(--glass-shine), 0 1px 3px rgba(27,23,51,.12), 0 4px 12px rgba(79,70,229,.10);
+  box-shadow: var(--glass-shine), 0 1px 3px rgba(27,23,51,.12), 0 4px 12px rgba(107,76,230,.10);
 }
 .subpanel { display: none; }
 .subpanel.active { display: block; }
@@ -892,7 +896,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 
 /* ----- Lisibilité de la table Factures ----- */
 /* Zébrage très léger pour suivre chaque ligne sur toute la largeur */
-#facturesTable tbody tr.frow:nth-child(even) td { background: rgba(79,70,229,.022); }
+#facturesTable tbody tr.frow:nth-child(even) td { background: rgba(107,76,230,.022); }
 /* Liseré d'accent à gauche selon le statut : l'œil repère l'état d'un coup */
 .frow td:first-child { box-shadow: inset 3px 0 0 var(--soft); }
 .frow.recue   td:first-child { box-shadow: inset 3px 0 0 var(--green); }
@@ -962,7 +966,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
   transition: background .15s ease;
 }
 .cal-cell:nth-child(7n) { border-right: none; }
-.cal-cell.has:hover { background: rgba(79,70,229,.05); }
+.cal-cell.has:hover { background: rgba(107,76,230,.05); }
 /* Week-ends : teinte neutre à peine perceptible, pour lire la semaine d'un coup. */
 .cal-cell.we { background: rgba(27,23,51,.022); }
 :root[data-theme="dark"] .cal-cell.we { background: rgba(255,255,255,.02); }
@@ -970,7 +974,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .cal-cell.out .cal-num { color: var(--soft); opacity: .75; }
 /* Aujourd'hui : pastille pleine sur le numéro (repère net) plutôt qu'un aplat
    coloré sur toute la case, qui écrasait les événements qu'elle contient. */
-.cal-cell.today { background: rgba(79,70,229,.055); }
+.cal-cell.today { background: rgba(107,76,230,.055); }
 .cal-num {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 25px; height: 25px; padding: 0 6px; margin-bottom: 5px;
@@ -980,7 +984,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .cal-cell.today .cal-num {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: #fff; font-weight: 700;
-  box-shadow: 0 2px 8px rgba(79,70,229,.4);
+  box-shadow: 0 2px 8px rgba(107,76,230,.4);
 }
 /* Pastille d'événement : plus haute, coins doux, l'heure en gras devant le titre.
    Le fond et le liseré colorés viennent de la couleur Google Agenda (posés en
@@ -1042,7 +1046,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 .dp { position: relative; }
 .dp-field { width: 100%; text-align: left; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--r-sm); padding: 8px 12px; font-size: 13px; font-family: inherit; cursor: pointer; text-transform: capitalize; transition: border-color .12s, box-shadow .12s; }
 .dp-field:hover { border-color: var(--soft); }
-.dp-field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.dp-field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(107,76,230,.15); }
 .dp-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 270px; background: var(--glass-bg-strong); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: var(--r-lg); box-shadow: var(--glass-shine), var(--glass-shadow); padding: 13px; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .dp-pop { background: var(--surface); } }
 .dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -1153,7 +1157,7 @@ body:has(#tab-mails.active) main { overflow: hidden; display: flex; flex-directi
   transition: box-shadow .14s ease, transform .14s ease, border-color .14s ease, color .14s ease;
 }
 .gm-compose .ic { color: var(--accent); }
-.gm-compose:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 2px 4px rgba(27,23,51,.06), 0 12px 26px rgba(79,70,229,.16); transform: translateY(-1px); }
+.gm-compose:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 2px 4px rgba(27,23,51,.06), 0 12px 26px rgba(107,76,230,.16); transform: translateY(-1px); }
 .gm-compose:active { transform: translateY(0); }
 
 /* Dossiers : pastilles pleine largeur, l'actif en indigo doux */
@@ -1629,7 +1633,7 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 :root[data-theme="dark"] .trajet-map .leaflet-tile-pane { filter: saturate(.85) brightness(1.06); }
 .trajet-map-wrap::before {
   content: ''; position: absolute; inset: 0; z-index: 450; pointer-events: none;
-  box-shadow: inset 0 0 0 1px var(--card-ring), inset 0 22px 44px -26px rgba(79,70,229,.4), inset 0 -22px 44px -26px rgba(244,63,94,.28);
+  box-shadow: inset 0 0 0 1px var(--card-ring), inset 0 22px 44px -26px rgba(107,76,230,.4), inset 0 -22px 44px -26px rgba(240,98,45,.28);
 }
 /* Léger voile en bas pour fondre la carte vers la zone résultat */
 .trajet-map-wrap::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 38px; pointer-events: none;
@@ -1647,8 +1651,8 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .tj-leg { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; color: var(--ink);
   text-transform: uppercase; letter-spacing: .7px; }
 .tj-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; flex-shrink: 0; }
-.tj-dot.a { background: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,.18); }
-.tj-dot.b { background: var(--coral-strong); box-shadow: 0 0 0 3px rgba(244,63,94,.18); }
+.tj-dot.a { background: var(--accent); box-shadow: 0 0 0 3px rgba(107,76,230,.18); }
+.tj-dot.b { background: var(--coral-strong); box-shadow: 0 0 0 3px rgba(240,98,45,.18); }
 /* État vide (avant calcul) : disparaît dès qu'un itinéraire est tracé */
 .trajet-map-hint { position: absolute; inset: 0; z-index: 480; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 10px; text-align: center; padding: 24px; pointer-events: none;
@@ -1690,8 +1694,8 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 
 /* Marqueurs de carte (départ / arrivée) */
 .tj-pin { display: block; width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; }
-.tj-pin.a { background: var(--accent); box-shadow: 0 0 0 4px rgba(79,70,229,.18), 0 2px 6px rgba(27,23,51,.3); }
-.tj-pin.b { background: var(--coral-strong); box-shadow: 0 0 0 4px rgba(244,63,94,.18), 0 2px 6px rgba(27,23,51,.3); }
+.tj-pin.a { background: var(--accent); box-shadow: 0 0 0 4px rgba(107,76,230,.18), 0 2px 6px rgba(27,23,51,.3); }
+.tj-pin.b { background: var(--coral-strong); box-shadow: 0 0 0 4px rgba(240,98,45,.18), 0 2px 6px rgba(27,23,51,.3); }
 
 .trajet-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
 .tj-motif { font-size: 11px; color: var(--muted); margin-top: 2px; }
@@ -2447,7 +2451,7 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .co-bar {
   display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
   padding: 10px 14px; border-radius: var(--r-md);
-  background: var(--accent-soft); border: 1px solid rgba(79,70,229,.22);
+  background: var(--accent-soft); border: 1px solid rgba(107,76,230,.22);
 }
 .co-bar-n { font-size: 13px; font-weight: 600; color: var(--accent-strong); }
 :root[data-theme="dark"] .co-bar-n { color: #c7d2fe; }
@@ -2539,7 +2543,7 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   border-radius: var(--r-sm); cursor: pointer;
 }
 .pal-item.sel { background: var(--accent-soft); }
-:root[data-theme="dark"] .pal-item.sel { background: rgba(99,102,241,.22); }
+:root[data-theme="dark"] .pal-item.sel { background: rgba(107,76,230,.22); }
 .pal-ic { color: var(--soft); display: flex; flex-shrink: 0; }
 .pal-item.sel .pal-ic { color: var(--accent); }
 .pal-txt { min-width: 0; flex: 1; }
@@ -2761,3 +2765,19 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 .ps-pin-client span { display: block; width: 13px; height: 13px; margin: 2.5px; background: #12b76a; border: 2px solid #fff;
   box-shadow: 0 0 0 1.5px #08533a, 0 2px 5px rgba(0,0,0,.25); transform: rotate(45deg); border-radius: 2px; box-sizing: border-box; }
 .ps-leg.ps-leg-losange i { border-radius: 2px; transform: rotate(45deg) scale(.85); }
+
+/* ===================== CODES DU SITE (charte 27/09/2026) ===================== */
+.btn { border-radius: var(--r-pill); font-weight: 600; letter-spacing: -0.005em; }
+.btn-sm, .mini-btn { border-radius: var(--r-pill); }
+.btn-primary { background: var(--nuit); border-color: var(--nuit); box-shadow: 0 8px 20px -10px rgba(31,23,71,.6), inset 0 1px 0 rgba(255,255,255,.14); }
+.btn-primary:hover { background: #2d2266; border-color: #2d2266; box-shadow: 0 10px 24px -10px rgba(31,23,71,.65), inset 0 1px 0 rgba(255,255,255,.14); }
+:root[data-theme="dark"] .btn-primary { background: #6b4ce6; border-color: #6b4ce6; box-shadow: 0 8px 22px -10px rgba(107,76,230,.8); }
+:root[data-theme="dark"] .btn-primary:hover { background: #7c5cf0; border-color: #7c5cf0; }
+h1, h2, h3, h4 { letter-spacing: -0.02em; }
+.kpi .value { font-weight: 800; letter-spacing: -0.04em; }
+::selection { background: #d9cffd; color: #1f1747; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.brand .logo { border-radius: 30%; box-shadow: 0 6px 16px -6px rgba(31,23,71,.55); }
+.brand .sub { color: var(--accent); }
+:root[data-theme="dark"] .brand .sub { color: #c4b5fd; }
+:root[data-theme="dark"] .brand .logo svg rect { fill: #4b3aa6; }
