@@ -584,3 +584,45 @@ function syncVersement() {
     ? 'Taux du prélèvement libératoire (2,2 % en BNC).'
     : 'Sans objet : tu n\u2019as pas opté pour le versement libératoire. Ton impôt se calcule sur la tranche ci-dessous.';
 }
+
+// ---------------------------------------------------------------------------
+// Transfert des clés (version iPhone). iOS efface le stockage d'une app retirée
+// de l'écran d'accueil : identifiant Google, clés Gemini / TollGuru, code discret.
+// On les met dans un code à copier (Notes), puis à recoller après réinstallation.
+// Le code n'est jamais envoyé nulle part : il ne passe que par le presse-papiers.
+// ---------------------------------------------------------------------------
+(function () {
+  const CLES = ['googleClientId', 'geminiKey', 'tollguruKey', 'privacyPin', 'privacyStartup', 'googleConnected'];
+  const PREFIXE = 'MACOMPTA-CLES:';
+  function brancher() {
+    const bloc = document.getElementById('clesTransfert');
+    if (!bloc || bloc._branche) return;
+    bloc._branche = true;
+    if (CC.estBureau()) return;               // sur Mac, les clés sont gardées par l'app elle-même
+    bloc.classList.remove('hidden');
+    document.getElementById('clesCopier').addEventListener('click', async () => {
+      const o = {};
+      CLES.forEach((k) => { try { const v = localStorage.getItem(k); if (v) o[k] = v; } catch (_) {} });
+      if (!Object.keys(o).length) { CC.toast('Aucune clé enregistrée sur cet appareil.', 'err'); return; }
+      const code = PREFIXE + btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+      try { await navigator.clipboard.writeText(code); CC.toast('Clés copiées : colle-les dans Notes avant de supprimer l’app.', 'ok'); }
+      catch (_) { window.prompt('Copie ce code et garde-le dans Notes :', code); }
+    });
+    document.getElementById('clesColler').addEventListener('click', async () => {
+      let code = '';
+      try { code = await navigator.clipboard.readText(); } catch (_) {}
+      if (!code || code.indexOf(PREFIXE) !== 0) code = window.prompt('Colle ici le code copié depuis Notes :', '') || '';
+      code = code.trim();
+      if (code.indexOf(PREFIXE) !== 0) { CC.toast('Ce n’est pas un code de clés Ma Compta.', 'err'); return; }
+      let o;
+      try { o = JSON.parse(decodeURIComponent(escape(atob(code.slice(PREFIXE.length))))); } catch (_) { o = null; }
+      if (!o || typeof o !== 'object') { CC.toast('Code illisible : recopie-le en entier.', 'err'); return; }
+      let n = 0;
+      CLES.forEach((k) => { if (typeof o[k] === 'string' && o[k]) { try { localStorage.setItem(k, o[k]); n++; } catch (_) {} } });
+      CC.toast(n + ' réglage(s) restauré(s). L’app redémarre…', 'ok');
+      setTimeout(() => location.reload(), 1200);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', brancher); else brancher();
+})();
+
