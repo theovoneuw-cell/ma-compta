@@ -16,22 +16,26 @@ CC._charts = {};
 //     clair) a la plus recente (foncee) — l'ordre se lit dans la couleur.
 // Le sombre a ses propres pas, pas une inversion automatique.
 // ---------------------------------------------------------------------------
+// Palette de la charte Théo Von Euw (27/09/2026), mêmes teintes que le site :
+// payé = lilas foncé (l'encre de la marque), en attente = pêche, prévu = lilas
+// clair, en retard = rouge du voyant. Ordre de pose inchangé : l'ambre-pêche et le
+// rouge ne se touchent jamais (le lilas clair du « prévu » est entre les deux).
 const PAL = {
   light: {
-    paye: '#0ea371', attente: '#c2740a', prevu: '#7c5cf0', retard: '#dc2626',
-    accent: '#6b4ce6', contexte: '#9690b3', fond: '#ffffff',
-    annees: ['#c4b5fd', '#9d86f5', '#7c5cf0', '#6b4ce6', '#4b3aa6']
+    paye: '#4b3aa6', attente: '#ff9f6e', prevu: '#c9bcf7', retard: '#d9463f',
+    accent: '#6b4ce6', contexte: '#d6cfe4', fond: '#ffffff',
+    annees: ['#e4dcfb', '#c4b5fd', '#9d86f5', '#6b4ce6', '#1f1747']
   },
   dark: {
-    paye: '#059669', attente: '#d97706', prevu: '#7c5cf0', retard: '#dc2626',
-    accent: '#7c5cf0', contexte: '#6b6590', fond: '#201c36',
-    annees: ['#6b4ce6', '#7c5cf0', '#9d86f5', '#c4b5fd', '#ddd6fe']
+    paye: '#a48cf7', attente: '#ffb08a', prevu: '#7560cf', retard: '#ff6b57',
+    accent: '#a48cf7', contexte: '#3d3852', fond: '#1b1636',
+    annees: ['#3a2d85', '#4b3aa6', '#6b4ce6', '#a48cf7', '#ddd6fe']
   }
 };
 let P = PAL.light;
 
 // Encres (textes, grille) : relues depuis le CSS, source de verite du theme.
-const COL = { text: '#6c6890', ink: '#1b1733', fort: '#2f2b48', grid: 'rgba(27,23,51,.08)' };
+const COL = { text: '#6c6682', ink: '#1a1530', fort: '#342e4d', grid: 'rgba(26,21,48,.07)' };
 
 function refreshTheme() {
   const cs = getComputedStyle(document.documentElement);
@@ -41,23 +45,23 @@ function refreshTheme() {
   COL.text = v('--muted', COL.text);
   COL.ink = v('--ink', COL.ink);
   COL.fort = v('--text', COL.fort);
-  COL.grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(27,23,51,.08)';
+  COL.grid = dark ? 'rgba(255,255,255,.07)' : 'rgba(26,21,48,.07)';
 
   Chart.defaults.color = COL.text;
   Chart.defaults.locale = 'fr-FR';   // 14 000 et non 14,000
-  Chart.defaults.font.family = 'Manrope, Segoe UI, system-ui, sans-serif';
+  Chart.defaults.font.family = "'Plus Jakarta Sans', Segoe UI, system-ui, sans-serif";
   Chart.defaults.font.size = 11.5;
   Chart.defaults.animation.duration = 450;
 
   const tt = Chart.defaults.plugins.tooltip;
-  tt.backgroundColor = dark ? 'rgba(12,10,24,.95)' : 'rgba(27,23,51,.95)';
+  tt.backgroundColor = dark ? 'rgba(12,9,28,.96)' : 'rgba(31,23,71,.96)';
   tt.borderColor = dark ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.18)';
   tt.borderWidth = 1;
-  tt.cornerRadius = 10;
+  tt.cornerRadius = 14;
   tt.padding = { x: 12, y: 10 };
-  tt.titleFont = { family: 'Sora, Segoe UI, system-ui, sans-serif', size: 12, weight: '600' };
-  tt.bodyFont = { family: 'Manrope, Segoe UI, system-ui, sans-serif', size: 12 };
-  tt.footerFont = { family: 'Manrope, Segoe UI, system-ui, sans-serif', size: 11, weight: '500' };
+  tt.titleFont = { family: "'Plus Jakarta Sans', Segoe UI, system-ui, sans-serif", size: 12.5, weight: '700' };
+  tt.bodyFont = { family: "'Plus Jakarta Sans', Segoe UI, system-ui, sans-serif", size: 12 };
+  tt.footerFont = { family: "'Plus Jakarta Sans', Segoe UI, system-ui, sans-serif", size: 11, weight: '500' };
   tt.footerColor = 'rgba(255,255,255,.72)';
   tt.boxWidth = 8; tt.boxHeight = 8; tt.boxPadding = 5; tt.usePointStyle = true;
   tt.displayColors = false;
@@ -66,10 +70,10 @@ function refreshTheme() {
   lg.position = 'bottom';
   lg.align = 'start';
   lg.labels.boxWidth = 8; lg.labels.boxHeight = 8;
-  lg.labels.usePointStyle = true; lg.labels.pointStyle = 'rectRounded';
+  lg.labels.usePointStyle = true; lg.labels.pointStyle = 'circle';
   lg.labels.padding = 14;
   lg.labels.color = COL.fort;
-  lg.labels.font = { size: 11.5, weight: '500' };
+  lg.labels.font = { size: 11.5, weight: '600' };
 }
 refreshTheme();
 
@@ -116,7 +120,7 @@ function axeCategories(extra) {
 function barres(label, data, color, extra) {
   return Object.assign({
     label, data, backgroundColor: color, hoverBackgroundColor: color,
-    borderRadius: 4, borderSkipped: 'start', maxBarThickness: 24,
+    borderRadius: 8, borderSkipped: 'start', maxBarThickness: 24,
     categoryPercentage: 0.72, barPercentage: 0.92
   }, extra || {});
 }
@@ -134,7 +138,7 @@ function boutDePile(chart, i, stack) {
 // espace de 2 px couleur de la carte (et non un trait) les separe.
 function empiler(datasets, horizontal) {
   datasets.forEach((ds) => {
-    ds.borderRadius = (c) => (boutDePile(c.chart, c.dataIndex, ds.stack) === c.datasetIndex ? 4 : 0);
+    ds.borderRadius = (c) => (boutDePile(c.chart, c.dataIndex, ds.stack) === c.datasetIndex ? 8 : 0);
     ds.borderWidth = (c) => (boutDePile(c.chart, c.dataIndex, ds.stack) === c.datasetIndex ? 0
       : (horizontal ? { right: 2 } : { top: 2 }));
     ds.borderColor = P.fond;
@@ -152,7 +156,7 @@ function etiquettes(texte, horizontal, stack) {
     afterDatasetsDraw(chart) {
       const ctx = chart.ctx;
       ctx.save();
-      ctx.font = '600 11px Manrope, Segoe UI, system-ui, sans-serif';
+      ctx.font = "700 11px 'Plus Jakarta Sans', Segoe UI, system-ui, sans-serif";
       ctx.fillStyle = COL.fort;
       chart.data.labels.forEach((_, i) => {
         const t = texte(i);
@@ -327,8 +331,15 @@ CC.renderDashboard = function () {
       labels: CC.MOIS,
       datasets: [{
         label: 'Encaissé moyen', data: saison,
-        borderColor: P.accent, borderWidth: 2, borderJoinStyle: 'round', borderCapStyle: 'round',
-        backgroundColor: P.accent + '1a', fill: 'origin', cubicInterpolationMode: 'monotone',
+        borderColor: P.accent, borderWidth: 2.5, borderJoinStyle: 'round', borderCapStyle: 'round',
+        backgroundColor: (c) => {
+          // Dégradé du site : le violet s'efface vers le bas, comme une nappe de lumière.
+          const { ctx, chartArea } = c.chart;
+          if (!chartArea) return P.accent + '22';
+          const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          g.addColorStop(0, P.accent + '40'); g.addColorStop(1, P.accent + '00');
+          return g;
+        }, fill: 'origin', cubicInterpolationMode: 'monotone',
         pointRadius: saison.map((v) => (v === maxS && maxS > 0 ? 4.5 : 0)),
         pointHoverRadius: 5, pointBackgroundColor: P.accent, pointBorderColor: P.fond, pointBorderWidth: 2, pointHitRadius: 14
       }]
@@ -342,7 +353,7 @@ CC.renderDashboard = function () {
         if (!pt) return;
         const ctx = chart.ctx;
         ctx.save();
-        ctx.font = '600 11px Manrope, Segoe UI, system-ui, sans-serif';
+        ctx.font = "700 11px 'Plus Jakarta Sans', Segoe UI, system-ui, sans-serif";
         ctx.fillStyle = COL.fort; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
         ctx.fillText(euroCourt(maxS), pt.x, pt.y - 9);
         ctx.restore();
