@@ -245,10 +245,11 @@ CC.renderFiscal = function () {
         </div>
       </div>
       ${ruler}
+      <details class="mini-details"><summary>Voir le détail des chiffres</summary>
       <div class="tva-figs">` + figs.map((f) =>
         `<div class="fc"><div class="t">${f.t}</div><div class="v ${f.cls || ''}">${f.v}</div><div class="d">${f.d}</div></div>`
       ).join('') + `</div>
-      <p class="tva-rappel">Rappel : ${eur(t.encPrec)} encaissés en ${year - 1}, ${etat}.</p>`;
+      <p class="tva-rappel">Rappel : ${eur(t.encPrec)} encaissés en ${year - 1}, ${etat}.</p></details>`;
   })();
 
   // ---------- Estimation IR ----------
@@ -285,8 +286,12 @@ CC.renderFiscal = function () {
       d: ir.net === 0 ? 'non imposable' : (ir.recouvre === 0 ? 'non recouvré (< 61 €)' : 'sur le foyer entier')
     });
   }
+  // L'essentiel d'abord (l'impôt estimé), le calcul replié dessous.
+  const irFinal = irBlocks[irBlocks.length - 1];
+  const irCalcul = irBlocks.slice(0, -1);
   document.getElementById('fiscalIR').innerHTML =
-    `<div class="ir-grid">` + irBlocks.map((b) => `<div class="fc"><div class="t">${b.t}</div><div class="v">${b.v}</div><div class="d">${b.d}</div></div>`).join('') + `</div>` +
+    `<div class="ir-essentiel"><div class="v">${irFinal.v}</div><div class="d">${irFinal.t.toLowerCase()} · ${irFinal.d}</div></div>` +
+    (irCalcul.length ? `<details class="mini-details"><summary>Voir le calcul</summary><div class="ir-grid">` + irCalcul.map((b) => `<div class="fc"><div class="t">${b.t}</div><div class="v">${b.v}</div><div class="d">${b.d}</div></div>`).join('') + `</div></details>` : '') +
     (settings.versementActif ? '' :
       `<p class="ir-note">Estimation sur le barème ${year + 1} (revenus ${year}).${autres ? '' : ' <b>Si ton foyer a d\u2019autres revenus</b>, renseigne-les dans Paramètres : sans eux, l\u2019impôt est sous-estimé.'} Ni réductions ni crédits d\u2019impôt ne sont pris en compte.</p>`);
 

@@ -36,11 +36,13 @@ CC.renderToday = function () {
   const totalPrev = previsionnelles.reduce((a, f) => a + (+f.montant || 0), 0);
   const next = CC.stats.urssafSchedule(S.factures, settings).find((e) => e.statut === 'a-venir' && e.urssaf > 0);
 
+  // L'essentiel en trois chiffres : ce qui est rentré, ce qu'on te doit, ce que tu dois.
+  const encAn = fy.filter(CC.stats.isPaid).reduce((a, f) => a + (+f.montant || 0), 0);
+  void totalPrev;
   const kpis = [
-    { cls: 'green', label: 'Encaissé ce mois', value: CC.util.eur0(encMois), hint: MOIS_FR[month] + ' ' + year },
-    { cls: 'amber', label: 'Impayés en cours', value: CC.util.eur0(totalImp), hint: impayes.length + ' facture(s) émise(s)' },
-    { cls: 'blue', label: 'Prévisionnel', value: CC.util.eur0(totalPrev), hint: previsionnelles.length + ' à émettre' },
-    { cls: 'red', label: 'Prochaine URSSAF', value: next ? CC.util.eur0(next.urssaf) : '—', hint: next ? (MOIS_FR[next.due.mois] + ' ' + next.due.annee) : 'à jour' }
+    { cls: 'green', label: 'Encaissé en ' + year, value: CC.util.eur0(encAn), hint: 'dont ' + CC.util.eur0(encMois) + ' en ' + MOIS_FR[month].toLowerCase() },
+    { cls: 'amber', label: 'On te doit', value: CC.util.eur0(totalImp), hint: impayes.length ? impayes.length + ' facture(s) en attente' : 'tout est payé' },
+    { cls: 'red', label: 'URSSAF à prévoir', value: next ? CC.util.eur0(next.urssaf) : '—', hint: next ? 'prélevé vers ' + MOIS_FR[next.due.mois].toLowerCase() + ' ' + next.due.annee : 'rien à venir' }
   ];
   const kg = document.getElementById('todayKpis');
   if (kg) kg.innerHTML = kpis.map((k) => `<div class="kpi ${k.cls}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="hint">${k.hint}</div></div>`).join('');

@@ -198,13 +198,17 @@ CC.state.subTab = 'dashboard';   // sous-onglet actif dans Compta
 
 CC.switchTab = function (name, dir) {
   // Onglets "Compta" exposes via le menu (dashboard/factures/fiscal) -> ouvrir Compta + sous-onglet
-  if (name === 'dashboard' || name === 'factures' || name === 'fiscal' || name === 'donnees'
-      || name === 'bilan' || name === 'coffre') {
+  if (name === 'donnees') name = 'settings';            // Données : rangées dans Paramètres
+  if (name === 'bilan') name = 'fiscal';                 // Bilan : fusionné dans « URSSAF & impôts »
+  if (name === 'dashboard' || name === 'factures' || name === 'fiscal' || name === 'coffre') {
     CC.switchTab('compta');
     CC.switchSub(name);
     return;
   }
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  const plus = document.getElementById('tabPlusBtn');
+  if (plus) plus.classList.toggle('active', name === 'trajets' || name === 'redaction');
+  if (CC.fermerPlus) CC.fermerPlus();
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + name));
   // Animation directionnelle si on arrive par un swipe (dir = 'next' | 'prev').
   const activePanel = document.getElementById('tab-' + name);
@@ -239,8 +243,7 @@ CC.switchSub = function (sub) {
   if (sub === 'dashboard') CC.renderDashboard();
   if (sub === 'factures') CC.facturesView.render();
   if (sub === 'clients' && CC.clients) CC.clients.render();
-  if (sub === 'fiscal') CC.renderFiscal();
-  if (sub === 'bilan' && CC.renderBilan) CC.renderBilan();
+  if (sub === 'fiscal') { CC.renderFiscal(); if (CC.renderBilan) CC.renderBilan(); }
   if (sub === 'coffre' && CC.coffre) CC.coffre.render();
 };
 
@@ -396,6 +399,19 @@ CC.initMobileNav = function () {
 // ---------------------------------------------------------------------------
 async function init() {
   // Onglets principaux
+  // Menu « Plus » (Trajets, IA) de la barre du haut.
+  const plusBtn = document.getElementById('tabPlusBtn');
+  const plusMenu = document.getElementById('tabPlusMenu');
+  CC.fermerPlus = () => { if (plusMenu) { plusMenu.hidden = true; plusBtn.setAttribute('aria-expanded', 'false'); } };
+  if (plusBtn && plusMenu) {
+    plusBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      plusMenu.hidden = !plusMenu.hidden;
+      plusBtn.setAttribute('aria-expanded', String(!plusMenu.hidden));
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.tab-plus')) CC.fermerPlus(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') CC.fermerPlus(); });
+  }
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => CC.switchTab(tab.dataset.tab));
   });

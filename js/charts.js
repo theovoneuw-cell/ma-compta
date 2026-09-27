@@ -202,25 +202,24 @@ CC.renderDashboard = function () {
   const yoyTxt = (!yoy || yoy.pct == null) ? '—' : (yoy.pct >= 0 ? '+' : '') + CC.util.pct(yoy.pct);
   const yoyCls = (!yoy || yoy.pct == null) ? '' : (yoy.pct >= 0 ? 'pos' : 'neg');
 
+  // Trois chiffres : ce qui est rentré, ce qu'on te doit, ce qu'il te reste.
+  // (URSSAF détaillée dans « URSSAF & impôts », croissance dans la comparaison annuelle.)
   const kpis = [
-    { cls: 'green', label: 'CA encaissé', value: CC.util.eur0(cot.encaisse), hint: `${recues} facture(s) reçue(s)` },
-    { cls: 'amber', label: 'En attente', value: CC.util.eur0(sums.aVenir), hint: `${impayes} émise(s)${prevus ? ' · ' + prevus + ' prévue(s)' : ''}` },
-    { cls: 'red', label: 'URSSAF ' + (year === 'all' ? 'cumul' : year), value: CC.util.eur0(cot.urssaf), hint: 'à régler par trimestre' },
-    { cls: '', label: 'Net perçu', value: CC.util.eur0(cot.net), hint: settings.versementActif ? 'après URSSAF + impôt' : 'après URSSAF' },
-    { cls: '', label: 'Croissance (temps réel)', value: yoyTxt, valueCls: yoyCls, hint: (year === 'all' ? 'choisir une année' : `vs ${year - 1} à la même date`) }
+    { cls: 'green', label: 'Encaissé', value: CC.util.eur0(cot.encaisse), hint: yoy && yoy.pct != null ? `${yoyTxt} vs ${year - 1} à la même date` : `${recues} facture(s) payée(s)` , hintCls: yoyCls },
+    { cls: 'amber', label: 'On te doit', value: CC.util.eur0(sums.aVenir), hint: `${impayes} facture(s) en attente${prevus ? ' · ' + prevus + ' prévue(s)' : ''}` },
+    { cls: '', label: 'Il te reste', value: CC.util.eur0(cot.net), hint: settings.versementActif ? 'après URSSAF et impôt' : 'après URSSAF' }
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map((k) => `
     <div class="kpi ${k.cls}">
       <div class="label">${k.label}</div>
       <div class="value ${k.valueCls || ''}">${k.value}</div>
-      <div class="hint">${k.hint}</div>
+      <div class="hint ${k.hintCls || ''}">${k.hint}</div>
     </div>`).join('');
 
-  // ---------- URSSAF par trimestre ----------
-  renderUrssafQuarters(year, fy, cot);
-
-  // ---------- CA par trimestre ----------
-  renderTrimestres(all, year);
+  // Blocs retirés du tableau de bord (tri du 27/09/2026) : on ne les calcule
+  // que s'ils existent encore dans la page.
+  if (document.getElementById('urssafQuarters')) renderUrssafQuarters(year, fy, cot);
+  if (document.getElementById('chartTrimestres')) renderTrimestres(all, year);
 
   // ---------- Encaissé par mois (ou par an) ----------
   // Une seule série : pas de légende. On n'étiquette que le meilleur mois.
@@ -387,8 +386,8 @@ CC.renderDashboard = function () {
     }
   });
 
-  CC.renderForecast(year);
-  CC.renderBonus(fy, year);
+  if (document.getElementById('forecastBox')) CC.renderForecast(year);
+  if (document.getElementById('bonusBox')) CC.renderBonus(fy, year);
 };
 
 // ---------------------------------------------------------------------------

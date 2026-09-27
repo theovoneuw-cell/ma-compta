@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=hh" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=hh" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mujmvym0" />
+  <link rel="stylesheet" href="css/styles.css?b=mujnfvxo" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mujmvym0"></script>
+  <script src="js/theme.js?b=mujnfvxo"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -43,11 +43,17 @@
     <nav class="tabs">
       <button class="tab active" data-tab="today">Accueil</button>
       <button class="tab" data-tab="compta">Compta</button>
-      <button class="tab" data-tab="agenda">Agenda</button>
-      <button class="tab" data-tab="trajets">Trajets</button>
       <button class="tab" data-tab="reseau">Réseau</button>
+      <button class="tab" data-tab="agenda">Agenda</button>
       <button class="tab" data-tab="mails">Mails <span id="mailsBadge" class="tab-badge hidden"></span></button>
-      <button class="tab" data-tab="redaction">IA</button>
+      <!-- Outils moins utilisés : rangés dans « Plus », rien n'est supprimé. -->
+      <div class="tab-plus">
+        <button type="button" class="tab-plus-btn" id="tabPlusBtn" aria-expanded="false" aria-haspopup="true">Plus <span aria-hidden="true">▾</span></button>
+        <div class="tab-plus-menu" id="tabPlusMenu" hidden>
+          <button class="tab" data-tab="trajets">Trajets</button>
+          <button class="tab" data-tab="redaction">IA</button>
+        </div>
+      </div>
       <button class="tab" data-tab="settings">Paramètres</button>
     </nav>
 
@@ -77,26 +83,22 @@
         </div>
         <div class="card card-memo">
           <h3>Pense-bête <span class="note-count" id="noteCount"></span></h3>
-          <p class="card-sub">Petites tâches à cocher — elles disparaissent une fois faites.</p>
           <div class="note-add">
             <input id="noteInput" type="text" maxlength="280" placeholder="Ajouter une tâche…" autocomplete="off">
             <button id="noteAdd" class="btn btn-primary note-add-btn" title="Ajouter" aria-label="Ajouter">+</button>
           </div>
           <div id="todayNotesList" class="note-list"></div>
         </div>
-        <div class="card">
-          <h3>Relances à faire</h3>
-          <p class="card-sub">Factures émises en attente ou en retard de paiement.</p>
-          <div id="todayRelances" class="cockpit-list"></div>
-        </div>
-        <div class="card hidden" id="todayReseauCard">
-          <h3>Démarchage à relancer</h3>
-          <p class="card-sub">Structures du Réseau dont la relance est aujourd'hui ou en retard.</p>
-          <div id="todayReseau" class="cockpit-list"></div>
-        </div>
-        <div class="card">
-          <h3>Prochaine échéance URSSAF</h3>
-          <div id="todayUrssaf" class="cockpit-list"></div>
+        <div class="card card-afaire">
+          <h3>À faire</h3>
+          <div class="afaire-bloc">
+            <p class="afaire-t">Factures à relancer</p>
+            <div id="todayRelances" class="cockpit-list"></div>
+          </div>
+          <div class="afaire-bloc hidden" id="todayReseauCard">
+            <p class="afaire-t">Réseau : demandes et relances du jour</p>
+            <div id="todayReseau" class="cockpit-list"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -107,30 +109,15 @@
         <button class="subtab active" data-sub="dashboard">Tableau de bord</button>
         <button class="subtab" data-sub="factures">Factures</button>
         <button class="subtab" data-sub="clients">Clients</button>
-        <button class="subtab" data-sub="fiscal">Fiscal</button>
-        <button class="subtab" data-sub="bilan">Bilan</button>
+        <button class="subtab" data-sub="fiscal">URSSAF &amp; impôts</button>
         <!-- Outil d'ordinateur : il manipule des fichiers du disque. Masqué sur
              téléphone par app.js (classe bureau-only), pas seulement rétréci. -->
         <button class="subtab bureau-only" data-sub="coffre">Coffre</button>
-        <button class="subtab" data-sub="donnees">Données</button>
       </nav>
 
       <!-- ---- Sous-onglet : Tableau de bord ---- -->
       <div class="subpanel active" id="sub-dashboard">
-        <div class="kpi-grid" id="kpiGrid"></div>
-
-        <div class="card">
-          <h3>Cotisations URSSAF par trimestre</h3>
-          <p class="card-sub">Calculées sur l'argent réellement encaissé chaque trimestre. Vous réglez à l'URSSAF par trimestre.</p>
-          <div class="qgrid" id="urssafQuarters"></div>
-          <div class="qsched" id="urssafSchedule"></div>
-        </div>
-
-        <div class="card">
-          <h3>Chiffre d'affaires par trimestre</h3>
-          <p class="card-sub" id="trimSub"></p>
-          <div class="chart-box chart-box-trim"><canvas id="chartTrimestres"></canvas></div>
-        </div>
+        <div class="kpi-grid kpi-grid-3" id="kpiGrid"></div>
 
         <div class="card-grid">
           <div class="card">
@@ -140,7 +127,6 @@
           </div>
           <div class="card">
             <h3>Où en est l'argent</h3>
-            <p class="card-sub">Encaissé, en attente, prévu et en retard, sur la période choisie.</p>
             <div id="statusBox" class="etat-argent"></div>
           </div>
         </div>
@@ -148,38 +134,12 @@
         <div class="card-grid">
           <div class="card">
             <h3>Comparaison annuelle</h3>
-            <p class="card-sub">Encaissé de chaque année ; l'année choisie en couleur.</p>
             <div class="chart-box"><canvas id="chartYears"></canvas></div>
           </div>
           <div class="card">
             <h3>Top clients</h3>
-            <p class="card-sub">Payé, en attente et prévu par client ; le % est sa part du total.</p>
             <div class="chart-box chart-box-clients"><canvas id="chartClients"></canvas></div>
           </div>
-        </div>
-
-        <div class="card">
-          <h3>Prévisionnel de l'année</h3>
-          <p class="card-sub">Projection au rythme actuel, en tenant compte des factures déjà en attente.</p>
-          <div id="forecastBox" class="forecast"></div>
-        </div>
-
-        <div class="card-grid">
-          <div class="card">
-            <h3>Répartition par activité</h3>
-            <p class="card-sub">CA par type d'activité sur l'année sélectionnée.</p>
-            <div class="chart-box"><canvas id="chartCategories"></canvas></div>
-          </div>
-          <div class="card">
-            <h3>Saisonnalité</h3>
-            <p class="card-sub">Encaissé moyen par mois, toutes années.</p>
-            <div class="chart-box"><canvas id="chartSeason"></canvas></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Indicateurs</h3>
-          <div id="bonusBox" class="bonus"></div>
         </div>
       </div>
 
@@ -281,66 +241,58 @@
 
       <!-- ---- Sous-onglet : Fiscal ---- -->
       <div class="subpanel" id="sub-fiscal">
+        <!-- Ce qu'il faut déclarer maintenant -->
         <div class="card urssaf-now" id="urssafNow"></div>
-
-        <div class="card tva-card">
-          <h3>Franchise de TVA</h3>
-          <p class="card-sub">Où tu en es des deux seuils, et ce qui t'attend au 1er janvier.</p>
-          <div id="fiscalTva"></div>
-        </div>
-
-        <div class="card hidden" id="cardTvaCollectee">
-          <h3>TVA collectée</h3>
-          <p class="card-sub">Ce que tu as encaissé pour l'État, et ce qui reste vraiment ton chiffre d'affaires.</p>
-          <div id="fiscalTvaCollectee"></div>
-        </div>
 
         <div class="card">
           <h3>Déclarations URSSAF</h3>
-          <p class="card-sub">Le montant exact à déclarer par trimestre (CA encaissé), la date limite, et le suivi déclaré / payé.</p>
+          <p class="card-sub">Le montant à déclarer chaque trimestre, la date limite, et ce qui est déjà fait.</p>
           <div id="fiscalDeclarations"></div>
         </div>
 
         <div class="card-grid">
           <div class="card">
             <h3>Plafond du régime micro</h3>
-            <p class="card-sub">Le plafond au-delà duquel tu sors du régime micro-BNC.</p>
             <div id="fiscalSeuils"></div>
           </div>
           <div class="card">
-            <h3>Estimation de l'impôt sur le revenu</h3>
-            <p class="card-sub">Indicatif — micro-BNC : abattement forfaitaire sur le CA.</p>
+            <h3>Impôt sur le revenu (estimation)</h3>
             <div id="fiscalIR"></div>
           </div>
         </div>
 
-        <div class="card">
-          <h3>Trimestres de retraite validés</h3>
-          <p class="card-sub">Ton chiffre d'affaires valide de 0 à 4 trimestres par an. Personne ne te prévient : c'est ici.</p>
-          <div id="fiscalRetraite"></div>
+        <div class="card tva-card">
+          <h3>Franchise de TVA</h3>
+          <div id="fiscalTva"></div>
+        </div>
+
+        <div class="card hidden" id="cardTvaCollectee">
+          <h3>TVA collectée</h3>
+          <div id="fiscalTvaCollectee"></div>
         </div>
 
         <div class="card">
-          <h3>Barèmes utilisés</h3>
-          <p class="card-sub">Les chiffres officiels sur lesquels reposent les calculs, et leur année. À revoir chaque 1er janvier.</p>
-          <div id="fiscalBaremes" class="qsched"></div>
+          <h3>Bilan de l'année</h3>
+          <p class="card-sub">Le récapitulatif complet d'une année, en PDF, pour ton comptable ou tes archives.</p>
+          <div class="bilan-toolbar">
+            <select id="bilanYear" class="input" aria-label="Année du bilan"></select>
+            <button id="bilanExport" class="btn btn-primary">Télécharger le PDF</button>
+          </div>
+          <div id="bilanBody" hidden></div>
         </div>
 
-        <div class="card">
-          <h3>Calendrier fiscal</h3>
-          <p class="card-sub">Prochaines échéances (URSSAF, CFE, déclaration de revenus).</p>
-          <div id="fiscalCalendar" class="qsched"></div>
-        </div>
-      </div>
-
-      <!-- ---- Sous-onglet : Bilan annuel ---- -->
-      <div class="subpanel" id="sub-bilan">
-        <div class="bilan-toolbar">
-          <label class="bilan-year">Bilan de l'année <select id="bilanYear"></select></label>
-          <span class="spacer"></span>
-          <button id="bilanExport" class="btn btn-primary">Exporter ce bilan en PDF</button>
-        </div>
-        <div id="bilanBody"></div>
+        <!-- Le reste, replié : utile une ou deux fois par an -->
+        <details class="card details-card">
+          <summary><h3>Plus de détails</h3><span class="card-sub">Retraite, calendrier fiscal, barèmes utilisés</span></summary>
+          <div class="details-contenu">
+            <h4>Trimestres de retraite validés</h4>
+            <div id="fiscalRetraite"></div>
+            <h4>Calendrier fiscal</h4>
+            <div id="fiscalCalendar" class="qsched"></div>
+            <h4>Barèmes utilisés</h4>
+            <div id="fiscalBaremes" class="qsched"></div>
+          </div>
+        </details>
       </div>
 
       <!-- ---- Sous-onglet : Coffre à documents (PC / Mac) ---- -->
@@ -362,24 +314,6 @@
       </div>
 
       <!-- ---- Sous-onglet : Données ---- -->
-      <div class="subpanel" id="sub-donnees">
-        <div class="card">
-          <h3>Import / export des données</h3>
-          <p class="muted" style="font-size:12px">Vos données restent dans un fichier sur votre disque. Rien n'est envoyé sur internet.</p>
-          <div class="btn-row">
-            <button id="btnImportExcel" class="btn">Importer un Excel…</button>
-            <button id="btnExportCsv" class="btn">Exporter en CSV…</button>
-            <button id="btnExportPdf" class="btn">Bilan PDF…</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Sauvegardes automatiques</h3>
-          <p class="muted" style="font-size:12px">Le fichier est enregistré tout seul toutes les 2&nbsp;minutes s'il a changé, et il est écrit d'un bloc : une coupure ne peut plus l'abîmer. Chaque jour, l'état d'avant vos modifications est mis de côté — les 30&nbsp;derniers jours sont conservés, puis un instantané par mois.</p>
-          <div class="btn-row">
-            <button id="btnOpenHistory" class="btn">Ouvrir le dossier des sauvegardes…</button>
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- ===================== AGENDA (vue mois) ===================== -->
@@ -777,6 +711,25 @@
     <!-- ===================== PARAMETRES ===================== -->
     <section id="tab-settings" class="panel">
       <div class="settings-grid">
+        <!-- Données (ancien sous-onglet de Compta) -->
+        <div>
+        <div class="card">
+          <h3>Import / export des données</h3>
+          <p class="muted" style="font-size:12px">Vos données restent dans un fichier sur votre disque. Rien n'est envoyé sur internet.</p>
+          <div class="btn-row">
+            <button id="btnImportExcel" class="btn">Importer un Excel…</button>
+            <button id="btnExportCsv" class="btn">Exporter en CSV…</button>
+            <button id="btnExportPdf" class="btn">Bilan PDF…</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Sauvegardes automatiques</h3>
+          <p class="muted" style="font-size:12px">Le fichier est enregistré tout seul toutes les 2&nbsp;minutes s'il a changé, et il est écrit d'un bloc : une coupure ne peut plus l'abîmer. Chaque jour, l'état d'avant vos modifications est mis de côté — les 30&nbsp;derniers jours sont conservés, puis un instantané par mois.</p>
+          <div class="btn-row">
+            <button id="btnOpenHistory" class="btn">Ouvrir le dossier des sauvegardes…</button>
+          </div>
+        </div>
+        </div>
         <div class="card">
           <h3>Taux de cotisations URSSAF</h3>
           <p class="card-sub">Un taux par trimestre (le taux évolue dans le temps). Calcul sur l'encaissé. Pré-rempli avec vos taux réels.</p>
@@ -1454,40 +1407,40 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mujmvym0"></script>
-  <script src="js/drive-store.js?b=mujmvym0"></script>
-  <script src="js/api-web.js?b=mujmvym0"></script>
-  <script src="js/settings.js?b=mujmvym0"></script>
-  <script src="js/datepicker.js?b=mujmvym0"></script>
-  <script src="js/stats.js?b=mujmvym0"></script>
-  <script src="js/charts.js?b=mujmvym0"></script>
-  <script src="js/import.js?b=mujmvym0"></script>
-  <script src="js/pdfimport.js?b=mujmvym0"></script>
-  <script src="js/clients.js?b=mujmvym0"></script>
-  <script src="js/factures.js?b=mujmvym0"></script>
-  <script src="js/fiscal.js?b=mujmvym0"></script>
-  <script src="js/bilan.js?b=mujmvym0"></script>
-  <script src="js/ai.js?b=mujmvym0"></script>
-  <script src="js/connections.js?b=mujmvym0"></script>
-  <script src="js/agenda.js?b=mujmvym0"></script>
-  <script src="js/signature.js?b=mujmvym0"></script>
-  <script src="js/mailbox.js?b=mujmvym0"></script>
-  <script src="js/trajets.js?b=mujmvym0"></script>
+  <script src="js/google-auth-web.js?b=mujnfvxo"></script>
+  <script src="js/drive-store.js?b=mujnfvxo"></script>
+  <script src="js/api-web.js?b=mujnfvxo"></script>
+  <script src="js/settings.js?b=mujnfvxo"></script>
+  <script src="js/datepicker.js?b=mujnfvxo"></script>
+  <script src="js/stats.js?b=mujnfvxo"></script>
+  <script src="js/charts.js?b=mujnfvxo"></script>
+  <script src="js/import.js?b=mujnfvxo"></script>
+  <script src="js/pdfimport.js?b=mujnfvxo"></script>
+  <script src="js/clients.js?b=mujnfvxo"></script>
+  <script src="js/factures.js?b=mujnfvxo"></script>
+  <script src="js/fiscal.js?b=mujnfvxo"></script>
+  <script src="js/bilan.js?b=mujnfvxo"></script>
+  <script src="js/ai.js?b=mujnfvxo"></script>
+  <script src="js/connections.js?b=mujnfvxo"></script>
+  <script src="js/agenda.js?b=mujnfvxo"></script>
+  <script src="js/signature.js?b=mujnfvxo"></script>
+  <script src="js/mailbox.js?b=mujnfvxo"></script>
+  <script src="js/trajets.js?b=mujnfvxo"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mujmvym0"></script>
-  <script src="js/prospection-jeunesse77.js?b=mujmvym0"></script>
-  <script src="js/prospection.js?b=mujmvym0"></script>
-  <script src="js/notes.js?b=mujmvym0"></script>
+  <script src="js/prospection-base.js?b=mujnfvxo"></script>
+  <script src="js/prospection-jeunesse77.js?b=mujnfvxo"></script>
+  <script src="js/prospection.js?b=mujnfvxo"></script>
+  <script src="js/notes.js?b=mujnfvxo"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mujmvym0"></script>
-  <script src="js/recherche.js?b=mujmvym0"></script>
-  <script src="js/today.js?b=mujmvym0"></script>
-  <script src="js/privacy.js?b=mujmvym0"></script>
-  <script src="js/storage.js?b=mujmvym0"></script>
-  <script src="js/rappels.js?b=mujmvym0"></script>
-  <script src="js/notifs.js?b=mujmvym0"></script>
-  <script src="js/app.js?b=mujmvym0"></script>
+  <script src="js/coffre.js?b=mujnfvxo"></script>
+  <script src="js/recherche.js?b=mujnfvxo"></script>
+  <script src="js/today.js?b=mujnfvxo"></script>
+  <script src="js/privacy.js?b=mujnfvxo"></script>
+  <script src="js/storage.js?b=mujnfvxo"></script>
+  <script src="js/rappels.js?b=mujnfvxo"></script>
+  <script src="js/notifs.js?b=mujnfvxo"></script>
+  <script src="js/app.js?b=mujnfvxo"></script>
 </body>
 </html>

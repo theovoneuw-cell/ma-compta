@@ -589,15 +589,11 @@ CC.prospection = {
     const n = (k) => (par[k] || []).length;
     const rel = this.relances();
     const dues = rel.filter((r) => r.due);
-    const contactees = n('contacte') + n('relance') + n('rdv') + n('devis') + n('gagne') + n('refus');
-    const reponses = n('rdv') + n('devis') + n('gagne') + n('refus');
     const kpi = document.getElementById('psKpis');
     if (kpi) kpi.innerHTML = [
-      ['En cours', n('demande') + n('contacte') + n('relance') + n('rdv') + n('devis'), n('demande') ? n('demande') + ' demande' + (n('demande') > 1 ? 's' : '') + ' du site à traiter' : 'démarches ouvertes', n('demande') ? 'amber' : ''],
-      ['À relancer', dues.length, dues.length ? 'aujourd’hui ou en retard' : 'rien en retard', dues.length ? 'amber' : ''],
-      ['RDV & devis', n('rdv') + n('devis'), 'en discussion', ''],
+      ['À traiter', dues.length, dues.length ? (n('demande') ? n('demande') + ' demande(s) du site, relances du jour' : 'relances du jour ou en retard') : 'rien en retard', dues.length ? 'amber' : ''],
+      ['En cours', n('demande') + n('contacte') + n('relance') + n('rdv') + n('devis'), (n('rdv') + n('devis')) ? (n('rdv') + n('devis')) + ' en rendez-vous ou devis' : 'démarches ouvertes', ''],
       ['Actées', n('gagne'), 'interventions / clients', 'green'],
-      ['Taux de réponse', contactees ? Math.round(reponses / contactees * 100) + ' %' : '—', contactees ? reponses + ' sur ' + contactees + ' contactées' : 'aucune démarche', ''],
     ].map(([l, v, h, cls]) => `<div class="kpi ${cls}"><div class="label">${l}</div><div class="value">${v}</div><div class="hint">${h}</div></div>`).join('');
 
     // À relancer
