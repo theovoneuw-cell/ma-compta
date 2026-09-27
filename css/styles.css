@@ -2833,8 +2833,33 @@ h1, h2, h3, h4 { letter-spacing: -0.02em; }
 .ir-essentiel .v { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; color: var(--ink); line-height: 1.1; margin-top: 6px; }
 .ir-essentiel .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 
-/* Accueil : l'encaissé du mois, grand et centré au-dessus des cartes */
-.today-hero { text-align: center; margin: 6px auto 26px; }
-.today-hero-l { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.today-hero-v { margin: 6px 0 4px; font-size: clamp(52px, 7vw, 76px); font-weight: 800; letter-spacing: -0.045em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
-.today-hero-d { margin: 0; font-size: 13.5px; color: var(--muted); }
+/* Accueil : l'encaissé du mois, grand et centré au-dessus des cartes — plaque « nuit » du site */
+.today-hero { display: flex; justify-content: center; margin: 4px 0 22px; }
+.hero-plaque {
+  position: relative; overflow: hidden; width: min(100%, 620px); text-align: center; color: #fff;
+  padding: 26px 32px 24px; border-radius: 30px;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(240,98,45,.55), transparent 46%),
+    radial-gradient(circle at 6% 110%, rgba(107,76,230,.85), transparent 58%),
+    #1f1747;
+  box-shadow: 0 28px 56px -26px rgba(31,23,71,.75), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.hero-plaque::after { /* reflet de vitre */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 36%, rgba(255,255,255,0) 64%, rgba(255,255,255,.05) 100%);
+}
+.hero-l { margin: 0; display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; color: #d7cff5;
+  padding: 6px 14px 6px 11px; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+.hero-voyant { width: 8px; height: 8px; border-radius: 50%; background: #f0622d; box-shadow: 0 0 0 4px rgba(240,98,45,.25), 0 0 12px rgba(240,98,45,.9); animation: heroPulse 1.8s ease-in-out infinite; }
+@keyframes heroPulse { 50% { opacity: .4; } }
+.hero-v { margin: 14px 0 16px; display: flex; justify-content: center; align-items: baseline; gap: 8px; line-height: 1; }
+.hero-n { font-size: clamp(58px, 8vw, 86px); font-weight: 800; letter-spacing: -0.05em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #ffffff 30%, #d9cffd 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-e { font-size: clamp(28px, 3.4vw, 38px); font-weight: 400; color: #ffb08a; }
+.hero-jauge { position: relative; height: 6px; max-width: 320px; margin: 0 auto; border-radius: 99px; background: rgba(255,255,255,.14); }
+.hero-jauge span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, #a48cf7, #f0622d); transition: width .9s cubic-bezier(.3,.7,.2,1); }
+.hero-jauge i { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: rgba(255,255,255,.6); }
+.hero-d { margin: 12px 0 0; font-size: 13px; color: #d7cff5; }
+body.privacy .hero-n { filter: blur(10px); }
+@media (prefers-reduced-motion: reduce) { .hero-voyant { animation: none; } }
+@media (max-width: 760px) { .hero-plaque { padding: 22px 18px 20px; border-radius: 26px; } }

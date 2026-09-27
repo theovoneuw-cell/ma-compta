@@ -51,9 +51,35 @@ CC.renderToday = function () {
     return d && d.getFullYear() === year && d.getMonth() === month;
   }).length;
   const hero = document.getElementById('todayHero');
-  if (hero) hero.innerHTML = `<p class="today-hero-l">Encaissé en ${MOIS_FR[month].toLowerCase()}</p>
-    <p class="today-hero-v">${CC.util.eur0(encMois)}</p>
-    <p class="today-hero-d">${payesMois ? payesMois + ' paiement' + (payesMois > 1 ? 's' : '') + ' reçu' + (payesMois > 1 ? 's' : '') + ' ce mois-ci' : 'aucun paiement reçu ce mois-ci pour l’instant'}</p>`;
+  if (hero) {
+    // Repère : la moyenne des mois écoulés de l'année (mois en cours compris).
+    const moyenne = encAn / (month + 1);
+    const ratio = moyenne > 0 ? encMois / moyenne : 0;
+    const jauge = Math.max(4, Math.min(100, Math.round(ratio * 50)));   // 50 % = la moyenne
+    // Repère neutre (le mois en cours n'est pas fini) : la moyenne, pas un pourcentage d'écart.
+    const comparaison = moyenne > 0 ? 'Ta moyenne : ' + CC.util.eur0(moyenne) + ' par mois' : 'Premier encaissement de l’année à venir';
+    const entier = Math.round(encMois);
+    hero.innerHTML = `<div class="hero-plaque">
+      <p class="hero-l"><span class="hero-voyant" aria-hidden="true"></span>Encaissé en ${MOIS_FR[month].toLowerCase()}</p>
+      <p class="hero-v"><span class="hero-n" data-cible="${entier}">${CC.util.eur0(encMois).replace(/\s?€$/, '')}</span><span class="hero-e">€</span></p>
+      <div class="hero-jauge" aria-hidden="true"><span style="width:${jauge}%"></span><i title="moyenne"></i></div>
+      <p class="hero-d">${comparaison} · ${payesMois ? payesMois + ' paiement' + (payesMois > 1 ? 's' : '') + ' reçu' + (payesMois > 1 ? 's' : '') : 'aucun paiement reçu pour l’instant'}</p>
+    </div>`;
+    // Le montant défile jusqu'à sa valeur (sauf si les animations sont réduites ou les chiffres masqués).
+    const n = hero.querySelector('.hero-n');
+    const reduit = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (n && entier > 0 && !reduit && !document.body.classList.contains('privacy')) {
+      const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+      const t0 = performance.now(), duree = 900;
+      const pas = (t) => {
+        const k = Math.min(1, (t - t0) / duree);
+        const e = 1 - Math.pow(1 - k, 3);
+        n.textContent = fmt.format(Math.round(entier * e));
+        if (k < 1) requestAnimationFrame(pas); else n.textContent = CC.util.eur0(encMois).replace(/\s?€$/, '');
+      };
+      requestAnimationFrame(pas);
+    }
+  }
   const kg = document.getElementById('todayKpis');
   if (kg) kg.innerHTML = kpis.map((k) => `<div class="kpi ${k.cls}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="hint">${k.hint}</div></div>`).join('');
 
