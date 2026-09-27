@@ -2832,3 +2832,15 @@ h1, h2, h3, h4 { letter-spacing: -0.02em; }
 .mini-details[open] > summary { margin-bottom: 12px; }
 .ir-essentiel .v { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; color: var(--ink); line-height: 1.1; margin-top: 6px; }
 .ir-essentiel .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+/* Accueil : l'encaissé du mois en chiffre principal */
+#todayKpis { grid-template-columns: 1.6fr 1fr 1fr; align-items: stretch; }
+#todayKpis .kpi-hero .value { font-size: 46px; line-height: 1.05; }
+#todayKpis .kpi-hero .label { font-size: 12.5px; }
+#todayKpis .kpi-hero .hint { font-size: 13px; }
+@media (max-width: 760px) {
+  #todayKpis { grid-template-columns: 1fr 1fr; }
+  #todayKpis .kpi-hero { grid-column: 1 / -1; }
+  #todayKpis .kpi-hero .value { font-size: 40px; }
+  #todayKpis .kpi:not(.kpi-hero) .value { font-size: 21px; }
+}
