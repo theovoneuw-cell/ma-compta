@@ -68,7 +68,11 @@ CC.renderToday = function () {
     // Le montant défile jusqu'à sa valeur (sauf si les animations sont réduites ou les chiffres masqués).
     const n = hero.querySelector('.hero-n');
     const reduit = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (n && entier > 0 && !reduit && !document.body.classList.contains('privacy')) {
+    // L'Accueil est redessiné plusieurs fois au démarrage (données locales, Drive,
+    // Réseau…) : le montant ne défile qu'une fois, et seulement s'il a changé.
+    const dejaVu = CC._heroMontant === entier;
+    CC._heroMontant = entier;
+    if (n && entier > 0 && !dejaVu && !reduit && !document.body.classList.contains('privacy')) {
       const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
       const t0 = performance.now(), duree = 900;
       const pas = (t) => {
