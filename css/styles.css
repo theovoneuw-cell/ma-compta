@@ -2854,7 +2854,10 @@ h1, h2, h3, h4 { letter-spacing: -0.02em; }
 @keyframes heroPulse { 50% { opacity: .4; } }
 .hero-v { margin: 14px 0 16px; display: flex; justify-content: center; align-items: baseline; gap: 8px; line-height: 1; }
 .hero-n { font-size: clamp(58px, 8vw, 86px); font-weight: 800; letter-spacing: -0.05em; font-variant-numeric: tabular-nums;
-  background: linear-gradient(180deg, #ffffff 30%, #d9cffd 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  background: linear-gradient(180deg, #ffffff 30%, #d9cffd 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* Le dégradé ne peint que la boîte du texte : avec l'interlettrage serré, le dernier chiffre
+     en déborde et sa partie droite était coupée. Marge intérieure compensée : rien ne bouge. */
+  padding: .08em .12em; margin: -.08em -.12em; }
 .hero-e { font-size: clamp(28px, 3.4vw, 38px); font-weight: 400; color: #ffb08a; }
 .hero-jauge { position: relative; height: 6px; max-width: 320px; margin: 0 auto; border-radius: 99px; background: rgba(255,255,255,.14); }
 .hero-jauge span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, #a48cf7, #f0622d); transition: width .9s cubic-bezier(.3,.7,.2,1); }
