@@ -553,7 +553,7 @@ CC.mailbox = {
       bloquees = r.count;
       body = `<div class="mail-body">${sanitize(r.html)}</div>`;
     } else {
-      body = `<div class="mail-body mail-body-text">${esc(m.text || '(message vide)')}</div>`;
+      body = `<div class="mail-body mail-body-text">${m.text ? lienifier(m.text) : '(message vide)'}</div>`;
     }
     const imgBar = bloquees ? `<div class="mail-imgbar">
       <span class="mail-imgbar-txt">${bloquees} image${bloquees > 1 ? 's' : ''} distante${bloquees > 1 ? 's' : ''} bloquée${bloquees > 1 ? 's' : ''} — les afficher prévient l'expéditeur que tu as ouvert ce message.</span>
@@ -628,7 +628,7 @@ CC.mailbox = {
       titre: 'Modifier le brouillon',
       to: m.a || '',
       subject: m.sujet === '(sans objet)' ? '' : m.sujet,
-      body: m.text || stripHtml(m.html) || '',
+      body: sansSignature(m.text || stripHtml(m.html) || ''),
       draftId: draftId
     });
     this._attachments = loaded;
@@ -792,6 +792,12 @@ CC.mailbox = {
     }
     // Sélecteur d'emojis (PC et téléphone)
     CC.mailbox._bindEmoji();
+    if (pre.cc) {
+      document.getElementById('mc_cc').value = pre.cc;
+      document.getElementById('mc_ccRow').classList.remove('hidden');
+      document.getElementById('mc_bccRow').classList.remove('hidden');
+      if (ccBtn) ccBtn.classList.add('hidden');
+    }
     setTimeout(() => { const el = document.getElementById(pre.to ? 'mc_subject' : 'mc_to'); if (el) el.focus(); }, 60);
     CC.mailbox._attachContactAC('mc_to', 'mc_toAC');
     CC.mailbox._attachContactAC('mc_cc', 'mc_ccAC');
@@ -931,9 +937,13 @@ CC.mailbox = {
     // Pas de citation : le message part dans le MEME fil (threadId + In-Reply-To),
     // donc le destinataire voit deja l'echange. Recopier le corps d'origine
     // renvoyait tout l'historique (et ses propres citations) a chaque reponse.
+    // Message envoye par moi (pas encore de reponse) : on relance les
+    // destinataires d'origine, pas sa propre adresse.
+    const deMoi = m.envoye || this._folder === 'envoyes';
     this._openCompose({
       titre: 'Répondre',
-      to: emailOnly(m.de),
+      to: deMoi ? (m.a || '') : emailOnly(m.de),
+      cc: deMoi ? (m.cc || '') : '',
       subject: /^re\s*:/i.test(m.sujet) ? m.sujet : 'Re: ' + m.sujet,
       body: '',
       threadId: m.threadId,
@@ -1040,7 +1050,12 @@ CC.mailbox = {
       return;
     }
     const a = e.target.closest('a[href]');
-    if (a) { e.preventDefault(); const h = a.getAttribute('href'); if (h && /^https?:/i.test(h)) window.api.openUrl(h); }
+    if (a) {
+      e.preventDefault();
+      const h = a.getAttribute('href') || '';
+      if (/^https?:/i.test(h)) window.api.openUrl(h);
+      else if (/^mailto:/i.test(h)) { this._closeRead(); this._openCompose({ titre: 'Nouveau message', to: decodeURIComponent(h.slice(7).split('?')[0]) }); }
+    }
   },
 
   // Autorise les images distantes pour ce message, puis le reaffiche.
@@ -1128,6 +1143,30 @@ function persona(addr) {
   const m = addr.match(/^\s*"?([^"<]*?)"?\s*<.*>\s*$/);
   const name = m && m[1].trim();
   return name || emailOnly(addr);
+}
+// Detecteur de liens (lecture des mails en texte brut) : http, https, www. et
+// adresses e-mail deviennent cliquables. Meme regle que l'envoi (api-web.js).
+function lienifier(t) {
+  const re = /\b(?:https?:\/\/|www\.)[^\s<>"]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+/gi;
+  let out = '', last = 0, m;
+  t = String(t || '');
+  while ((m = re.exec(t))) {
+    let url = m[0];
+    while (/[.,;:!?'»)\]]$/.test(url) && !(url.endsWith(')') && (url.split('(').length > url.split(')').length - 1))) url = url.slice(0, -1);
+    if (!url) continue;
+    const href = url.indexOf('@') !== -1 && !/^(https?:\/\/|www\.)/i.test(url) ? 'mailto:' + url
+      : (/^www\./i.test(url) ? 'https://' + url : url);
+    out += esc(t.slice(last, m.index)) + '<a href="' + esc(href) + '">' + esc(url) + '</a>';
+    last = m.index + url.length;
+    re.lastIndex = last;
+  }
+  return out + esc(t.slice(last));
+}
+// Retire la signature en fin de texte (brouillon rouvert) : l'envoi la remet.
+function sansSignature(t) {
+  const sig = (window.CC && CC.signature && CC.signature.actif()) ? String(CC.signature.texte() || '').trim() : '';
+  const s = String(t || '').replace(/\s+$/, '');
+  return sig && s.endsWith(sig) ? s.slice(0, -sig.length).replace(/\s+$/, '') : t;
 }
 function emailOnly(addr) {
   if (!addr) return '';

@@ -161,10 +161,29 @@ window.CC = window.CC || {};
   function escHtml(t) {
     return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  // Detecteur de liens : adresses web (http, https, www.) et e-mails deviennent
+  // des <a> cliquables. Le texte est echappe morceau par morceau.
+  function lienifier(t) {
+    const re = /\b(?:https?:\/\/|www\.)[^\s<>"]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+/gi;
+    let out = '', last = 0, m;
+    t = String(t || '');
+    while ((m = re.exec(t))) {
+      let url = m[0];
+      // Ponctuation de fin de phrase : hors du lien (parenthese gardee si equilibree)
+      while (/[.,;:!?'»)\]]$/.test(url) && !(url.endsWith(')') && (url.split('(').length > url.split(')').length - 1))) url = url.slice(0, -1);
+      if (!url) continue;
+      const href = url.indexOf('@') !== -1 && !/^(https?:\/\/|www\.)/i.test(url) ? 'mailto:' + url
+        : (/^www\./i.test(url) ? 'https://' + url : url);
+      out += escHtml(t.slice(last, m.index)) + '<a href="' + escHtml(href) + '" style="color:#6b4ce6;">' + escHtml(url) + '</a>';
+      last = m.index + url.length;
+      re.lastIndex = last;
+    }
+    return out + escHtml(t.slice(last));
+  }
   // Le composeur est un champ texte : on le transpose en HTML en gardant les sauts de ligne.
   function texteVersHtml(t) {
     return '<div style="font-family:-apple-system,\'Helvetica Neue\',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#16181d;white-space:normal;">'
-      + escHtml(t).replace(/\r?\n/g, '<br>') + '</div>';
+      + lienifier(t).replace(/\r?\n/g, '<br>') + '</div>';
   }
   function attPart(a) {
     const name = encHeader(a.filename || 'piece-jointe');
@@ -186,29 +205,16 @@ window.CC = window.CC || {};
     const atts = p.attachments || [];
     const sig = p.signature || null;
 
-    // --- Sans signature : mail texte, comme avant ---
-    if (!sig) {
-      if (!atts.length) {
-        head.push('Content-Type: text/plain; charset="UTF-8"');
-        head.push('Content-Transfer-Encoding: base64');
-        return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + b64Body(p.body));
-      }
-      const txt = mimePart(['Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64'], b64Body(p.body));
-      const mixed = mimeMulti('mixed', [txt].concat(atts.map(attPart)));
-      head.push(mixed.head);
-      return b64urlEncode(head.join('\r\n') + '\r\n\r\n' + mixed.body);
-    }
-
-    // --- Avec signature : texte + HTML, photo en piece jointe inline ---
-    const corpsTexte = (p.body || '') + '\n\n' + (sig.texte || '');
-    const corpsHtml  = texteVersHtml(p.body) + '<br>' + (sig.html || '');
+    // Texte + HTML (liens cliquables), signature et photo inline si cochee.
+    const corpsTexte = (p.body || '') + (sig ? '\n\n' + (sig.texte || '') : '');
+    const corpsHtml  = texteVersHtml(p.body) + (sig ? '<br>' + (sig.html || '') : '');
 
     const partTexte = mimePart(['Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64'], b64Body(corpsTexte));
     const partHtml  = mimePart(['Content-Type: text/html; charset="UTF-8"', 'Content-Transfer-Encoding: base64'], b64Body(corpsHtml));
     const alt = mimeMulti('alternative', [partTexte, partHtml]);
 
     let corps = mimePart([alt.head], alt.body);
-    if (sig.image && sig.image.dataB64) {
+    if (sig && sig.image && sig.image.dataB64) {
       const img = sig.image;
       const partImg = mimePart([
         'Content-Type: ' + (img.mime || 'image/jpeg') + '; name="' + (img.filename || 'photo.jpg') + '"',
@@ -533,7 +539,8 @@ window.CC = window.CC || {};
           id: m.id, threadId: m.threadId || '', messageId: header(m.payload, 'Message-ID'),
           de: header(m.payload, 'From'), a: header(m.payload, 'To'), cc: header(m.payload, 'Cc'),
           sujet: header(m.payload, 'Subject') || '(sans objet)', date: header(m.payload, 'Date'),
-          html: acc.html, text: acc.text, attachments: acc.atts
+          html: acc.html, text: acc.text, attachments: acc.atts,
+          envoye: (m.labelIds || []).indexOf('SENT') !== -1
         } };
       },
       async markRead(id) {
