@@ -40,6 +40,7 @@ CC.perso = {
   render() {
     if (!document.getElementById('tab-perso')) return;
     CC.perso.renderHero();
+    CC.perso.renderReste();
     CC.perso.renderCategories();
     CC.perso.renderList();
   },
@@ -79,6 +80,58 @@ CC.perso = {
       <p class="hero-v"><span class="hero-n">${CC.util.eur0(total).replace(/\s?€$/, '')}</span><span class="hero-e">€ / mois</span></p>
       ${jauge}
       <p class="hero-d">${details}</p>
+    </div>`;
+  },
+
+  // -------------------------------------------------------------------------
+  // ESSAI du 04/10/2026 — « Il te reste » : ce que laisse le mois une fois
+  // l'URSSAF mise de côté et les mensualités payées. Relie la compta pro au
+  // perso. Bloc autonome : pour l'enlever, supprimer cette fonction, son appel
+  // dans render(), le <div id="peReste"> d'index.html et les styles .pe-reste.
+  // -------------------------------------------------------------------------
+  // Encaissé HT, URSSAF et impôt (versement libératoire) sur une période.
+  _net(debut, fin) {
+    const s = CC.state.settings;
+    let enc = 0, urssaf = 0;
+    CC.state.factures.forEach((f) => {
+      if (!CC.stats.isPaid(f)) return;
+      const d = CC.util.parseDate(f.dateEncaissement);
+      if (!d || d < debut || d >= fin) return;
+      const ht = CC.stats.ht(f);
+      enc += ht;
+      urssaf += ht * CC.urssafRate(d.getFullYear(), Math.floor(d.getMonth() / 3) + 1) / 100;
+    });
+    const impot = s.versementActif ? enc * (+s.tauxImpot || 0) / 100 : 0;
+    return { enc, urssaf, impot, net: enc - urssaf - impot };
+  },
+
+  renderReste() {
+    const box = document.getElementById('peReste');
+    if (!box) return;
+    const liste = CC.perso.liste();
+    if (!liste.length) { box.innerHTML = ''; return; }
+    const now = new Date();
+    const mensualites = liste.reduce((s, d) => s + CC.perso.parMois(d), 0);
+    const ceMois = CC.perso._net(new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 1));
+    // Repère stable : les 12 derniers mois complets (le mois en cours n'est jamais fini).
+    const an = CC.perso._net(new Date(now.getFullYear(), now.getMonth() - 12, 1), new Date(now.getFullYear(), now.getMonth(), 1));
+    const reste = ceMois.net - mensualites;
+    const resteMoy = an.net / 12 - mensualites;
+    const mois = now.toLocaleDateString('fr-FR', { month: 'long' });
+    const signe = (n) => (n < 0 ? '− ' : '') + CC.util.eur0(Math.abs(n));
+    const charges = ceMois.urssaf + ceMois.impot;
+    box.innerHTML = `<div class="card pe-reste ${reste < 0 ? 'neg' : ''}">
+      <div class="pe-reste-g">
+        <p class="pe-reste-l">Il te reste en ${mois}</p>
+        <p class="pe-reste-v">${signe(reste)}</p>
+        <p class="pe-reste-s">${reste < 0 ? 'Les encaissements du mois ne couvrent pas encore tes mensualités.' : 'une fois l’URSSAF mise de côté et tes mensualités payées'}</p>
+      </div>
+      <div class="pe-reste-d">
+        <p class="pe-calc"><span>Encaissé en ${mois}</span><b>${CC.util.eur0(ceMois.enc)}</b></p>
+        <p class="pe-calc moins"><span>URSSAF${ceMois.impot ? ' et impôt' : ''} à mettre de côté</span><b>− ${CC.util.eur0(charges)}</b></p>
+        <p class="pe-calc moins"><span>Tes mensualités</span><b>− ${CC.util.eur0(mensualites)}</b></p>
+        <p class="pe-moy">En moyenne sur les 12 derniers mois, il te reste <b>${signe(resteMoy)}</b> par mois.</p>
+      </div>
     </div>`;
   },
 
