@@ -97,7 +97,7 @@ CC.renderToday = function () {
   renderUrssaf(next);
 
   // ---------- Agenda (asynchrone) ----------
-  renderAgenda(now);
+  renderAgenda(now).then(() => ajouterPrelevements(now));
 
   // ---------- Pense-bête ----------
   if (CC.notes) CC.notes.render();
@@ -250,6 +250,30 @@ async function renderAgenda(now) {
   } else {
     box.innerHTML = `<div class="ck-empty">Agenda indisponible : ${esc(res.error)}</div>`;
   }
+}
+
+// Prélèvements perso du jour et du lendemain (onglet Dépenses perso), posés en
+// tête du bloc agenda quel que soit l'état de Google Agenda. Seules les
+// mensualités mensuelles avec un jour de prélèvement peuvent être placées.
+function ajouterPrelevements(now) {
+  const box = document.getElementById('todayAgenda');
+  if (!box || !CC.perso) return;
+  box.querySelectorAll('.ck-prel').forEach((el) => el.remove());   // l'Accueil est redessiné plusieurs fois
+  const demain = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const lignes = [];
+  [[now, 'Auj.'], [demain, 'Demain']].forEach(([jour, quand]) => {
+    CC.perso.liste()
+      .filter((d) => (d.frequence || 'mois') === 'mois' && +d.jour >= 1 && CC.perso.jourCeMois(d, jour) === jour.getDate())
+      .sort((a, b) => (+b.montant || 0) - (+a.montant || 0))
+      .forEach((d) => lignes.push(`<div class="ck-row ck-row-ev ck-prel" style="--evc:var(--coral)">
+        <div class="ck-time">${quand}</div>
+        <div class="ck-main">
+          <div class="ck-t">${esc(d.libelle)} · ${CC.util.eur(+d.montant || 0)}</div>
+          <div class="ck-s">Prélèvement</div>
+        </div>
+      </div>`));
+  });
+  if (lignes.length) box.insertAdjacentHTML('afterbegin', lignes.join(''));
 }
 
 function paintAgenda(box, events, savedAt, errStr) {
