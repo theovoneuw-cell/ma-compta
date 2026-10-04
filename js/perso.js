@@ -51,21 +51,33 @@ CC.perso = {
     const now = new Date();
     const total = liste.reduce((s, d) => s + CC.perso.parMois(d), 0);
     // « Ce mois-ci » : seules les mensualités avec un jour connu se placent dans le mois.
-    let passe = 0, reste = 0, nReste = 0;
+    let passe = 0, reste = 0, nPasse = 0, nReste = 0, sansJour = 0;
     liste.forEach((d) => {
       if (d.frequence !== 'mois' && d.frequence) return;
-      if (!(+d.jour >= 1)) return;
-      if (CC.perso.jourCeMois(d, now) <= now.getDate()) passe += +d.montant || 0;
+      if (!(+d.jour >= 1)) { sansJour++; return; }
+      if (CC.perso.jourCeMois(d, now) <= now.getDate()) { passe += +d.montant || 0; nPasse++; }
       else { reste += +d.montant || 0; nReste++; }
     });
-    const jauge = (passe + reste) > 0 ? Math.round(passe / (passe + reste) * 100) : 0;
+    const part = (passe + reste) > 0 ? passe / (passe + reste) * 100 : 0;
+    const prel = (n) => n + ' prélèvement' + (n > 1 ? 's' : '');
+    const mois = now.toLocaleDateString('fr-FR', { month: 'long' });
+    const jauge = (passe + reste) > 0 ? `<div class="pe-jauge">
+        <p class="pe-jauge-t">En ${mois}</p>
+        <div class="pe-jauge-barre" role="img" aria-label="Déjà payé ${CC.util.eur0(passe)}, à venir ${CC.util.eur0(reste)}">
+          <span style="width:${part.toFixed(1)}%"></span>
+        </div>
+        <div class="pe-jauge-leg">
+          <span class="paye"><i></i>Déjà payé <b>${CC.util.eur0(passe)}</b><small>${prel(nPasse)}</small></span>
+          <span class="avenir"><i></i>À venir <b>${CC.util.eur0(reste)}</b><small>${nReste ? prel(nReste) : 'tout est passé'}</small></span>
+        </div>
+      </div>` : '';
     const details = liste.length
-      ? [`soit ${CC.util.eur0(total * 12)} par an`, nReste ? `${CC.util.eur0(reste)} encore à passer ce mois-ci` : (passe ? 'tout est passé ce mois-ci' : '')].filter(Boolean).join(' · ')
+      ? [`soit ${CC.util.eur0(total * 12)} par an`, sansJour ? `${sansJour} sans jour de prélèvement, hors jauge` : ''].filter(Boolean).join(' · ')
       : 'Ajoute ta première mensualité ci-dessous.';
     box.innerHTML = `<div class="hero-plaque">
-      <p class="hero-l"><span class="hero-voyant" aria-hidden="true"></span>Tes mensualités · ${liste.length} prélèvement${liste.length > 1 ? 's' : ''}</p>
+      <p class="hero-l"><span class="hero-voyant" aria-hidden="true"></span>Tes mensualités · ${prel(liste.length)}</p>
       <p class="hero-v"><span class="hero-n">${CC.util.eur0(total).replace(/\s?€$/, '')}</span><span class="hero-e">€ / mois</span></p>
-      ${(passe + reste) > 0 ? `<div class="hero-jauge" aria-hidden="true" title="Déjà prélevé ce mois-ci"><span style="width:${jauge}%"></span></div>` : ''}
+      ${jauge}
       <p class="hero-d">${details}</p>
     </div>`;
   },
