@@ -69,6 +69,7 @@ CC.render = function () {
   CC.renderDashboard();
   CC.facturesView.render();
   CC.renderFiscal();
+  if (CC.perso) CC.perso.render();
 };
 
 // Ouvre une piece jointe (PDF) avec l'application par defaut du systeme
@@ -207,7 +208,7 @@ CC.switchTab = function (name, dir) {
   }
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   const plus = document.getElementById('tabPlusBtn');
-  if (plus) plus.classList.toggle('active', name === 'trajets' || name === 'redaction');
+  if (plus) plus.classList.toggle('active', name === 'perso' || name === 'trajets' || name === 'redaction');
   if (CC.fermerPlus) CC.fermerPlus();
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + name));
   // Animation directionnelle si on arrive par un swipe (dir = 'next' | 'prev').
@@ -229,6 +230,7 @@ CC.switchTab = function (name, dir) {
   if (name === 'mails' && CC.mailbox) CC.mailbox.render();
   if (name === 'redaction' && CC.ai) CC.ai.render();
   if (name === 'trajets' && CC.trajets) CC.trajets.render();
+  if (name === 'perso' && CC.perso) CC.perso.render();
   if (name === 'reseau' && CC.prospection) CC.prospection.render();
   if (name === 'settings') { if (CC.connections) CC.connections.render(); if (CC.notifs) CC.notifs.render(); }
 };
@@ -399,7 +401,7 @@ CC.initMobileNav = function () {
 // ---------------------------------------------------------------------------
 async function init() {
   // Onglets principaux
-  // Menu « Plus » (Trajets, IA) de la barre du haut.
+  // Menu « Plus » (Dépenses perso, Trajets, IA) de la barre du haut.
   const plusBtn = document.getElementById('tabPlusBtn');
   const plusMenu = document.getElementById('tabPlusMenu');
   CC.fermerPlus = () => { if (plusMenu) { plusMenu.hidden = true; plusBtn.setAttribute('aria-expanded', 'false'); } };
@@ -456,6 +458,7 @@ async function init() {
   CC.agenda.bind();
   if (CC.mailbox) CC.mailbox.bind();
   if (CC.trajets) CC.trajets.bind();
+  if (CC.perso) CC.perso.bind();
   if (CC.prospection) CC.prospection.bind();
   if (CC.notes) CC.notes.bind();
   // Outils réservés à l'ordinateur : sur téléphone, on retire leurs onglets et

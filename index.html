@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=hh" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=hh" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mumhko9u" />
+  <link rel="stylesheet" href="css/styles.css?b=muty1rb3" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mumhko9u"></script>
+  <script src="js/theme.js?b=muty1rb3"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -50,6 +50,7 @@
       <div class="tab-plus">
         <button type="button" class="tab-plus-btn" id="tabPlusBtn" aria-expanded="false" aria-haspopup="true">Plus <span aria-hidden="true">▾</span></button>
         <div class="tab-plus-menu" id="tabPlusMenu" hidden>
+          <button class="tab" data-tab="perso">Dépenses perso</button>
           <button class="tab" data-tab="trajets">Trajets</button>
           <button class="tab" data-tab="redaction">IA</button>
         </div>
@@ -433,6 +434,77 @@
             <tbody id="trajetsBody"></tbody>
           </table>
           <div id="trajetsEmpty" class="empty hidden">Aucun trajet enregistré pour le moment.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== DEPENSES PERSO (mensualités) ===================== -->
+    <section id="tab-perso" class="panel">
+      <div class="today-head">
+        <h2>Dépenses perso</h2>
+        <p class="card-sub">Tes mensualités personnelles : loyer, crédits, assurances, abonnements… et ce qu’elles te coûtent chaque mois.</p>
+      </div>
+
+      <div class="today-hero" id="peHero"></div>
+
+      <div class="pe-grid">
+        <form class="card pe-form" id="pe_form" autocomplete="off">
+          <h3 id="pe_titre">Ajouter une mensualité</h3>
+          <div class="field full">
+            <label for="pe_libelle">Nom</label>
+            <input type="text" id="pe_libelle" class="input" placeholder="ex. Loyer, crédit voiture, Spotify" maxlength="80" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="pe_montant">Montant (€)</label>
+              <input type="text" id="pe_montant" class="input" inputmode="decimal" placeholder="ex. 650" />
+            </div>
+            <div class="field">
+              <label for="pe_frequence">Fréquence</label>
+              <select id="pe_frequence" class="input"></select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="pe_jour">Prélevé le</label>
+              <input type="number" id="pe_jour" class="input" min="1" max="31" step="1" placeholder="jour (1–31)" />
+            </div>
+            <div class="field">
+              <label for="pe_categorie">Catégorie</label>
+              <select id="pe_categorie" class="input"></select>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="submit" id="pe_save" class="btn btn-primary">Ajouter</button>
+            <button type="button" id="pe_cancel" class="btn hidden">Annuler</button>
+          </div>
+        </form>
+
+        <div class="card">
+          <h3>Où part l’argent</h3>
+          <p class="card-sub">Par catégorie, ramené au mois.</p>
+          <div id="peCats"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Mes mensualités</h3>
+        <p class="card-sub">Une échéance trimestrielle ou annuelle est ramenée au mois dans la dernière colonne.</p>
+        <div class="table-wrap">
+          <table class="table pe-table">
+            <thead>
+              <tr>
+                <th>Jour</th>
+                <th>Mensualité</th>
+                <th class="num">Montant</th>
+                <th class="num">Par mois</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="peBody"></tbody>
+            <tfoot id="peFoot" class="pe-foot"></tfoot>
+          </table>
+          <div id="peEmpty" class="empty hidden">Aucune mensualité pour le moment.</div>
         </div>
       </div>
     </section>
@@ -1113,6 +1185,10 @@
     <div class="mobile-sheet-backdrop" data-close></div>
     <div class="mobile-sheet-panel">
       <div class="msheet-grip"></div>
+      <button type="button" class="msheet-item" data-tab="perso">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0 0 4h14a1 1 0 0 1 1 1v3"/><path d="M3 6v12a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3"/><path d="M21 12v4h-4a2 2 0 0 1 0-4z"/></svg>
+        <span>Dépenses perso</span>
+      </button>
       <button type="button" class="msheet-item" data-tab="trajets">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h1.5a1 1 0 0 0 1-1v-2.6a2 2 0 0 0-1.5-1.94L16.5 10.7l-2-2.5A2 2 0 0 0 13 7.5H6.9a2 2 0 0 0-1.8 1.1L3.6 11.6l-1.1.4A1.5 1.5 0 0 0 1.5 13.4V16a1 1 0 0 0 1 1H4"/><path d="M9 17h6"/><circle cx="6.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>
         <span>Trajets</span>
@@ -1419,40 +1495,41 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mumhko9u"></script>
-  <script src="js/drive-store.js?b=mumhko9u"></script>
-  <script src="js/api-web.js?b=mumhko9u"></script>
-  <script src="js/settings.js?b=mumhko9u"></script>
-  <script src="js/datepicker.js?b=mumhko9u"></script>
-  <script src="js/stats.js?b=mumhko9u"></script>
-  <script src="js/charts.js?b=mumhko9u"></script>
-  <script src="js/import.js?b=mumhko9u"></script>
-  <script src="js/pdfimport.js?b=mumhko9u"></script>
-  <script src="js/clients.js?b=mumhko9u"></script>
-  <script src="js/factures.js?b=mumhko9u"></script>
-  <script src="js/fiscal.js?b=mumhko9u"></script>
-  <script src="js/bilan.js?b=mumhko9u"></script>
-  <script src="js/ai.js?b=mumhko9u"></script>
-  <script src="js/connections.js?b=mumhko9u"></script>
-  <script src="js/agenda.js?b=mumhko9u"></script>
-  <script src="js/signature.js?b=mumhko9u"></script>
-  <script src="js/mailbox.js?b=mumhko9u"></script>
-  <script src="js/trajets.js?b=mumhko9u"></script>
+  <script src="js/google-auth-web.js?b=muty1rb3"></script>
+  <script src="js/drive-store.js?b=muty1rb3"></script>
+  <script src="js/api-web.js?b=muty1rb3"></script>
+  <script src="js/settings.js?b=muty1rb3"></script>
+  <script src="js/datepicker.js?b=muty1rb3"></script>
+  <script src="js/stats.js?b=muty1rb3"></script>
+  <script src="js/charts.js?b=muty1rb3"></script>
+  <script src="js/import.js?b=muty1rb3"></script>
+  <script src="js/pdfimport.js?b=muty1rb3"></script>
+  <script src="js/clients.js?b=muty1rb3"></script>
+  <script src="js/factures.js?b=muty1rb3"></script>
+  <script src="js/fiscal.js?b=muty1rb3"></script>
+  <script src="js/bilan.js?b=muty1rb3"></script>
+  <script src="js/ai.js?b=muty1rb3"></script>
+  <script src="js/connections.js?b=muty1rb3"></script>
+  <script src="js/agenda.js?b=muty1rb3"></script>
+  <script src="js/signature.js?b=muty1rb3"></script>
+  <script src="js/mailbox.js?b=muty1rb3"></script>
+  <script src="js/trajets.js?b=muty1rb3"></script>
+  <script src="js/perso.js?b=muty1rb3"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mumhko9u"></script>
-  <script src="js/prospection-jeunesse77.js?b=mumhko9u"></script>
-  <script src="js/prospection.js?b=mumhko9u"></script>
-  <script src="js/notes.js?b=mumhko9u"></script>
+  <script src="js/prospection-base.js?b=muty1rb3"></script>
+  <script src="js/prospection-jeunesse77.js?b=muty1rb3"></script>
+  <script src="js/prospection.js?b=muty1rb3"></script>
+  <script src="js/notes.js?b=muty1rb3"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mumhko9u"></script>
-  <script src="js/recherche.js?b=mumhko9u"></script>
-  <script src="js/today.js?b=mumhko9u"></script>
-  <script src="js/privacy.js?b=mumhko9u"></script>
-  <script src="js/storage.js?b=mumhko9u"></script>
-  <script src="js/rappels.js?b=mumhko9u"></script>
-  <script src="js/notifs.js?b=mumhko9u"></script>
-  <script src="js/app.js?b=mumhko9u"></script>
+  <script src="js/coffre.js?b=muty1rb3"></script>
+  <script src="js/recherche.js?b=muty1rb3"></script>
+  <script src="js/today.js?b=muty1rb3"></script>
+  <script src="js/privacy.js?b=muty1rb3"></script>
+  <script src="js/storage.js?b=muty1rb3"></script>
+  <script src="js/rappels.js?b=muty1rb3"></script>
+  <script src="js/notifs.js?b=muty1rb3"></script>
+  <script src="js/app.js?b=muty1rb3"></script>
 </body>
 </html>

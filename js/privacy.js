@@ -19,6 +19,7 @@ CC.applyPrivacy = function (on) {
   if (CC.renderBilan) CC.renderBilan();
   if (CC.renderToday) CC.renderToday();
   if (CC.trajets) { CC.trajets.renderList(); CC.trajets.renderRate(); }
+  if (CC.perso) CC.perso.render();
 };
 
 CC.privacy = {

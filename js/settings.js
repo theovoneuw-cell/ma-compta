@@ -136,6 +136,9 @@ CC.defaultSettings = function () {
     // Fiches clients (voir clients.js) : rangees dans les reglages pour que les
     // anciennes versions de l'app (iPhone) les recopient sans les effacer.
     clients: [],
+    // Mensualites personnelles (onglet Plus > Depenses perso, voir perso.js) :
+    // dans les reglages pour la meme raison que les fiches clients.
+    depensesPerso: [],
     plafond: 0,               // 0 = automatique selon l'annee
     objectif: 0,
     // --- Integrations (non sensible ; les cles/jetons sont stockes chiffres a part) ---
