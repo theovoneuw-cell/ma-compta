@@ -96,7 +96,8 @@ CC.importer = {
     return factures;
   },
 
-  fromBase64(base64) {
+  async fromBase64(base64) {
+    if (typeof XLSX === 'undefined') await CC.util.chargerScript('xlsx.full.min.js');
     const wb = XLSX.read(base64, { type: 'base64', cellDates: true });
     return CC.importer.parseWorkbook(wb);
   }

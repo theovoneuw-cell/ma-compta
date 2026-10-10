@@ -775,4 +775,32 @@ async function checkRecovery() {
   } catch (_) { /* ignore */ }
 }
 
+// Accords « (s) » : une quarantaine de messages écrivent « facture(s) ». Plutôt que de
+// les reprendre un par un, chaque texte affiché passe par CC.util.accorder dès qu'il
+// apparaît (cartes, toasts, boîtes de dialogue). Le contenu des mails et ce que tape
+// Théo n'est jamais touché.
+function accorderNoeud(t) {
+  const v = t.nodeValue;
+  if (!v || v.indexOf('(s)') < 0) return;
+  const p = t.parentElement;
+  if (!p || p.closest('textarea, input, [contenteditable], .mail-reader, .mail-body, #mailFrame, script, style')) return;
+  const w = CC.util.accorder(v);
+  if (w !== v) t.nodeValue = w;
+}
+function accorderSous(racine) {
+  if (racine.nodeType === 3) { accorderNoeud(racine); return; }
+  if (racine.nodeType !== 1 || (racine.textContent || '').indexOf('(s)') < 0) return;
+  const it = document.createTreeWalker(racine, NodeFilter.SHOW_TEXT);
+  for (let t = it.nextNode(); t; t = it.nextNode()) accorderNoeud(t);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  accorderSous(document.body);
+  new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === 'characterData') accorderNoeud(m.target);
+      else m.addedNodes.forEach(accorderSous);
+    }
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+});
+
 document.addEventListener('DOMContentLoaded', init);

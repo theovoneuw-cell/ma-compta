@@ -78,7 +78,7 @@ CC.renderToday = function () {
       const pas = (t) => {
         const k = Math.min(1, (t - t0) / duree);
         const e = 1 - Math.pow(1 - k, 3);
-        n.textContent = fmt.format(Math.round(entier * e));
+        n.textContent = CC.util.espaces(fmt.format(Math.round(entier * e)));
         if (k < 1) requestAnimationFrame(pas); else n.textContent = CC.util.eur0(encMois).replace(/\s?€$/, '');
       };
       requestAnimationFrame(pas);

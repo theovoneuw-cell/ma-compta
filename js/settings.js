@@ -8,19 +8,52 @@ CC.util = {
   eur(n) {
     if (CC.state && CC.state.privacy) return '••• €';
     if (n == null || isNaN(n)) n = 0;
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
+    return CC.util.espaces(new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n));
   },
   eur0(n) {
     if (CC.state && CC.state.privacy) return '••• €';
     if (n == null || isNaN(n)) n = 0;
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+    return CC.util.espaces(new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n));
   },
+  // Intl met une espace fine (U+202F) entre les milliers. Dans Plus Jakarta elle ne
+  // fait que 0,09 em : avec l'interlettrage serré des gros chiffres, « 1 155 » se
+  // lisait « 1155 ». L'espace insécable normale (U+00A0) reste visible partout.
+  espaces(s) { return String(s).replace(/\u202f/g, '\u00a0'); },
   pct(n, dec = 1) {
     if (CC.state && CC.state.privacy) return '••• %';
     if (n == null || isNaN(n)) n = 0;
     return n.toFixed(dec).replace('.', ',') + ' %';
   },
-  num(n) { return new Intl.NumberFormat('fr-FR').format(n || 0); },
+  num(n) { return CC.util.espaces(new Intl.NumberFormat('fr-FR').format(n || 0)); },
+  // Grosses bibliothèques (Excel 864 Ko, PDF 372 Ko) : chargées seulement au moment
+  // d'importer, pas à chaque ouverture. Le chemin est déduit de chart.umd.js, qui
+  // est chargé normalement : ../vendor/ sur le Mac, vendor/ dans la version iPhone.
+  vendorUrl(fichier) {
+    const ref = document.querySelector('script[src*="chart.umd.js"]');
+    return ref ? ref.src.replace(/chart\.umd\.js.*$/, fichier) : '../vendor/' + fichier;
+  },
+  chargerScript(fichier) {
+    CC._scripts = CC._scripts || {};
+    if (!CC._scripts[fichier]) {
+      CC._scripts[fichier] = new Promise((ok, ko) => {
+        const s = document.createElement('script');
+        s.src = CC.util.vendorUrl(fichier);
+        s.onload = () => ok();
+        s.onerror = () => { delete CC._scripts[fichier]; ko(new Error('Module ' + fichier + ' introuvable')); };
+        document.head.appendChild(s);
+      });
+    }
+    return CC._scripts[fichier];
+  },
+  // « 2 facture(s) payée(s) » -> « 2 factures payées », « 1 facture(s) » -> « 1 facture ».
+  // Le nombre décide pour tous les « (s) » qui le suivent jusqu'à la ponctuation.
+  accorder(texte) {
+    if (texte.indexOf('(s)') < 0) return texte;
+    return texte.replace(/(\d+)([^\d·—:.,;!?()]*\(s\)[^\d·—:.,;!?]*)/g, (m, n, suite) => {
+      const pluriel = +n > 1;
+      return n + suite.replace(/\(s\)/g, pluriel ? 's' : '');
+    });
+  },
   // Diagnostic connexion : distingue une VRAIE coupure réseau d'une SESSION Google
   // expirée. Sur iPhone, le jeton Google (~1 h) ne se renouvelle pas toujours en
   // silence : Gmail/Agenda échouent alors que le réseau (et Gemini) fonctionnent.

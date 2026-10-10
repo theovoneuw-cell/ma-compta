@@ -7,16 +7,16 @@ window.CC = window.CC || {};
 // ---------------------------------------------------------------------------
 CC.pdfImporter = {
   _ready: false,
-  _ensure() {
+  async _ensure() {
     if (this._ready) return;
-    if (typeof pdfjsLib === 'undefined') throw new Error('Module PDF non chargé');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '../vendor/pdf.worker.min.js';
+    if (typeof pdfjsLib === 'undefined') await CC.util.chargerScript('pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = CC.util.vendorUrl('pdf.worker.min.js');
     this._ready = true;
   },
 
   // Reconstruit les lignes du PDF avec leurs positions (x) pour separer les colonnes.
   async extractRows(arrayBuffer) {
-    this._ensure();
+    await this._ensure();
     const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const rows = [];
     for (let p = 1; p <= doc.numPages; p++) {

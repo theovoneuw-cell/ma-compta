@@ -171,7 +171,7 @@ CC.storage = {
     if (res.canceled) return;
     if (res.error) { CC.toast('Erreur import : ' + res.error, 'err'); return; }
     try {
-      const factures = CC.importer.fromBase64(res.base64);
+      const factures = await CC.importer.fromBase64(res.base64);
       if (!factures.length) { CC.toast('Aucune facture détectée dans ce fichier.', 'err'); return; }
       const choix = await CC.dialog({
         type: 'question',
