@@ -209,7 +209,6 @@ CC.recherche = {
       { titre: 'Données et sauvegardes', mots: 'import export excel csv sauvegarde', run: () => CC.switchTab('settings') },
       { titre: 'Coffre à documents', mots: 'attestation assurance rib kbis vigilance', run: () => CC.switchTab('coffre') },
       { titre: 'Agenda', mots: 'calendrier rendez-vous', run: () => CC.switchTab('agenda') },
-      { titre: 'Trajets', mots: 'kilometres frais route peage', run: () => CC.switchTab('trajets') },
       { titre: 'Réseau', mots: 'demarchage prospection structures', run: () => CC.switchTab('reseau') },
       { titre: 'Mails', mots: 'messagerie gmail', run: () => CC.switchTab('mails') },
       { titre: 'IA', mots: 'gemini assistant redaction', run: () => CC.switchTab('redaction') },

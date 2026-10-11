@@ -197,7 +197,7 @@ CC.renderFiscal = function () {
           <span class="ts-zero">0</span>
           <span class="ts-max"><b>${eur(t.majore)}</b><i>seuil majoré — TVA le jour même</i></span>
         </div>
-        <div class="ts-key"><span><i class="sw enc"></i>encaissé ${eur(t.enc)}</span>${legProj}<span><i class="sw tol"></i>TVA au 1<sup>er</sup> janvier ${suiv}</span></div>
+        <div class="ts-key"><span><i class="sw enc"></i>encaissé ${eur(t.enc)}</span>${legProj}<span><i class="sw tol"></i><em class="ts-t">TVA au 1<sup>er</sup> janvier ${suiv}</em></span></div>
       </div>`;
 
     // --- Les chiffres. La marge porte la couleur : c'est elle qui décide. ---

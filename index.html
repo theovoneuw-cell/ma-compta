@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=hh" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=hh" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mv2j7ron" />
+  <link rel="stylesheet" href="css/styles.css?b=mv417tl7" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mv2j7ron"></script>
+  <script src="js/theme.js?b=mv417tl7"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -46,12 +46,11 @@
       <button class="tab" data-tab="reseau">Réseau</button>
       <button class="tab" data-tab="agenda">Agenda</button>
       <button class="tab" data-tab="mails">Mails <span id="mailsBadge" class="tab-badge hidden"></span></button>
-      <!-- Outils moins utilisés : rangés dans « Plus », rien n'est supprimé. -->
+      <!-- Outils moins utilisés, rangés dans « Plus » (Trajets retiré le 11/10/2026). -->
       <div class="tab-plus">
         <button type="button" class="tab-plus-btn" id="tabPlusBtn" aria-expanded="false" aria-haspopup="true">Plus <span aria-hidden="true">▾</span></button>
         <div class="tab-plus-menu" id="tabPlusMenu" hidden>
           <button class="tab" data-tab="perso">Dépenses perso</button>
-          <button class="tab" data-tab="trajets">Trajets</button>
           <button class="tab" data-tab="redaction">IA</button>
         </div>
       </div>
@@ -335,108 +334,6 @@
       <div id="agendaBody"></div>
     </section>
 
-    <!-- ===================== TRAJETS (frais kilométriques) ===================== -->
-    <section id="tab-trajets" class="panel">
-      <div class="today-head">
-        <h2>Frais kilométriques</h2>
-        <p class="card-sub">Distance par la route, indemnité au barème et péages estimés. Saisis un départ et une arrivée — seul ce module se connecte à internet.</p>
-      </div>
-
-      <div class="trajet-grid">
-        <div class="card trajet-form">
-          <h3>Calculer un trajet</h3>
-          <div class="field full ac-field">
-            <label>Départ</label>
-            <input type="text" id="tj_from" class="input" placeholder="ex. 12 rue de la République, Nice" autocomplete="off" />
-            <div class="ac-list hidden" id="tj_fromList"></div>
-          </div>
-          <div class="field full ac-field">
-            <label>Arrivée</label>
-            <input type="text" id="tj_to" class="input" placeholder="ex. Mairie de Drap" autocomplete="off" />
-            <div class="ac-list hidden" id="tj_toList"></div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="check"><input type="checkbox" id="tj_ar" checked /> Aller-retour</label>
-            </div>
-            <div class="field">
-              <label>Véhicule</label>
-              <select id="tj_vehicle" class="input">
-                <option value="2AxlesAuto">Voiture</option>
-                <option value="2AxlesMotorcycle">Moto</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Trajets (×)</label>
-              <input type="number" id="tj_count" class="input" min="1" step="1" value="1" style="max-width:90px" />
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label>Prix carburant (€/L)</label>
-              <input type="number" id="tj_fuelPrice" class="input" min="0" step="0.01" placeholder="1,90" style="max-width:120px" />
-            </div>
-            <div class="field">
-              <label>Conso (L/100 km)</label>
-              <input type="number" id="tj_fuelConso" class="input" min="0" step="0.1" placeholder="6,5" style="max-width:120px" />
-            </div>
-          </div>
-          <div class="field full">
-            <label class="check"><input type="checkbox" id="tj_tolls" /> Calculer les péages (TollGuru) <small>— consomme 1 calcul du quota gratuit (15/jour)</small></label>
-          </div>
-          <div class="field full">
-            <label>Motif / client (optionnel)</label>
-            <input type="text" id="tj_motif" class="input" placeholder="ex. Atelier musiques urbaines — Mairie de Drap" />
-          </div>
-          <div class="btn-row">
-            <button id="tj_calc" class="btn btn-primary">Calculer</button>
-            <button id="tj_save" class="btn btn-coral" disabled>Enregistrer le trajet</button>
-            <span id="tj_spin" class="mail-spin hidden">Calcul en cours…</span>
-          </div>
-          <p class="muted trajet-rate" id="tj_rateInfo"></p>
-        </div>
-
-        <div class="card trajet-result-card">
-          <div class="trajet-map-wrap">
-            <div id="tj_map" class="trajet-map"></div>
-            <div class="trajet-legend">
-              <span class="tj-leg"><i class="tj-dot a"></i>Départ</span>
-              <span class="tj-leg"><i class="tj-dot b"></i>Arrivée</span>
-            </div>
-            <div class="trajet-map-hint">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-              <div>Saisis un départ et une arrivée,<br>puis <b>Calculer</b> pour tracer l'itinéraire.</div>
-            </div>
-          </div>
-          <div id="tj_result" class="trajet-result"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="trajet-list-head">
-          <h3>Trajets enregistrés</h3>
-          <span id="tj_total" class="summary"></span>
-        </div>
-        <div class="table-wrap">
-          <table class="table" id="trajetsTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Trajet</th>
-                <th class="num">Km</th>
-                <th class="num">Indemnité</th>
-                <th class="num">Carburant</th>
-                <th class="num">Péages</th>
-                <th class="num">Total</th>
-                <th class="col-actions"></th>
-              </tr>
-            </thead>
-            <tbody id="trajetsBody"></tbody>
-          </table>
-          <div id="trajetsEmpty" class="empty hidden">Aucun trajet enregistré pour le moment.</div>
-        </div>
-      </div>
-    </section>
 
     <!-- ===================== DEPENSES PERSO (mensualités) ===================== -->
     <section id="tab-perso" class="panel">
@@ -989,47 +886,6 @@
             </div>
 
             <div class="conn-block">
-              <div class="conn-title"><span>Péages (TollGuru)</span> <span id="connTollState" class="pill">non configuré</span></div>
-              <p class="muted conn-help">Clé gratuite pour le calcul des péages dans l'onglet Trajets. <a href="#" id="lnkTollGuru" class="lnk">Obtenir une clé →</a></p>
-              <div class="field-row">
-                <div class="field" style="flex:1">
-                  <label>Clé API TollGuru</label>
-                  <input type="password" id="setTollKey" class="input" placeholder="collez votre clé ici" autocomplete="off" />
-                </div>
-                <div class="field" style="align-self:flex-end">
-                  <button id="btnSaveToll" class="btn">Enregistrer</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="conn-block">
-              <div class="conn-title"><span>Frais kilométriques</span></div>
-              <p class="muted conn-help">Barème utilisé pour l'indemnité kilométrique (onglet Trajets).</p>
-              <div class="field-row">
-                <div class="field">
-                  <label>Chevaux fiscaux</label>
-                  <select id="setCv" class="input" style="max-width:120px">
-                    <option value="3">3 CV et −</option>
-                    <option value="4">4 CV</option>
-                    <option value="5">5 CV</option>
-                    <option value="6">6 CV</option>
-                    <option value="7">7 CV et +</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label>Tarif au km (€)</label>
-                  <input type="number" id="setTarifKm" step="0.001" min="0" class="input" style="max-width:140px" />
-                  <small>Barème 2024 simplifié, modifiable.</small>
-                </div>
-              </div>
-              <div class="field">
-                <label>Adresse de départ par défaut</label>
-                <input type="text" id="setAdresseDepart" class="input" placeholder="ex. 14 avenue Jean Médecin 06000 Nice" />
-                <small>Pré-remplie comme point de départ dans l'onglet Trajets.</small>
-              </div>
-            </div>
-
-            <div class="conn-block">
               <div class="conn-title"><span>Style des mails IA</span></div>
               <div class="field-row">
                 <div class="field">
@@ -1062,7 +918,7 @@
 
           <div class="card">
             <h3>Mode discret</h3>
-            <p class="card-sub">Masque tous tes montants (€) et pourcentages par des •••, par exemple si tu ouvres l'app entouré de monde. Les outils (agenda, trajets, mails, rédaction) restent utilisables. L'icône œil, en haut, masque ou affiche les chiffres.</p>
+            <p class="card-sub">Masque tous tes montants (€) et pourcentages par des •••, par exemple si tu ouvres l'app entouré de monde. Les outils (agenda, mails, rédaction) restent utilisables. L'icône œil, en haut, masque ou affiche les chiffres.</p>
 
             <div class="conn-block">
               <div class="conn-title"><span>Code de confidentialité</span> <span id="privPinState" class="pill">aucun code</span></div>
@@ -1190,10 +1046,6 @@
       <button type="button" class="msheet-item" data-tab="perso">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0 0 4h14a1 1 0 0 1 1 1v3"/><path d="M3 6v12a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3"/><path d="M21 12v4h-4a2 2 0 0 1 0-4z"/></svg>
         <span>Dépenses perso</span>
-      </button>
-      <button type="button" class="msheet-item" data-tab="trajets">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h1.5a1 1 0 0 0 1-1v-2.6a2 2 0 0 0-1.5-1.94L16.5 10.7l-2-2.5A2 2 0 0 0 13 7.5H6.9a2 2 0 0 0-1.8 1.1L3.6 11.6l-1.1.4A1.5 1.5 0 0 0 1.5 13.4V16a1 1 0 0 0 1 1H4"/><path d="M9 17h6"/><circle cx="6.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>
-        <span>Trajets</span>
       </button>
       <button type="button" class="msheet-item" data-tab="reseau">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="18" r="2.4"/><path d="M10.4 6.9 6.6 15.6M13.6 6.9l3.8 8.7M7.4 18h9.2"/></svg>
@@ -1495,41 +1347,40 @@
   <script src="vendor/chart.umd.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mv2j7ron"></script>
-  <script src="js/drive-store.js?b=mv2j7ron"></script>
-  <script src="js/api-web.js?b=mv2j7ron"></script>
-  <script src="js/settings.js?b=mv2j7ron"></script>
-  <script src="js/datepicker.js?b=mv2j7ron"></script>
-  <script src="js/stats.js?b=mv2j7ron"></script>
-  <script src="js/charts.js?b=mv2j7ron"></script>
-  <script src="js/import.js?b=mv2j7ron"></script>
-  <script src="js/pdfimport.js?b=mv2j7ron"></script>
-  <script src="js/clients.js?b=mv2j7ron"></script>
-  <script src="js/factures.js?b=mv2j7ron"></script>
-  <script src="js/fiscal.js?b=mv2j7ron"></script>
-  <script src="js/bilan.js?b=mv2j7ron"></script>
-  <script src="js/ai.js?b=mv2j7ron"></script>
-  <script src="js/connections.js?b=mv2j7ron"></script>
-  <script src="js/agenda.js?b=mv2j7ron"></script>
-  <script src="js/signature.js?b=mv2j7ron"></script>
-  <script src="js/mailbox.js?b=mv2j7ron"></script>
-  <script src="js/trajets.js?b=mv2j7ron"></script>
-  <script src="js/perso.js?b=mv2j7ron"></script>
+  <script src="js/google-auth-web.js?b=mv417tl7"></script>
+  <script src="js/drive-store.js?b=mv417tl7"></script>
+  <script src="js/api-web.js?b=mv417tl7"></script>
+  <script src="js/settings.js?b=mv417tl7"></script>
+  <script src="js/datepicker.js?b=mv417tl7"></script>
+  <script src="js/stats.js?b=mv417tl7"></script>
+  <script src="js/charts.js?b=mv417tl7"></script>
+  <script src="js/import.js?b=mv417tl7"></script>
+  <script src="js/pdfimport.js?b=mv417tl7"></script>
+  <script src="js/clients.js?b=mv417tl7"></script>
+  <script src="js/factures.js?b=mv417tl7"></script>
+  <script src="js/fiscal.js?b=mv417tl7"></script>
+  <script src="js/bilan.js?b=mv417tl7"></script>
+  <script src="js/ai.js?b=mv417tl7"></script>
+  <script src="js/connections.js?b=mv417tl7"></script>
+  <script src="js/agenda.js?b=mv417tl7"></script>
+  <script src="js/signature.js?b=mv417tl7"></script>
+  <script src="js/mailbox.js?b=mv417tl7"></script>
+  <script src="js/perso.js?b=mv417tl7"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mv2j7ron"></script>
-  <script src="js/prospection-jeunesse77.js?b=mv2j7ron"></script>
-  <script src="js/prospection.js?b=mv2j7ron"></script>
-  <script src="js/notes.js?b=mv2j7ron"></script>
+  <script src="js/prospection-base.js?b=mv417tl7"></script>
+  <script src="js/prospection-jeunesse77.js?b=mv417tl7"></script>
+  <script src="js/prospection.js?b=mv417tl7"></script>
+  <script src="js/notes.js?b=mv417tl7"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mv2j7ron"></script>
-  <script src="js/recherche.js?b=mv2j7ron"></script>
-  <script src="js/today.js?b=mv2j7ron"></script>
-  <script src="js/privacy.js?b=mv2j7ron"></script>
-  <script src="js/storage.js?b=mv2j7ron"></script>
-  <script src="js/rappels.js?b=mv2j7ron"></script>
-  <script src="js/notifs.js?b=mv2j7ron"></script>
-  <script src="js/app.js?b=mv2j7ron"></script>
+  <script src="js/coffre.js?b=mv417tl7"></script>
+  <script src="js/recherche.js?b=mv417tl7"></script>
+  <script src="js/today.js?b=mv417tl7"></script>
+  <script src="js/privacy.js?b=mv417tl7"></script>
+  <script src="js/storage.js?b=mv417tl7"></script>
+  <script src="js/rappels.js?b=mv417tl7"></script>
+  <script src="js/notifs.js?b=mv417tl7"></script>
+  <script src="js/app.js?b=mv417tl7"></script>
 </body>
 </html>

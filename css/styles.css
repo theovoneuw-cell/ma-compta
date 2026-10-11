@@ -2368,7 +2368,7 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   /* Quatre sous-onglets qui tiennent sans defiler sur un ecran de 393 px. */
   #tab-reseau .subtab { padding: 6px 11px; font-size: 13.5px; }
   /* Sur téléphone : en cours, à relancer, actées. */
-  #psKpis .kpi:nth-child(3), #psKpis .kpi:nth-child(5) { display: none; }
+  /* Il n'y a plus que trois chiffres depuis le tri du 27/09 : on les montre tous. */
   #psKpis .kpi .hint { display: none; }
   #tab-reseau .subtabs { overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
   #tab-reseau .subtabs::-webkit-scrollbar { display: none; }
@@ -2411,7 +2411,7 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
   #psub-modeles .form-grid { grid-template-columns: 1fr; gap: 10px; }
   /* La signature se règle une fois : sur téléphone elle passe SOUS les modèles,
      qui sont ce qu'on vient chercher. */
-  #psub-modeles { display: flex; flex-direction: column; }
+  #psub-modeles.active { display: flex; flex-direction: column; }
   /* Sans ce min-width, la rangée défilante des modèles (5 × 210 px) impose sa
      largeur intrinsèque à toute la colonne et l'éditeur déborde de l'écran. */
   #psub-modeles > * { min-width: 0; }
@@ -3025,3 +3025,109 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   #facturesTable td.fdate:has(> .muted:only-child), #facturesTable td.fmeta:has(> .muted:only-child) { display: none; }
   #facturesTable td.col-actions { order: 8; flex: 1 0 100%; justify-content: flex-end; gap: 6px; padding: 8px 0 0; margin: 2px 0 0; border-top: 1px solid var(--border); }
 }
+
+/* ===================== REFONTE DU 11/10/2026 : même charte, mise en ordre =====================
+   Rien de nouveau dans l'identité (violet nuit, lilas, Plus Jakarta, plaque « nuit »,
+   cartes souples) : on aligne, on régularise les espacements, on calme le relief.
+   - une seule colonne de page (1240 px) que l'en-tête suit aussi ;
+   - un seul écart entre blocs (--gap), dans toutes les grilles ;
+   - Paramètres en deux colonnes équilibrées au lieu de deux piles bancales ;
+   - onglet Trajets retiré (les trajets déjà saisis restent dans le fichier).
+   Sources d'avant : sauvegarde-avant-refonte-20261011/, app.asar.avant-refonte-20261011. */
+
+:root {
+  --page: 1240px;
+  --gap: 16px;
+  /* Relief plus discret : les cartes se détachent par leur filet, pas par l'ombre. */
+  --shadow-soft: 0 1px 2px rgba(27,23,51,.04), 0 2px 8px rgba(27,23,51,.03);
+  --shadow-card: 0 1px 2px rgba(27,23,51,.04), 0 6px 18px rgba(27,23,51,.045);
+  --card-ring: rgba(27,23,51,.06);
+  /* Aurore adoucie : mêmes halos, moitié moins présents, pour que les chiffres priment. */
+  --aurora:
+    radial-gradient(1100px 700px at -8% -10%, rgba(212,198,255,.55), transparent 60%),
+    radial-gradient(900px 620px at 104% 4%,  rgba(255,201,166,.45), transparent 58%),
+    radial-gradient(820px 600px at 12% 110%, rgba(191,224,255,.30), transparent 58%);
+}
+:root[data-theme="dark"] {
+  --shadow-soft: 0 1px 2px rgba(0,0,0,.30);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 8px 22px rgba(0,0,0,.30);
+  --card-bg: rgba(30,26,52,.92);
+  --card-border: rgba(255,255,255,.08);
+  --aurora:
+    radial-gradient(1100px 700px at 100% -10%, rgba(240,98,45,.14), transparent 58%),
+    radial-gradient(1000px 700px at -10% 110%, rgba(107,76,230,.26), transparent 60%),
+    radial-gradient(800px 560px at -6% 0%,    rgba(75,58,166,.20), transparent 58%);
+}
+
+/* ---- En-tête : calé sur la colonne de page, sans filet dégradé ---- */
+.topbar::after { display: none; }
+.topbar { box-shadow: none; border-bottom: 1px solid var(--border); }
+:root[data-theme="dark"] .topbar { box-shadow: none; border-bottom-color: rgba(255,255,255,.07); }
+@media (min-width: 721px) {
+  .topbar { padding: 10px max(26px, calc((100% - var(--page)) / 2)); min-height: 62px; gap: 10px 20px; }
+  .brand .logo { box-shadow: none; }
+  .tabs { gap: 2px; }
+  .tab, .tab-plus-btn { padding: 7px 12px; font-size: 13.5px; }
+  .tab.active, .tab-plus-btn.active { box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgba(27,23,51,.06); }
+  :root[data-theme="dark"] .tab.active, :root[data-theme="dark"] .tab-plus-btn.active { background: rgba(255,255,255,.08); box-shadow: none; }
+  .topbar-right { gap: 8px; }
+  .topbar-right .btn-icon { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .year-select select { height: 36px; padding: 0 28px 0 14px; border-radius: var(--r-pill); min-width: 0; width: 98px; }
+  #btnSave { height: 36px; padding: 0 16px; }
+  main { padding: 28px 26px 40px; }
+}
+
+/* ---- Rythme vertical : un seul écart partout ---- */
+.kpi-grid { gap: var(--gap); margin-bottom: var(--gap); }
+.card { margin-bottom: var(--gap); padding: 22px 24px; box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-card); }
+.card-grid, .cockpit-grid { gap: var(--gap); margin: 0 0 var(--gap); }
+.card-grid > .card, .cockpit-grid > .card, .card-grid > * > .card:last-child { margin-bottom: 0; }
+.cockpit-grid .card:hover { box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-card); border-color: var(--card-border); }
+.subtabs { margin-bottom: 22px; }
+.card h3 { font-size: 16.5px; margin-bottom: 4px; }
+.card .card-sub { margin-bottom: 16px; color: var(--muted); }
+.kpi { padding: 18px 22px 20px; }
+
+/* ---- Accueil : salutation et date sur une ligne, plaque centrée ---- */
+.today-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 22px; }
+.today-head h2 { font-size: 26px; margin: 0; }
+.today-head .card-sub, #todayDate { margin: 0; font-size: 14px; color: var(--muted); }
+#todayDate::first-letter { text-transform: uppercase; }
+.today-hero { margin: 0 0 var(--gap); }
+.hero-plaque { box-shadow: 0 24px 48px -28px rgba(31,23,71,.7), inset 0 1px 0 rgba(255,255,255,.14); }
+/* Pense-bête : teinte papier plus légère, bouton + aligné sur le champ */
+.card-memo { background: linear-gradient(180deg, rgba(246,191,38,.08) 0%, transparent 50%), var(--card-bg); }
+.note-add-btn { width: 40px; height: 40px; border-radius: 50%; box-shadow: none; }
+.note-add input { height: 40px; }
+
+/* ---- URSSAF & impôts : plus de liseré sur « À déclarer » ---- */
+.urssaf-now { border-left: 1px solid var(--card-border); background: var(--card-bg); }
+
+/* ---- Réseau : actions en tête, état de la synchro dessous ---- */
+.ps-tete { margin-bottom: var(--gap); }
+.ps-tete-act { margin-left: 0; }
+.ps-sync { order: 2; flex-basis: 100%; }
+.ps-sync:empty { display: none; }
+.ps-sync.warn { flex-basis: auto; display: inline-block; padding: 6px 12px; border-radius: var(--r-pill); background: var(--amber-soft); }
+/* Six étapes depuis « Demande reçue » : six colonnes, plus de colonne orpheline */
+.ps-pipe { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1080px) { .ps-pipe { grid-template-columns: repeat(6, minmax(190px, 1fr)); } }
+@media (max-width: 720px) { .ps-pipe { grid-template-columns: repeat(6, 84%); } }
+
+/* ---- Paramètres : deux colonnes équilibrées ---- */
+@media (min-width: 901px) {
+  .settings-grid { display: block; columns: 2; column-gap: var(--gap); }
+  .settings-grid > div:not(.card) { display: contents; }
+  .settings-grid .card { break-inside: avoid; display: block; width: 100%; }
+}
+.settings-grid .card > p.muted:first-of-type { margin-top: 0; }
+
+/* ---- Tableaux : même carte que le reste ---- */
+.table-wrap { box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-card); }
+/* Légende TVA : « 1er » reste collé (le span en flex séparait l'exposant). */
+.ts-key .ts-t { font-style: normal; }
+/* Mails : le panneau (flex) se rétrécissait à son contenu ; il prend la colonne de page. */
+@media (min-width: 721px) { #tab-mails.active { width: 100%; } }
+/* Dépenses perso : formulaire et répartition à la même hauteur. */
+.pe-grid { gap: var(--gap); align-items: stretch; margin-bottom: var(--gap); }
+.pe-grid > .card { margin-bottom: 0; }
