@@ -3131,3 +3131,140 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
 /* Dépenses perso : formulaire et répartition à la même hauteur. */
 .pe-grid { gap: var(--gap); align-items: stretch; margin-bottom: var(--gap); }
 .pe-grid > .card { margin-bottom: 0; }
+
+/* ===================== FACTURES : REFONTE DU 11/10/2026 =====================
+   Nouvelle table #fxTable (les anciennes règles #facturesTable ne s'appliquent plus).
+   Lignes à deux niveaux, groupes (retard, attente, prévues, puis mois), statut en
+   boutons ; au téléphone, une carte par facture que l'on touche pour l'ouvrir. */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.fx-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.fx-search { margin-left: auto; display: flex; align-items: center; gap: 8px; width: min(320px, 100%); height: 38px; padding: 0 14px;
+  border: 1px solid var(--border-strong); border-radius: var(--r-pill); background: var(--card-bg); color: var(--soft); transition: border-color .14s, box-shadow .14s; }
+.fx-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(107,76,230,.16); }
+.fx-search input { flex: 1; min-width: 0; border: none; background: none; padding: 0; height: 100%; font-size: 13.5px; box-shadow: none; }
+.fx-search input:focus { box-shadow: none; }
+
+.fx-filtres { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.fx-statuts { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-pill); background: rgba(27,23,51,.05); border: 1px solid var(--border); }
+:root[data-theme="dark"] .fx-statuts { background: rgba(255,255,255,.05); }
+.fx-statuts button { border: none; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer; white-space: nowrap; transition: color .15s, background .15s, box-shadow .15s; }
+.fx-statuts button:hover { color: var(--ink); }
+.fx-statuts button.on { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(27,23,51,.08); }
+.fx-statuts button[data-st="retard"].on { color: var(--red); }
+:root[data-theme="dark"] .fx-statuts button.on { background: rgba(255,255,255,.10); box-shadow: none; }
+.fx-selects { display: flex; gap: 8px; }
+.fx-selects select { height: 36px; padding: 0 30px 0 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 500; background-color: var(--card-bg); border-color: var(--border-strong); }
+.fx-resume { margin: 14px 2px 10px; font-size: 13px; color: var(--muted); }
+.fx-resume b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.fx-wrap { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--r-lg); overflow: hidden;
+  box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-card); }
+.fx-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.fx-table thead th { padding: 13px 18px; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; white-space: nowrap; }
+.fx-table thead th:hover { color: var(--ink); }
+.fx-table thead th.tri { color: var(--ink); }
+.fx-table thead th.tri::after { content: '↑'; margin-left: 5px; color: var(--accent); }
+.fx-table thead th.tri[data-dir="desc"]::after { content: '↓'; }
+.fx-table .fx-c-date { width: 170px; }
+.fx-table .fx-c-st { width: 140px; }
+.fx-table .fx-c-mt { width: 130px; text-align: right; }
+.fx-table .fx-c-act { width: 150px; cursor: default; }
+
+.fx-table td { padding: 13px 18px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.fx-table tr.frow { cursor: pointer; transition: background .12s ease; }
+.fx-table tr.frow:hover { background: rgba(107,76,230,.045); }
+:root[data-theme="dark"] .fx-table tr.frow:hover { background: rgba(255,255,255,.04); }
+.fx-table tbody tr:last-child td { border-bottom: none; }
+.fx-nom, .fx-sous { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-nom { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.fx-sous { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.fx-d { display: block; font-size: 13.5px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frow.retard .fx-d { color: var(--red); }
+.frow.prevu .fx-d { color: var(--muted); }
+.fx-mt { text-align: right; font-size: 15px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frow.prevu .fx-mt { color: var(--muted); font-weight: 600; }
+.fx-st .stpill { font-weight: 650; }
+
+/* Groupes : un titre posé sur la liste, sans fond */
+.fx-groupe th { padding: 22px 18px 9px; text-align: left; border-bottom: 1px solid var(--border); background: rgba(27,23,51,.02); }
+:root[data-theme="dark"] .fx-groupe th { background: rgba(255,255,255,.02); }
+.fx-table tbody .fx-groupe:first-child th { padding-top: 14px; }
+.fx-g-t { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.fx-groupe.g-retard .fx-g-t { color: var(--red); }
+.fx-g-n { margin-left: 10px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+
+/* Actions : l'action utile en clair, le reste discret (révélé au survol) */
+.fx-act { text-align: right; white-space: nowrap; }
+.fx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; padding: 0 11px; margin-left: 4px;
+  border: 1px solid transparent; border-radius: var(--r-pill); background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: background .14s, color .14s, border-color .14s, opacity .14s; }
+.fx-btn:hover { background: var(--surface-2); color: var(--ink); }
+.fx-btn .ic { vertical-align: 0; }
+.fx-ic { width: 30px; padding: 0; }
+.fx-quick { border-color: var(--border-strong); color: var(--text); }
+.fx-quick.ok { border-color: transparent; background: var(--green-soft); color: #0a7d57; }
+.fx-quick.ok:hover { background: var(--green); color: #fff; }
+:root[data-theme="dark"] .fx-quick.ok { color: var(--green); }
+:root[data-theme="dark"] .fx-quick.ok:hover { color: #0b2a20; }
+@media (hover: hover) {
+  /* « Émise » n'apparaît qu'au survol : sur 18 prévues, 18 boutons identiques faisaient du bruit. */
+  .fx-undo, .fx-edit, .frow.prevu .fx-quick { opacity: 0; }
+  .frow:hover .fx-undo, .frow:hover .fx-edit, .frow.prevu:hover .fx-quick, .fx-btn:focus-visible { opacity: 1; }
+}
+
+/* Fenêtre moyenne : la date passe sous le client */
+@media (max-width: 980px) and (min-width: 721px) {
+  .fx-table .fx-c-date { width: 140px; }
+  .fx-table .fx-c-act { width: 120px; }
+  .fx-table td, .fx-table thead th { padding-left: 14px; padding-right: 14px; }
+}
+
+/* ---- Téléphone : une carte par facture ---- */
+@media (max-width: 720px) {
+  .fx-head { gap: 8px; }
+  .fx-head .btn-primary { flex: 1 1 auto; height: 44px; }
+  .fx-head .btn-indy { height: 44px; }
+  .fx-search { order: 3; margin-left: 0; width: 100%; height: 44px; }
+  .fx-search input { font-size: 16px; }
+  .fx-filtres { gap: 8px; }
+  .fx-statuts { display: flex; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .fx-statuts::-webkit-scrollbar { display: none; }
+  .fx-statuts button { flex: 1 0 auto; padding: 9px 11px; font-size: 13.5px; }
+  .fx-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .fx-selects select { width: 100%; height: 40px; font-size: 14px; padding-right: 26px; text-overflow: ellipsis; }
+  .fx-resume { margin: 12px 4px 4px; font-size: 12.5px; }
+
+  .fx-wrap { background: none; border: none; box-shadow: none; overflow: visible; border-radius: 0; }
+  .fx-table, .fx-table tbody { display: block; }
+  .fx-table thead { display: none; }
+  .fx-groupe { display: block; }
+  .fx-groupe th { display: flex; align-items: baseline; padding: 20px 4px 8px; border: none; background: none; }
+  .fx-table tbody .fx-groupe:first-child th { padding-top: 10px; }
+  .fx-g-t { font-size: 14px; }
+
+  .fx-table tr.frow { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "client mt" "date st";
+    column-gap: 12px; row-gap: 8px; align-items: center; margin-bottom: 8px; padding: 14px 16px;
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--r-md);
+    box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-soft); -webkit-tap-highlight-color: transparent; }
+  .fx-table tr.frow:hover { background: var(--card-bg); }
+  .fx-table tr.frow:active { transform: scale(.985); transition: transform .12s ease; }
+  .fx-table td { display: block; padding: 0; border: none; }
+  .fx-client { grid-area: client; min-width: 0; }
+  .fx-nom { font-size: 15.5px; }
+  .fx-mt { grid-area: mt; font-size: 16.5px; align-self: start; }
+  .fx-table td.fx-date { grid-area: date; display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+  .fx-date .fx-sous { order: -1; margin: 0; font-size: 13px; }
+  .fx-d { font-size: 13px; }
+  .fx-st { grid-area: st; justify-self: end; }
+  /* Liste groupée : le titre du groupe dit déjà le statut ; la carte garde l'action utile. */
+  .fx-groupee .fx-st { display: none !important; }
+  .fx-table td.fx-act { grid-area: st; display: none; justify-self: end; }
+  .fx-table .frow.attente td.fx-act, .fx-table .frow.retard td.fx-act { display: flex; }
+  .fx-table:not(:has(.fx-groupee)) .frow td.fx-act { display: none; }
+  .fx-pj, .fx-undo, .fx-edit { display: none; }
+  .fx-quick { height: 36px; padding: 0 16px; font-size: 14px; margin: 0; }
+  .fx-statuts button { padding: 9px 8px; font-size: 13px; flex: 1 1 auto; }
+  .fx-selects select { padding: 0 24px 0 12px; font-size: 13.5px; }
+}

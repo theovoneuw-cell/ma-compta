@@ -33,44 +33,62 @@ CC.facturesView = {
     return list;
   },
 
+  // Refonte du 11/10/2026 : au tri par défaut (statut), la liste est groupée — en retard,
+  // en attente, prévues, puis les encaissées mois par mois. Les autres tris restent à plat.
   render() {
     const S = CC.state;
     const list = CC.facturesView.current();
     const body = document.getElementById('facturesBody');
-    const labels = { recue: 'Reçue', attente: 'En attente', retard: 'En retard', prevu: 'Prévisionnel' };
-    let total = 0, enc = 0;
+    let total = 0, enc = 0, prevuTtc = 0;
+    list.forEach((f) => {
+      const st = CC.stats.statut(f, S.settings), m = +f.montant || 0;
+      total += m;
+      if (st === 'recue') enc += m;
+      else if (st === 'prevu') prevuTtc += m;
+    });
 
-    body.innerHTML = list.map((f) => {
-      const st = CC.stats.statut(f, S.settings);
-      total += +f.montant || 0;
-      if (st === 'recue') enc += +f.montant || 0;
-      const y = CC.stats.yearOf(f), t = CC.stats.trimOf(f);
-      const periode = y ? `${y}${t ? ' · T' + t : ''}` : '—';
-      // "Marquer reçue" pour les factures emises non payees ; pour une previsionnelle, "Marquer émise"
-      let quick = '';
-      if (st === 'attente' || st === 'retard') quick = `<button class="mini-btn go-green" data-act="recue" data-id="${f.id}" title="Marquer comme reçue">Reçue ✓</button> `;
-      else if (st === 'prevu') quick = `<button class="mini-btn" data-act="emise" data-id="${f.id}" title="Donner un n° = facture émise">Émise</button> `;
-      else if (st === 'recue') quick = `<button class="mini-btn" data-act="unrecue" data-id="${f.id}" title="Annuler l'encaissement (remettre en attente)">↩ Annuler</button> `;
-      const pj = f.fichier ? `<button class="mini-btn pj-btn" data-act="pj" data-id="${f.id}" title="Ouvrir la facture PDF" aria-label="Ouvrir la facture PDF">${ICON_CLIP}</button> ` : '';
-      return `<tr class="frow ${st}">
-        <td class="fdate" data-label="Encaissé le">${f.dateEncaissement ? CC.util.frDate(f.dateEncaissement) : '<span class="muted">—</span>'}</td>
-        <td class="fmeta" data-label="Période">${periode}</td>
-        <td class="fmeta" data-label="N°">${esc(f.numFacture) || '<span class="muted">—</span>'}</td>
-        <td class="client" data-label="Client">${esc(f.libelle)} <span class="cat-chip">${esc(f.categorie || CC.util.categoryOf(f.libelle))}</span></td>
-        <td class="num montant" data-label="Montant">${CC.util.eur(+f.montant || 0)}</td>
-        <td data-label="Statut"><span class="stpill ${st}">${labels[st]}</span></td>
-        <td class="col-actions">${pj}${quick}<button class="mini-btn" data-act="edit" data-id="${f.id}">Éditer</button></td>
-      </tr>`;
-    }).join('');
+    const groupe = S.sort.key === 'statut' && S.sort.dir === 'asc';
+    let html = '';
+    if (groupe) {
+      const par = { retard: [], attente: [], prevu: [], recue: [] };
+      list.forEach((f) => par[CC.stats.statut(f, S.settings)].push(f));
+      const ech = (f) => f.dateEcheance || f.dateEnvoi || '';
+      par.retard.sort((a, b) => ech(a).localeCompare(ech(b)));
+      par.attente.sort((a, b) => ech(a).localeCompare(ech(b)));
+      const per = (f) => (CC.stats.yearOf(f) || 0) * 10 + (CC.stats.trimOf(f) || 0);
+      par.prevu.sort((a, b) => per(a) - per(b) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+      par.recue.sort((a, b) => String(b.dateEncaissement).localeCompare(String(a.dateEncaissement)));
+      [['retard', 'En retard'], ['attente', 'En attente'], ['prevu', 'Prévues']].forEach(([k, t]) => {
+        if (par[k].length) html += fxGroupe(t, par[k].length, k) + par[k].map(fxLigne).join('');
+      });
+      let mois = '';
+      par.recue.forEach((f) => {
+        const m = String(f.dateEncaissement).slice(0, 7);
+        if (m !== mois) {
+          mois = m;
+          const n = par.recue.filter((x) => String(x.dateEncaissement).slice(0, 7) === m).length;
+          html += fxGroupe(fxMois(m), n, 'recue');
+        }
+        html += fxLigne(f);
+      });
+    } else {
+      html = list.map(fxLigne).join('');
+    }
+    body.innerHTML = html;
+    body.classList.toggle('fx-groupee', groupe);
+
+    document.querySelectorAll('#fxTable th[data-sort]').forEach((th) => {
+      const actif = th.dataset.sort === S.sort.key && !(th.dataset.sort === 'statut' && groupe);
+      th.classList.toggle('tri', actif);
+      th.dataset.dir = actif ? S.sort.dir : '';
+    });
+    document.querySelectorAll('#fxStatuts button').forEach((b) => b.classList.toggle('on', b.dataset.st === S.filters.status));
 
     document.getElementById('facturesEmpty').classList.toggle('hidden', list.length > 0);
-    // TTC, comme les lignes du tableau (CC.stats.sums renvoie du HT, qui est la
-    // bonne unite pour le fiscal mais pas pour un recapitulatif de creances).
-    let prevuTtc = 0;
-    list.forEach((f) => { if (CC.stats.statut(f, S.settings) === 'prevu') prevuTtc += +f.montant || 0; });
-    const prevuTxt = prevuTtc > 0 ? ` · Prévisionnel ${CC.util.eur0(prevuTtc)}` : '';
-    document.getElementById('facturesSummary').textContent =
-      `${list.length} facture(s) — Total ${CC.util.eur0(total)} · Encaissé ${CC.util.eur0(enc)}${prevuTxt}`;
+    // TTC, comme les lignes (CC.stats.sums renvoie du HT, la bonne unité pour le fiscal).
+    const prevuTxt = prevuTtc > 0 ? ` · prévu <b>${CC.util.eur0(prevuTtc)}</b>` : '';
+    document.getElementById('facturesSummary').innerHTML =
+      `${list.length} facture(s) · total <b>${CC.util.eur0(total)}</b> · encaissé <b>${CC.util.eur0(enc)}</b>${prevuTxt}`;
   },
 
   openModal(facture) {
@@ -454,7 +472,7 @@ CC.facturesView = {
   bind() {
     // Remplir la liste des categories (modale + filtre)
     document.getElementById('f_categorie').innerHTML = CC.CATEGORIES.map((c) => `<option>${c}</option>`).join('');
-    document.getElementById('filterCategorie').innerHTML = '<option value="all">Toutes les activités</option>' +
+    document.getElementById('filterCategorie').innerHTML = '<option value="all">Activité</option>' +
       CC.CATEGORIES.map((c) => `<option value="${c}">${c}</option>`).join('');
     document.getElementById('btnNewFacture').addEventListener('click', () => CC.facturesView.openModal(null));
     CC.facturesView.attachClientAC();
@@ -524,7 +542,7 @@ CC.facturesView = {
     document.getElementById('filterCategorie').addEventListener('change', (e) => { CC.state.filters.categorie = e.target.value; CC.facturesView.render(); });
     document.getElementById('filterPj').addEventListener('change', (e) => { CC.state.filters.pj = e.target.value; CC.facturesView.render(); });
 
-    document.querySelectorAll('#facturesTable th[data-sort]').forEach((th) => {
+    document.querySelectorAll('#fxTable th[data-sort]').forEach((th) => {
       th.addEventListener('click', () => {
         const key = th.dataset.sort, s = CC.state.sort;
         s.dir = (s.key === key && s.dir === 'asc') ? 'desc' : 'asc';
@@ -532,9 +550,24 @@ CC.facturesView = {
       });
     });
 
+    document.querySelectorAll('#fxStatuts button').forEach((b) => {
+      b.addEventListener('click', () => {
+        CC.state.filters.status = b.dataset.st;
+        document.getElementById('filterStatus').value = b.dataset.st;
+        CC.facturesView.render();
+      });
+    });
+
     document.getElementById('facturesBody').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (!btn) {
+        // Toute la ligne ouvre la facture (au doigt surtout : la carte entière est la cible).
+        const tr = e.target.closest('tr.frow');
+        if (!tr || window.getSelection().toString()) return;
+        const f = CC.state.factures.find((x) => x.id === tr.dataset.id);
+        if (f) CC.facturesView.openModal(f);
+        return;
+      }
       if (btn.dataset.act === 'edit') { const f = CC.state.factures.find((x) => x.id === btn.dataset.id); if (f) CC.facturesView.openModal(f); }
       else if (btn.dataset.act === 'recue') CC.facturesView.markRecue(btn.dataset.id);
       else if (btn.dataset.act === 'unrecue') CC.facturesView.undoRecue(btn.dataset.id);
@@ -597,3 +630,50 @@ function indyUrl() {
 
 // Icône trombone (SVG, hérite la couleur du texte)
 const ICON_CLIP = '<svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+
+// ---- Rendu d'une ligne / d'un groupe (refonte du 11/10/2026) ----
+const FX_LIB = { recue: 'Reçue', attente: 'En attente', retard: 'En retard', prevu: 'Prévue' };
+const ICON_EDIT = '<svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const ICON_UNDO = '<svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+const ICON_OK = '<svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+function fxMois(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || !m) return 'Encaissées';
+  const t = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function fxGroupe(titre, n, st) {
+  return `<tr class="fx-groupe g-${st}"><th colspan="5" scope="rowgroup"><span class="fx-g-t">${esc(titre)}</span><span class="fx-g-n">${n} facture(s)</span></th></tr>`;
+}
+
+function fxLigne(f) {
+  const S = CC.state;
+  const st = CC.stats.statut(f, S.settings);
+  const cat = f.categorie || CC.util.categoryOf(f.libelle);
+  const num = f.numFacture ? `n° ${esc(f.numFacture)}` : '';
+  const sous = [esc(cat), num].filter(Boolean).join(' · ');
+  const y = CC.stats.yearOf(f), t = CC.stats.trimOf(f);
+  let d = '', dl = '';
+  if (st === 'recue') { d = CC.util.frDate(f.dateEncaissement); dl = 'encaissée'; }
+  else if (st === 'prevu') { d = y ? `T${t || '?'} ${y}` : '—'; dl = 'prévue'; }
+  else if (f.dateEcheance) { d = CC.util.frDate(f.dateEcheance); dl = st === 'retard' ? 'échéance passée' : 'échéance'; }
+  else if (f.dateEnvoi) { d = CC.util.frDate(f.dateEnvoi); dl = 'envoyée'; }
+  else { d = y ? `T${t || '?'} ${y}` : '—'; dl = 'émise'; }
+
+  let quick = '';
+  if (st === 'attente' || st === 'retard') quick = `<button class="fx-btn fx-quick ok" data-act="recue" data-id="${f.id}" title="Marquer comme reçue">${ICON_OK}<span>Reçue</span></button>`;
+  else if (st === 'prevu') quick = `<button class="fx-btn fx-quick" data-act="emise" data-id="${f.id}" title="Donner un n° = facture émise">Émise</button>`;
+  else quick = `<button class="fx-btn fx-ic fx-undo" data-act="unrecue" data-id="${f.id}" title="Annuler l'encaissement (remettre en attente)" aria-label="Annuler l'encaissement">${ICON_UNDO}</button>`;
+  const pj = f.fichier ? `<button class="fx-btn fx-ic fx-pj" data-act="pj" data-id="${f.id}" title="Ouvrir la facture PDF" aria-label="Ouvrir la facture PDF">${ICON_CLIP}</button>` : '';
+  const edit = `<button class="fx-btn fx-ic fx-edit" data-act="edit" data-id="${f.id}" title="Modifier" aria-label="Modifier la facture">${ICON_EDIT}</button>`;
+
+  return `<tr class="frow ${st}" data-id="${f.id}">
+    <td class="fx-client"><span class="fx-nom">${esc(f.libelle)}</span><span class="fx-sous">${sous}</span></td>
+    <td class="fx-date"><span class="fx-d">${d}</span><span class="fx-sous">${dl}</span></td>
+    <td class="fx-st"><span class="stpill ${st}">${FX_LIB[st]}</span></td>
+    <td class="fx-mt">${CC.util.eur(+f.montant || 0)}</td>
+    <td class="fx-act">${quick}${pj}${edit}</td>
+  </tr>`;
+}
