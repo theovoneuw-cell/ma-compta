@@ -211,7 +211,6 @@ CC.recherche = {
       { titre: 'Agenda', mots: 'calendrier rendez-vous', run: () => CC.switchTab('agenda') },
       { titre: 'Réseau', mots: 'demarchage prospection structures', run: () => CC.switchTab('reseau') },
       { titre: 'Mails', mots: 'messagerie gmail', run: () => CC.switchTab('mails') },
-      { titre: 'IA', mots: 'gemini assistant redaction', run: () => CC.switchTab('redaction') },
       { titre: 'Paramètres', mots: 'reglages taux connexions', run: () => CC.switchTab('settings') },
       { titre: 'Nouvelle facture', sous: 'Créer une facture', mots: 'ajouter saisir', run: () => { CC.switchTab('factures'); CC.facturesView.openModal(null); } },
       { titre: 'Enregistrer le document', sous: 'Ctrl+S', mots: 'sauvegarder', run: () => CC.storage.save(false) },

@@ -401,7 +401,7 @@ CC.initMobileNav = function () {
 // ---------------------------------------------------------------------------
 async function init() {
   // Onglets principaux
-  // Menu « Plus » (Dépenses perso, Trajets, IA) de la barre du haut.
+  // Menu « Plus » de la barre du haut (retiré le 11/10/2026, code gardé inactif).
   const plusBtn = document.getElementById('tabPlusBtn');
   const plusMenu = document.getElementById('tabPlusMenu');
   CC.fermerPlus = () => { if (plusMenu) { plusMenu.hidden = true; plusBtn.setAttribute('aria-expanded', 'false'); } };
