@@ -3495,3 +3495,53 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .mc-sig-preview { overflow: hidden; zoom: .72; }
   .mc-sig-preview table { max-width: none; }
 }
+
+/* ===================== RÉSEAU : REFONTE DU 11/10/2026 =====================
+   Style seulement (la logique et le glisser-déposer ne bougent pas) : même
+   langage que Factures/Clients — boutons pilules, lignes aérées, cartes sobres. */
+#tab-reseau .mini-btn { height: 30px; padding: 0 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 600; color: var(--text); display: inline-flex; align-items: center; }
+#tab-reseau .mini-btn.go-green { background: var(--green-soft); border-color: transparent; color: #0a7d57; }
+#tab-reseau .mini-btn.go-green:hover { background: var(--green); color: #fff; }
+:root[data-theme="dark"] #tab-reseau .mini-btn.go-green { color: var(--green); }
+
+/* À relancer : plus de liseré, la date dit l'urgence */
+.ps-todo { padding: 14px 4px; gap: 8px 18px; }
+.ps-todo.due { border-left: none; padding-left: 4px; }
+.ps-nom { font-weight: 600; color: var(--ink); }
+.ps-todo .ps-nom, .ps-fid .ps-nom { font-size: 14.5px; }
+.ps-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.ps-todo-etat { gap: 10px; min-width: 210px; justify-content: flex-end; }
+.ps-quand { font-size: 12.5px; }
+
+/* Tableau des démarches : colonnes plus claires, cartes plus calmes */
+.ps-col { background: rgba(27,23,51,.035); border: 1px solid var(--border); padding: 8px; }
+:root[data-theme="dark"] .ps-col { background: rgba(255,255,255,.03); }
+.ps-carte { background: var(--card-bg); border-color: var(--card-border); box-shadow: 0 0 0 1px var(--card-ring), var(--shadow-soft); padding: 10px 30px 10px 12px; gap: 3px; border-radius: 12px; }
+.ps-carte .ps-nom { font-size: 13px; line-height: 1.3; }
+.ps-carte-der { font-size: 11.5px; color: var(--soft); }
+.ps-carte-x { opacity: 0; transition: opacity .12s; }
+.ps-carte:hover .ps-carte-x, .ps-carte-x:focus-visible { opacity: 1; }
+
+/* Clients à recontacter */
+.ps-fid { padding: 13px 4px; }
+
+/* Structures / gestionnaires : en-tête et lignes comme les autres tableaux */
+#tab-reseau .table thead th { font-size: 12.5px; font-weight: 600; color: var(--muted); background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+#tab-reseau .table td { padding-top: 12px; padding-bottom: 12px; }
+#tab-reseau .toolbar select, #tab-reseau .ps-filtres select { border-radius: var(--r-pill); height: 36px; padding: 0 28px 0 12px; }
+
+@media (max-width: 720px) {
+  #tab-reseau .mini-btn { height: 38px; padding: 0 14px; font-size: 13.5px; }
+  .ps-carte-x { opacity: 1; }
+  .ps-tete-act { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .ps-tete-act .btn { padding: 0 6px; height: 44px; font-size: 13px; line-height: 1.2; }
+  .ps-tete-act #psAjout { grid-column: 1 / -1; }
+  .ps-todo { padding: 14px 2px; gap: 8px; }
+  .ps-todo-etat { min-width: 0; justify-content: flex-start; }
+  .ps-todo-act { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .ps-todo-act .mini-btn { justify-content: center; padding: 0 4px; }
+  .ps-fid { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+}
+/* Pastilles du Réseau en sombre : « Devis envoyé » et « Actée » avaient des couleurs claires codées en dur. */
+:root[data-theme="dark"] .stpill.ps-devis { background: #2d2350; color: #c4b5fd; }
+:root[data-theme="dark"] .stpill.ps-gagne { color: var(--green); }
