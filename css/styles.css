@@ -3421,3 +3421,77 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .cl-table tr.clrow:not(.a-encaisser):not(:has(.cl-creer)) { grid-template-areas: "client client client total" "n mt delai der"; }
   .cl-table tr.clrow:not(:has(.cl-creer)) td.cl-act { display: none; }
 }
+
+/* ===================== MAILS : REFONTE DU 11/10/2026 =====================
+   Correctif de fond : l'objet tombait dans la colonne de l'étoile (placement
+   automatique de la grille) → « Pl… ». Placement explicite, lignes plus denses,
+   lecteur lisible au téléphone, bandeau uni pour la rédaction. */
+.mitem { grid-template-columns: 36px minmax(0, 1fr) 28px; gap: 0 12px; padding: 11px 10px 11px 12px; }
+.mitem-av { grid-column: 1; grid-row: 1 / span 3; width: 36px; height: 36px; font-size: 13px; }
+.mitem-top, .mitem-subj, .mitem-prev { grid-column: 2; }
+.mitem-acts { grid-column: 3; grid-row: 1 / span 3; }
+.mitem-who { font-size: 13.5px; }
+.mitem-subj { font-size: 13px; margin-top: 2px; color: var(--ink); }
+.mitem-prev { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.mitem.unread .mitem-date { color: var(--accent); }
+.mitem.unread .mitem-who::before { background: var(--accent); }
+.mitem-star { opacity: 0; }
+.mitem:hover .mitem-star, .mitem-star.on, .mitem-star:focus-visible { opacity: 1; }
+.mail-list { padding: 6px; }
+.mitem + .mitem { box-shadow: inset 0 1px 0 var(--border); }
+.mitem.sel, .mitem.sel:hover { background: rgba(107,76,230,.09); }
+:root[data-theme="dark"] .mitem.sel, :root[data-theme="dark"] .mitem.sel:hover { background: rgba(164,140,247,.14); }
+
+.gm-compose { box-shadow: 0 0 0 1px var(--border), var(--shadow-soft); border: none; }
+.gm-compose:hover { transform: none; box-shadow: 0 0 0 1px var(--accent), var(--shadow-soft); }
+.mfolder.active { background: rgba(107,76,230,.10); }
+:root[data-theme="dark"] .mfolder.active { background: rgba(164,140,247,.14); }
+.mail-search-input { border-radius: var(--r-pill); }
+
+.mail-msg-head h2 { font-size: 22px; font-weight: 650; letter-spacing: -0.015em; }
+.mail-from-name { font-size: 14px; }
+
+/* Rédaction : bandeau uni (plus de dégradé), même nuit que les boutons principaux. */
+.mc-head { background: var(--nuit); }
+:root[data-theme="dark"] .mc-head { background: #2a2158; }
+
+@media (max-width: 720px) {
+  .gm-folders { grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 16px; background: rgba(27,23,51,.05); border: 1px solid var(--border); }
+  :root[data-theme="dark"] .gm-folders { background: rgba(255,255,255,.05); }
+  .mfolder { height: 40px; border-radius: 13px; justify-content: center; }
+  .mfolder .gm-f-lbl { flex: 0 1 auto; }
+  .mfolder.active { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(27,23,51,.08); }
+  :root[data-theme="dark"] .mfolder.active { background: rgba(255,255,255,.10); box-shadow: none; }
+  .gm-kbd { display: none !important; }
+  .gm-compose { padding: 0 16px; height: 46px; }
+
+  /* La liste défile avec la page ; le lecteur vide (« sélectionne un message ») ne sert à rien ici. */
+  .mail-list { max-height: none; overflow: visible; padding: 4px; }
+  .mail-grid > .mail-reader { display: none; }
+  .mitem { grid-template-columns: 38px minmax(0, 1fr) 30px; padding: 12px 8px 12px 10px; }
+  .mitem-av { width: 38px; height: 38px; }
+  .mitem-who { font-size: 15px; }
+  .mitem-subj { font-size: 14px; }
+  .mitem-prev { font-size: 13.5px; }
+  .mitem-star { opacity: 1; }
+  .mitem-star:not(.on) { opacity: .45; }
+  .mitem-del { display: none; }
+
+  /* Lecteur (feuille) : la date passe sous l'expéditeur au lieu de l'écraser. */
+  .mail-from { flex-wrap: wrap; align-items: flex-start; row-gap: 4px; }
+  .mail-from-txt { flex: 1 1 0; }
+  .mail-from-mail { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-from-date { order: 3; flex-basis: 100%; padding: 0 0 0 52px; }
+  .mail-msg-head h2 { font-size: 19px; }
+  .mail-msg-actions { gap: 8px; }
+}
+/* Rédaction : fenêtre opaque (la liste ne transparaît plus derrière le texte) ;
+   la signature est du HTML de mail aux couleurs fixes, faites pour un fond blanc :
+   on la pose sur une carte blanche en sombre, et on la réduit au téléphone. */
+#mailModal .modal { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.mc-sig-preview { opacity: 1; }
+:root[data-theme="dark"] .mc-sig-preview { background: #fff; border-top: none; border-radius: 12px; padding: 12px 14px; margin: 8px 18px 4px; }
+@media (max-width: 720px) {
+  .mc-sig-preview { overflow: hidden; zoom: .72; }
+  .mc-sig-preview table { max-width: none; }
+}
