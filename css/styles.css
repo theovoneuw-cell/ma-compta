@@ -3545,3 +3545,58 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
 /* Pastilles du Réseau en sombre : « Devis envoyé » et « Actée » avaient des couleurs claires codées en dur. */
 :root[data-theme="dark"] .stpill.ps-devis { background: #2d2350; color: #c4b5fd; }
 :root[data-theme="dark"] .stpill.ps-gagne { color: var(--green); }
+
+/* ===================== AGENDA BUREAU façon téléphone (11/10/2026) =====================
+   Demande de Théo : « très stylé le calendrier du tel, fais pareil sur web ».
+   Mois en grille à points à gauche, liste du jour choisi à droite (collée en haut). */
+@media (min-width: 721px) {
+  #agendaBody { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: var(--gap); align-items: start; }
+  #agendaBody > .agenda-offline, #agendaBody > .agenda-empty, #agendaBody > .ck-empty { grid-column: 1 / -1; }
+
+  .cal-hd { padding: 14px 0 10px; text-align: center; font-size: 12.5px; }
+  .cal-grid { grid-auto-rows: 86px; }
+  .cal-cell { min-height: 86px; padding: 10px 0 0; display: flex; flex-direction: column; align-items: center; border-right: none; cursor: pointer; transition: background .12s ease; }
+  .cal-cell.today, .cal-cell.we, .cal-cell.out { background: none; }
+  :root[data-theme="dark"] .cal-cell.we, :root[data-theme="dark"] .cal-cell.out { background: none; }
+  .cal-cell:hover { background: rgba(107,76,230,.04); }
+  :root[data-theme="dark"] .cal-cell:hover { background: rgba(255,255,255,.03); }
+  .cal-ev, .cal-more { display: none; }
+  .cal-num { font-size: 17px; font-weight: 500; min-width: 40px; height: 40px; margin: 0; padding: 0; transition: background .15s ease, color .15s ease; }
+  .cal-cell:hover .cal-num { background: var(--surface-2); }
+  .cal-cell.today .cal-num { background: none; color: var(--accent); font-weight: 700; }
+  .cal-cell.sel .cal-num, .cal-cell.sel:hover .cal-num { background: var(--nuit); color: #fff; font-weight: 700; }
+  :root[data-theme="dark"] .cal-cell.sel .cal-num { background: var(--accent); }
+  .cal-cell.today.sel .cal-num { background: var(--accent); color: #fff; }
+  .cal-cell.out .cal-num { opacity: .35; }
+  .cal-dots { display: flex; gap: 4px; margin-top: 6px; height: 6px; }
+  .cal-dots i { width: 6px; height: 6px; border-radius: 50%; }
+  .cal-cell.out .cal-dots { opacity: .4; }
+
+  .cal-jour { display: block; position: sticky; top: 0; align-self: start;
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--r-lg);
+    box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-card); padding: 22px 22px 24px; min-height: 300px; }
+  .cj-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .cj-head h3 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; color: var(--ink); }
+  .cj-nb { display: block; margin-top: 3px; font-size: 13px; color: var(--muted); }
+  .cj-add { height: 34px; padding: 0 14px; flex: 0 0 auto; }
+  .cj-list { display: flex; flex-direction: column; gap: 8px; }
+  .cj-item { display: flex; align-items: stretch; gap: 14px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+    padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid transparent;
+    box-shadow: inset 3px 0 0 var(--evc); transition: background .12s ease, border-color .12s ease; }
+  .cj-item:hover { background: var(--card-bg); border-color: var(--border); }
+  :root[data-theme="dark"] .cj-item { background: rgba(255,255,255,.04); }
+  :root[data-theme="dark"] .cj-item:hover { background: rgba(255,255,255,.07); }
+  .cj-t { display: flex; flex-direction: column; min-width: 48px; font-variant-numeric: tabular-nums; }
+  .cj-h { font-size: 14px; font-weight: 650; color: var(--ink); }
+  .cj-h2 { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .cj-main { display: flex; flex-direction: column; min-width: 0; }
+  .cj-titre { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .cj-lieu { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .cj-vide { margin: 0; padding: 28px 16px; border-radius: var(--r-md); border: 1px dashed var(--border-strong); color: var(--muted); font-size: 14px; text-align: center; }
+}
+/* Fenêtre moyenne : la liste repasse sous la grille. */
+@media (min-width: 721px) and (max-width: 980px) {
+  #agendaBody { grid-template-columns: 1fr; }
+  .cal-jour { position: static; min-height: 0; }
+}
+@media (max-width: 720px) { .cj-nb { display: none; } }

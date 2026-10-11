@@ -72,14 +72,19 @@ CC.agenda = {
         if (ev) { CC.agenda._openEvent(ev.dataset.evId); return; }
         const add = e.target.closest('[data-cj-add]');
         if (add) { CC.agenda._openCreate(add.dataset.cjAdd); return; }
-        // Téléphone : toucher un jour le sélectionne et affiche sa liste sous la grille.
-        if (window.matchMedia('(max-width: 720px)').matches) {
-          const c = e.target.closest('.cal-cell:not(.out)');
-          if (c) CC.agenda._choisirJour(c.dataset.day);
+        // Toucher / cliquer un jour le sélectionne et affiche sa liste (sous la grille au
+        // téléphone, à droite sur ordinateur — 11/10/2026). Un jour hors du mois fait
+        // changer de mois.
+        const c = e.target.closest('.cal-cell');
+        if (!c) return;
+        if (c.classList.contains('out')) {
+          const [y, mo] = c.dataset.day.split('-').map(Number);
+          CC.agenda._sel = c.dataset.day;
+          CC.agenda.cur = new Date(y, mo - 1, 1);
+          CC.agenda.render();
           return;
         }
-        const cell = e.target.closest('.cal-cell.has');
-        if (cell) CC.agenda._openDay(cell.dataset.day);
+        CC.agenda._choisirJour(c.dataset.day);
       });
       this._bound = true;
     }
@@ -238,7 +243,8 @@ CC.agenda = {
       const we = (i % 7) >= 5 ? ' we' : '';
       // Points de couleur (téléphone) : un par événement, quatre au plus.
       const dots = evs.length ? `<div class="cal-dots" aria-hidden="true">${evs.slice(0, 4).map((e) => `<i style="background:${colorHex(e.couleur)}"></i>`).join('')}</div>` : '';
-      html += `<div class="cal-cell${inMonth ? '' : ' out'}${isToday ? ' today' : ''}${evs.length ? ' has' : ''}${we}" data-day="${key}">
+      const bulle = evs.length ? ` title="${esc(evs.map((e) => (e.journee ? '' : heure(e.debut) + ' ') + e.titre).join('\n'))}"` : '';
+      html += `<div class="cal-cell${inMonth ? '' : ' out'}${isToday ? ' today' : ''}${evs.length ? ' has' : ''}${we}" data-day="${key}"${bulle}>
         <div class="cal-num">${d.getDate()}</div>${shown}${more}${dots}</div>`;
     }
     html += '</div></div>';
@@ -273,7 +279,8 @@ CC.agenda = {
       </button>`;
     }).join('');
     const add = this._offline ? '' : `<button type="button" class="btn cj-add" data-cj-add="${key}">+ Ajouter</button>`;
-    box.innerHTML = `<div class="cj-head"><h3>${titre}</h3>${add}</div>` +
+    const nb = evs.length ? `<span class="cj-nb">${evs.length} événement(s)</span>` : '';
+    box.innerHTML = `<div class="cj-head"><div><h3>${titre}</h3>${nb}</div>${add}</div>` +
       (items ? `<div class="cj-list">${items}</div>` : '<p class="cj-vide">Rien de prévu ce jour-là.</p>');
   },
 
