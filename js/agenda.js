@@ -68,8 +68,16 @@ CC.agenda = {
         if (e.target.closest('#agendaRetry')) { CC.agenda.render(); return; }
         const rec = e.target.closest('#agendaReconnect');
         if (rec) { CC.reconnectGoogle(rec); return; }
-        const ev = e.target.closest('.cal-ev[data-ev-id]');
+        const ev = e.target.closest('.cal-ev[data-ev-id], .cj-item[data-ev-id]');
         if (ev) { CC.agenda._openEvent(ev.dataset.evId); return; }
+        const add = e.target.closest('[data-cj-add]');
+        if (add) { CC.agenda._openCreate(add.dataset.cjAdd); return; }
+        // Téléphone : toucher un jour le sélectionne et affiche sa liste sous la grille.
+        if (window.matchMedia('(max-width: 720px)').matches) {
+          const c = e.target.closest('.cal-cell:not(.out)');
+          if (c) CC.agenda._choisirJour(c.dataset.day);
+          return;
+        }
         const cell = e.target.closest('.cal-cell.has');
         if (cell) CC.agenda._openDay(cell.dataset.day);
       });
@@ -108,7 +116,7 @@ CC.agenda = {
   async render() {
     const m = this._month();
     const title = document.getElementById('agendaTitle');
-    if (title) title.textContent = 'Agenda — ' + cap(AG_MOIS[m.getMonth()]) + ' ' + m.getFullYear();
+    if (title) title.textContent = cap(AG_MOIS[m.getMonth()]) + ' ' + m.getFullYear();
 
     const body = document.getElementById('agendaBody');
     if (!body) return;
@@ -209,7 +217,10 @@ CC.agenda = {
     html += '<div class="cal">';
     html += '<div class="cal-head">' + AG_JOURS.map((j) => `<div class="cal-hd">${j}</div>`).join('') + '</div>';
     html += '<div class="cal-grid">';
-    for (let i = 0; i < 42; i++) {
+    // Seulement les semaines du mois (5 ou 6) : une 6e rangée vide ne servait à rien.
+    const nbJours = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+    const nbCases = Math.ceil((((m.getDay() + 6) % 7) + nbJours) / 7) * 7;
+    for (let i = 0; i < nbCases; i++) {
       const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
       const inMonth = d.getMonth() === m.getMonth();
       const key = keyOf(d);
@@ -225,11 +236,45 @@ CC.agenda = {
       // La colonne 6 et 7 de la grille (index 5 et 6) sont samedi et dimanche :
       // elles reçoivent une teinte discrète pour repérer les week-ends d'un coup d'œil.
       const we = (i % 7) >= 5 ? ' we' : '';
+      // Points de couleur (téléphone) : un par événement, quatre au plus.
+      const dots = evs.length ? `<div class="cal-dots" aria-hidden="true">${evs.slice(0, 4).map((e) => `<i style="background:${colorHex(e.couleur)}"></i>`).join('')}</div>` : '';
       html += `<div class="cal-cell${inMonth ? '' : ' out'}${isToday ? ' today' : ''}${evs.length ? ' has' : ''}${we}" data-day="${key}">
-        <div class="cal-num">${d.getDate()}</div>${shown}${more}</div>`;
+        <div class="cal-num">${d.getDate()}</div>${shown}${more}${dots}</div>`;
     }
     html += '</div></div>';
+    html += '<div class="cal-jour" id="calJour"></div>';
     body.innerHTML = html;
+
+    // Jour sélectionné (liste du téléphone) : celui d'avant s'il est dans ce mois,
+    // sinon aujourd'hui, sinon le 1er.
+    const mk = monthKeyOf(m);
+    let sel = this._sel && this._sel.slice(0, 7) === mk ? this._sel : null;
+    if (!sel) sel = todayKey.slice(0, 7) === mk ? todayKey : keyOf(m);
+    this._choisirJour(sel);
+  },
+
+  // ----- Téléphone : liste du jour sélectionné, sous la grille -----
+  _choisirJour(key) {
+    this._sel = key;
+    document.querySelectorAll('#agendaBody .cal-cell.sel').forEach((c) => c.classList.remove('sel'));
+    const cell = document.querySelector(`#agendaBody .cal-cell[data-day="${key}"]`);
+    if (cell) cell.classList.add('sel');
+    const box = document.getElementById('calJour');
+    if (!box) return;
+    const evs = (this._byDay[key] || []).slice().sort((a, b) => String(a.debut).localeCompare(String(b.debut)));
+    const [y, mo, da] = key.split('-').map(Number);
+    const titre = cap(new Date(y, mo - 1, da).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
+    const items = evs.map((e) => {
+      const hex = colorHex(e.couleur);
+      const h = e.journee ? '<span class="cj-h">Journée</span>' : `<span class="cj-h">${heure(e.debut)}</span>${e.fin ? `<span class="cj-h2">${heure(e.fin)}</span>` : ''}`;
+      return `<button type="button" class="cj-item" data-ev-id="${esc(e.id)}" style="--evc:${hex}">
+        <span class="cj-t">${h}</span>
+        <span class="cj-main"><span class="cj-titre">${esc(e.titre)}</span>${e.lieu ? `<span class="cj-lieu">${esc(e.lieu)}</span>` : ''}</span>
+      </button>`;
+    }).join('');
+    const add = this._offline ? '' : `<button type="button" class="btn cj-add" data-cj-add="${key}">+ Ajouter</button>`;
+    box.innerHTML = `<div class="cj-head"><h3>${titre}</h3>${add}</div>` +
+      (items ? `<div class="cj-list">${items}</div>` : '<p class="cj-vide">Rien de prévu ce jour-là.</p>');
   },
 
   // ----- Cache local (localStorage) -----

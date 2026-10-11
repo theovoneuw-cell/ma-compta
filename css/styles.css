@@ -3230,10 +3230,10 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .fx-search { order: 3; margin-left: 0; width: 100%; height: 44px; }
   .fx-search input { font-size: 16px; }
   .fx-filtres { gap: 8px; }
-  /* Pastilles séparées qui passent à la ligne : tout reste visible, rien à faire défiler. */
-  .fx-statuts { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; padding: 0; background: none; border: none; }
-  :root[data-theme="dark"] .fx-statuts { background: none; }
-  .fx-statuts button { flex: 0 0 auto; height: 38px; padding: 0 14px; font-size: 13.5px; border: 1px solid var(--border-strong); background: var(--card-bg); }
+  /* Un seul bloc en grille régulière : trois boutons puis deux, de largeurs égales. */
+  .fx-statuts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; width: 100%; padding: 3px; border-radius: 16px; }
+  .fx-statuts button { grid-column: span 2; height: 38px; padding: 0 4px; font-size: 13.5px; border-radius: 13px; text-align: center; }
+  .fx-statuts button[data-st="prevu"], .fx-statuts button[data-st="recue"] { grid-column: span 3; }
   .fx-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   .fx-selects select { width: 100%; height: 40px; font-size: 14px; padding-right: 26px; text-overflow: ellipsis; }
   .fx-resume { margin: 12px 4px 4px; font-size: 12.5px; }
@@ -3270,8 +3270,84 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .fx-table:not(:has(.fx-groupee)) .frow td.fx-act { display: none; }
   .fx-pj, .fx-undo, .fx-edit { display: none; }
   .fx-quick { height: 36px; padding: 0 16px; font-size: 14px; margin: 0; }
-  .fx-statuts button.on { border-color: transparent; background: var(--nuit); color: #fff; box-shadow: none; }
-  :root[data-theme="dark"] .fx-statuts button.on { background: var(--accent); color: #fff; }
-  .fx-statuts button[data-st="retard"].on { color: #fff; }
   .fx-selects select { padding: 0 24px 0 12px; font-size: 13.5px; }
+}
+
+/* ===================== AGENDA : REFONTE DU 11/10/2026 =====================
+   Mac : grille plus calme (jours hors mois sans aplat, pastilles fines, plus de 6e
+   semaine vide), navigation en boutons ronds. Téléphone : grille compacte à points
+   de couleur + liste du jour touché sous la grille (façon Calendrier iOS). */
+.agenda-head { margin-bottom: 18px; }
+.agenda-head h2 { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+.agenda-nav { gap: 8px; }
+.agenda-nav-group { gap: 4px; padding: 0; background: none; border: none; }
+:root[data-theme="dark"] .agenda-nav-group { background: none; }
+.agenda-nav-group .btn { height: 36px; padding: 0 16px; border: 1px solid var(--border-strong); background: var(--card-bg); color: var(--text); font-weight: 600; }
+.agenda-nav-group .btn:first-child, .agenda-nav-group .btn:last-child { width: 36px; padding: 0; font-size: 18px; display: inline-flex; align-items: center; justify-content: center; }
+.agenda-nav-group .btn:hover { background: var(--surface-2); color: var(--ink); box-shadow: none; }
+#agendaAdd { height: 36px; padding: 0 16px; }
+
+.cal-head { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.cal-hd { padding: 11px 12px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.cal-hd:nth-child(n+6) { color: var(--soft); }
+.cal-grid { grid-auto-rows: minmax(112px, 1fr); }
+.cal-cell { padding: 8px; min-height: 112px; }
+.cal-cell.out { background: none; }
+:root[data-theme="dark"] .cal-cell.out { background: none; }
+.cal-cell.out .cal-num { opacity: .4; }
+.cal-cell.out .cal-ev { opacity: .5; }
+.cal-cell.today { background: rgba(107,76,230,.04); }
+.cal-num { font-size: 13px; min-width: 26px; height: 26px; }
+.cal-cell.today .cal-num { background: var(--accent); box-shadow: none; }
+.cal-ev { border-left-width: 2px !important; border-radius: 6px; padding: 3px 7px; margin-bottom: 3px; font-size: 12px; }
+.cal-ev:hover { transform: none; box-shadow: none; filter: brightness(.97); }
+:root[data-theme="dark"] .cal-ev:hover { filter: brightness(1.2); }
+.cal-more { font-size: 12px; font-weight: 600; color: var(--muted); padding-left: 7px; }
+.cal-dots, .cal-jour { display: none; }
+
+/* Fenêtre « liste du jour » (Mac) : la couleur de l'événement en filet, pas de point. */
+.ev-item { align-items: center; border-radius: var(--r-sm); }
+.ev-item-time { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 720px) {
+  /* Le mois sur sa ligne, la navigation dessous : rien ne se coupe, même en septembre. */
+  .agenda-head { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 12px; }
+  .agenda-head h2 { font-size: 24px; }
+  .agenda-nav { gap: 6px; justify-content: space-between; }
+  .agenda-nav-group .btn { height: 40px; }
+  .agenda-nav-group .btn:first-child, .agenda-nav-group .btn:last-child { width: 40px; }
+  #agendaToday { padding: 0 12px; font-size: 13.5px; }
+  #agendaAdd { height: 40px; padding: 0 16px; }
+
+  .cal { border-radius: var(--r-lg); }
+  .cal-hd { padding: 9px 0 7px; text-align: center; font-size: 12px; }
+  .cal-grid { grid-auto-rows: 54px; }
+  .cal-cell { min-height: 54px; padding: 5px 0 0; display: flex; flex-direction: column; align-items: center; border-right: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .cal-cell.today, .cal-cell.we, .cal-cell.has:hover { background: none; }
+  :root[data-theme="dark"] .cal-cell.we, :root[data-theme="dark"] .cal-cell.out { background: none; }
+  .cal-ev, .cal-more { display: none; }
+  .cal-num { font-size: 15px; font-weight: 500; min-width: 32px; height: 32px; margin: 0; padding: 0; }
+  .cal-cell.today .cal-num { background: none; color: var(--accent); font-weight: 700; }
+  .cal-cell.sel .cal-num { background: var(--nuit); color: #fff; font-weight: 700; }
+  :root[data-theme="dark"] .cal-cell.sel .cal-num { background: var(--accent); }
+  .cal-cell.today.sel .cal-num { background: var(--accent); color: #fff; }
+  .cal-dots { display: flex; gap: 3px; margin-top: 3px; height: 5px; }
+  .cal-dots i { width: 5px; height: 5px; border-radius: 50%; }
+
+  .cal-jour { display: block; margin-top: 14px; }
+  .cj-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 4px 10px; }
+  .cj-head h3 { margin: 0; font-size: 17px; font-weight: 650; color: var(--ink); }
+  .cj-add { height: 38px; padding: 0 16px; }
+  .cj-list { display: flex; flex-direction: column; gap: 8px; }
+  .cj-item { display: flex; align-items: stretch; gap: 14px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+    padding: 13px 16px; border-radius: var(--r-md); background: var(--card-bg); border: 1px solid var(--card-border);
+    box-shadow: inset 3px 0 0 var(--evc), var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-soft); -webkit-tap-highlight-color: transparent; }
+  .cj-item:active { transform: scale(.985); }
+  .cj-t { display: flex; flex-direction: column; min-width: 50px; font-variant-numeric: tabular-nums; }
+  .cj-h { font-size: 14.5px; font-weight: 650; color: var(--ink); }
+  .cj-h2 { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .cj-main { display: flex; flex-direction: column; min-width: 0; }
+  .cj-titre { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .cj-lieu { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .cj-vide { margin: 4px 4px 0; padding: 18px 16px; border-radius: var(--r-md); border: 1px dashed var(--border-strong); color: var(--muted); font-size: 14px; text-align: center; }
 }
