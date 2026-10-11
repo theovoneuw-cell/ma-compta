@@ -58,7 +58,7 @@ CC.facturesView = {
       const per = (f) => (CC.stats.yearOf(f) || 0) * 10 + (CC.stats.trimOf(f) || 0);
       par.prevu.sort((a, b) => per(a) - per(b) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
       par.recue.sort((a, b) => String(b.dateEncaissement).localeCompare(String(a.dateEncaissement)));
-      [['retard', 'En retard'], ['attente', 'En attente'], ['prevu', 'Prévues']].forEach(([k, t]) => {
+      [['retard', 'En retard'], ['attente', 'En attente'], ['prevu', 'Prévisionnelles']].forEach(([k, t]) => {
         if (par[k].length) html += fxGroupe(t, par[k].length, k) + par[k].map(fxLigne).join('');
       });
       let mois = '';
@@ -632,7 +632,7 @@ function indyUrl() {
 const ICON_CLIP = '<svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
 
 // ---- Rendu d'une ligne / d'un groupe (refonte du 11/10/2026) ----
-const FX_LIB = { recue: 'Reçue', attente: 'En attente', retard: 'En retard', prevu: 'Prévue' };
+const FX_LIB = { recue: 'Reçue', attente: 'En attente', retard: 'En retard', prevu: 'Prévisionnelle' };
 const ICON_EDIT = '<svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const ICON_UNDO = '<svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
 const ICON_OK = '<svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -657,7 +657,7 @@ function fxLigne(f) {
   const y = CC.stats.yearOf(f), t = CC.stats.trimOf(f);
   let d = '', dl = '';
   if (st === 'recue') { d = CC.util.frDate(f.dateEncaissement); dl = 'encaissée'; }
-  else if (st === 'prevu') { d = y ? `T${t || '?'} ${y}` : '—'; dl = 'prévue'; }
+  else if (st === 'prevu') { d = y ? `T${t || '?'} ${y}` : '—'; dl = ''; }
   else if (f.dateEcheance) { d = CC.util.frDate(f.dateEcheance); dl = st === 'retard' ? 'échéance passée' : 'échéance'; }
   else if (f.dateEnvoi) { d = CC.util.frDate(f.dateEnvoi); dl = 'envoyée'; }
   else { d = y ? `T${t || '?'} ${y}` : '—'; dl = 'émise'; }

@@ -3168,7 +3168,8 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
 .fx-table thead th.tri::after { content: '↑'; margin-left: 5px; color: var(--accent); }
 .fx-table thead th.tri[data-dir="desc"]::after { content: '↓'; }
 .fx-table .fx-c-date { width: 170px; }
-.fx-table .fx-c-st { width: 140px; }
+.fx-table .fx-c-st { width: 150px; }
+.fx-sous:empty { display: none; }
 .fx-table .fx-c-mt { width: 130px; text-align: right; }
 .fx-table .fx-c-act { width: 150px; cursor: default; }
 
@@ -3229,9 +3230,10 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .fx-search { order: 3; margin-left: 0; width: 100%; height: 44px; }
   .fx-search input { font-size: 16px; }
   .fx-filtres { gap: 8px; }
-  .fx-statuts { display: flex; width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .fx-statuts::-webkit-scrollbar { display: none; }
-  .fx-statuts button { flex: 1 0 auto; padding: 9px 11px; font-size: 13.5px; }
+  /* Pastilles séparées qui passent à la ligne : tout reste visible, rien à faire défiler. */
+  .fx-statuts { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; padding: 0; background: none; border: none; }
+  :root[data-theme="dark"] .fx-statuts { background: none; }
+  .fx-statuts button { flex: 0 0 auto; height: 38px; padding: 0 14px; font-size: 13.5px; border: 1px solid var(--border-strong); background: var(--card-bg); }
   .fx-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   .fx-selects select { width: 100%; height: 40px; font-size: 14px; padding-right: 26px; text-overflow: ellipsis; }
   .fx-resume { margin: 12px 4px 4px; font-size: 12.5px; }
@@ -3241,6 +3243,7 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .fx-table thead { display: none; }
   .fx-groupe { display: block; }
   .fx-groupe th { display: flex; align-items: baseline; padding: 20px 4px 8px; border: none; background: none; }
+  :root[data-theme="dark"] .fx-groupe th { background: none; }
   .fx-table tbody .fx-groupe:first-child th { padding-top: 10px; }
   .fx-g-t { font-size: 14px; }
 
@@ -3260,11 +3263,15 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .fx-st { grid-area: st; justify-self: end; }
   /* Liste groupée : le titre du groupe dit déjà le statut ; la carte garde l'action utile. */
   .fx-groupee .fx-st { display: none !important; }
+  /* …sauf les prévues : Théo garde leur pastille violette (11/10/2026). */
+  .fx-groupee .frow.prevu .fx-st { display: block !important; }
   .fx-table td.fx-act { grid-area: st; display: none; justify-self: end; }
   .fx-table .frow.attente td.fx-act, .fx-table .frow.retard td.fx-act { display: flex; }
   .fx-table:not(:has(.fx-groupee)) .frow td.fx-act { display: none; }
   .fx-pj, .fx-undo, .fx-edit { display: none; }
   .fx-quick { height: 36px; padding: 0 16px; font-size: 14px; margin: 0; }
-  .fx-statuts button { padding: 9px 8px; font-size: 13px; flex: 1 1 auto; }
+  .fx-statuts button.on { border-color: transparent; background: var(--nuit); color: #fff; box-shadow: none; }
+  :root[data-theme="dark"] .fx-statuts button.on { background: var(--accent); color: #fff; }
+  .fx-statuts button[data-st="retard"].on { color: #fff; }
   .fx-selects select { padding: 0 24px 0 12px; font-size: 13.5px; }
 }
