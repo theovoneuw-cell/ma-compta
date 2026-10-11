@@ -3351,3 +3351,73 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .cj-lieu { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .cj-vide { margin: 4px 4px 0; padding: 18px 16px; border-radius: var(--r-md); border: 1px dashed var(--border-strong); color: var(--muted); font-size: 14px; text-align: center; }
 }
+
+/* ===================== CLIENTS : REFONTE DU 11/10/2026 =====================
+   Table #clTable (les anciennes règles #clientsTable ne s'appliquent plus), même
+   présentation que les factures. Téléphone : une carte par client, quatre petits
+   chiffres alignés, « à encaisser » mis en avant seulement s'il y a quelque chose. */
+.cl-filtres { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.cl-filtres select { height: 36px; padding: 0 30px 0 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 500; background-color: var(--card-bg); }
+.cl-filtres .fx-resume { margin: 0; }
+.cl-table tr.clrow { cursor: pointer; transition: background .12s ease; }
+.cl-table tr.clrow:hover { background: rgba(107,76,230,.045); }
+:root[data-theme="dark"] .cl-table tr.clrow:hover { background: rgba(255,255,255,.04); }
+.cl-table thead th { cursor: default; }
+.cl-table .cl-c-n { width: 90px; text-align: right; }
+.cl-table .cl-c-mt { width: 116px; text-align: right; }
+.cl-table .cl-c-du { width: 120px; text-align: right; }
+.cl-table .cl-c-delai { width: 96px; text-align: right; }
+.cl-table .cl-c-der { width: 116px; text-align: right; }
+.cl-table .cl-c-act { width: 140px; }
+.cl-table td { font-variant-numeric: tabular-nums; font-size: 13.5px; color: var(--text); }
+.cl-table td.cl-k, .cl-table td.cl-total { text-align: right; white-space: nowrap; }
+.cl-table td.cl-total { font-size: 15px; font-weight: 700; color: var(--ink); }
+.cl-nom { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cl-n-txt { font-size: 14.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-tag { font-size: 11.5px; font-weight: 600; padding: 2px 8px; letter-spacing: 0; flex: 0 0 auto; }
+.cl-vide { color: var(--soft); }
+.cl-du { font-weight: 650; }
+.cl-du.attente { color: var(--amber); }
+.cl-du.retard { color: var(--red); }
+.cl-act { text-align: right; white-space: nowrap; }
+.cl-creer { height: 30px; }
+@media (hover: hover) {
+  .cl-ouvrir { opacity: 0; }
+  .clrow:hover .cl-ouvrir, .cl-ouvrir:focus-visible { opacity: 1; }
+}
+/* Fenêtre moyenne : on garde l'essentiel, le délai et la date passent dans la fiche. */
+@media (max-width: 1100px) and (min-width: 721px) {
+  .cl-table .cl-c-delai, .cl-table .cl-c-der { display: none; }
+}
+
+@media (max-width: 720px) {
+  .cl-filtres { gap: 8px; }
+  .cl-filtres select, #clientsFiltre { width: 100%; height: 44px; font-size: 15px; }
+  .cl-filtres .fx-resume { margin: 2px 4px 0; }
+  .cl-table tr.clrow { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.1fr) minmax(0, .75fr) minmax(0, 1.35fr); grid-template-areas: "client client client total" "n mt delai der" "du du act act";
+    column-gap: 8px; row-gap: 10px; align-items: center; margin-bottom: 8px; padding: 14px 16px;
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--r-md);
+    box-shadow: var(--card-shine), 0 0 0 1px var(--card-ring), var(--shadow-soft); -webkit-tap-highlight-color: transparent; }
+  .cl-table tr.clrow:hover { background: var(--card-bg); }
+  .cl-table tr.clrow:active { transform: scale(.985); transition: transform .12s ease; }
+  .cl-client { grid-area: client; min-width: 0; }
+  .cl-n-txt { font-size: 15.5px; }
+  .cl-table td.cl-total { grid-area: total; align-self: start; font-size: 16px; }
+  /* Quatre petits chiffres : libellé au-dessus, valeur dessous. */
+  .cl-table td.cl-k { text-align: left; display: flex; flex-direction: column; gap: 1px; font-size: 13.5px; font-weight: 600; color: var(--ink); padding-top: 2px; }
+  .cl-table td.cl-k::before { content: attr(data-k); font-size: 11.5px; font-weight: 500; color: var(--muted); }
+  .cl-table td.cl-c-n { grid-area: n; }
+  .cl-table td.cl-c-mt { grid-area: mt; }
+  .cl-table td.cl-c-delai { grid-area: delai; }
+  .cl-table td.cl-c-der { grid-area: der; }
+  .cl-table .cl-c-delai, .cl-table .cl-c-der { display: flex; }
+  /* « À encaisser » et « Créer la fiche » : une dernière ligne, seulement si utile. */
+  .cl-table td.cl-c-du { grid-area: du; display: none; border-top: none; padding-top: 0; flex-direction: row; align-items: baseline; gap: 6px; }
+  .cl-table tr.a-encaisser td.cl-c-du { display: flex; }
+  .cl-table td.cl-c-du::before { content: 'À encaisser'; font-size: 13px; }
+  .cl-table td.cl-act { grid-area: act; justify-self: end; }
+  .cl-ouvrir { display: none; }
+  .cl-creer { height: 36px; padding: 0 14px; font-size: 13.5px; }
+  .cl-table tr.clrow:not(.a-encaisser):not(:has(.cl-creer)) { grid-template-areas: "client client client total" "n mt delai der"; }
+  .cl-table tr.clrow:not(:has(.cl-creer)) td.cl-act { display: none; }
+}

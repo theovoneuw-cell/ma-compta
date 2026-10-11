@@ -21,9 +21,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=hh" />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=hh" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css?b=mv42d92a" />
+  <link rel="stylesheet" href="css/styles.css?b=mv42hqhx" />
   <!-- Thème clair/sombre : posé avant le 1er rendu pour éviter tout flash. -->
-  <script src="js/theme.js?b=mv42d92a"></script>
+  <script src="js/theme.js?b=mv42hqhx"></script>
 </head>
 <body>
   <!-- ===================== EN-TETE ===================== -->
@@ -211,33 +211,37 @@
 
       <!-- ---- Sous-onglet : Clients ---- -->
       <div class="subpanel" id="sub-clients">
-        <div class="toolbar">
+        <!-- Refonte du 11/10/2026 : même présentation que les factures ; cartes au téléphone. -->
+        <div class="fx-head">
           <button id="btnNewClient" class="btn btn-primary">+ Nouveau client</button>
           <button id="btnIndyClients" class="btn" title="Lire tes factures Indy (Gmail ou PDF) pour remplir adresses et SIRET">Compléter depuis Indy</button>
-          <input type="search" id="clientsSearch" class="input" placeholder="Rechercher un client, une ville, un SIRET…" />
-          <select id="clientsFiltre">
+          <label class="fx-search">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input type="search" id="clientsSearch" placeholder="Client, ville, SIRET…" aria-label="Rechercher un client, une ville ou un SIRET" />
+          </label>
+        </div>
+        <div class="cl-filtres">
+          <select id="clientsFiltre" aria-label="Filtrer les clients">
             <option value="all">Tous les clients</option>
             <option value="sans">Sans fiche</option>
             <option value="incomplet">Fiche à compléter</option>
             <option value="impaye">Avec un montant à encaisser</option>
             <option value="chorus">Chorus Pro</option>
           </select>
-          <span class="spacer"></span>
-          <span id="clientsSummary" class="summary"></span>
+          <p id="clientsSummary" class="fx-resume"></p>
         </div>
-        <div class="table-wrap">
-          <table class="table" id="clientsTable">
+        <div class="fx-wrap">
+          <table class="fx-table cl-table" id="clTable">
             <thead>
               <tr>
-                <th>Client</th>
-                <th>Activité</th>
-                <th class="num">Factures</th>
-                <th class="num">CA total</th>
-                <th class="num" id="clientsAnneeTh">CA</th>
-                <th class="num">À encaisser</th>
-                <th class="num" title="Délai moyen entre l'envoi et le paiement">Délai réel</th>
-                <th>Dernière</th>
-                <th class="col-actions"></th>
+                <th class="cl-c-client">Client</th>
+                <th class="cl-c-n">Factures</th>
+                <th class="cl-c-mt">CA total</th>
+                <th class="cl-c-mt" id="clientsAnneeTh">CA</th>
+                <th class="cl-c-du">À encaisser</th>
+                <th class="cl-c-delai" title="Délai moyen entre l'envoi et le paiement">Délai réel</th>
+                <th class="cl-c-der">Dernière</th>
+                <th class="cl-c-act"><span class="sr">Actions</span></th>
               </tr>
             </thead>
             <tbody id="clientsBody"></tbody>
@@ -1311,39 +1315,39 @@
   <script src="vendor/chart.umd.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <!-- Mode navigateur / PWA : recrée window.api côté client (sans effet sur l'app de bureau). -->
-  <script src="js/google-auth-web.js?b=mv42d92a"></script>
-  <script src="js/drive-store.js?b=mv42d92a"></script>
-  <script src="js/api-web.js?b=mv42d92a"></script>
-  <script src="js/settings.js?b=mv42d92a"></script>
-  <script src="js/datepicker.js?b=mv42d92a"></script>
-  <script src="js/stats.js?b=mv42d92a"></script>
-  <script src="js/charts.js?b=mv42d92a"></script>
-  <script src="js/import.js?b=mv42d92a"></script>
-  <script src="js/pdfimport.js?b=mv42d92a"></script>
-  <script src="js/clients.js?b=mv42d92a"></script>
-  <script src="js/factures.js?b=mv42d92a"></script>
-  <script src="js/fiscal.js?b=mv42d92a"></script>
-  <script src="js/bilan.js?b=mv42d92a"></script>
-  <script src="js/connections.js?b=mv42d92a"></script>
-  <script src="js/agenda.js?b=mv42d92a"></script>
-  <script src="js/signature.js?b=mv42d92a"></script>
-  <script src="js/mailbox.js?b=mv42d92a"></script>
-  <script src="js/perso.js?b=mv42d92a"></script>
+  <script src="js/google-auth-web.js?b=mv42hqhx"></script>
+  <script src="js/drive-store.js?b=mv42hqhx"></script>
+  <script src="js/api-web.js?b=mv42hqhx"></script>
+  <script src="js/settings.js?b=mv42hqhx"></script>
+  <script src="js/datepicker.js?b=mv42hqhx"></script>
+  <script src="js/stats.js?b=mv42hqhx"></script>
+  <script src="js/charts.js?b=mv42hqhx"></script>
+  <script src="js/import.js?b=mv42hqhx"></script>
+  <script src="js/pdfimport.js?b=mv42hqhx"></script>
+  <script src="js/clients.js?b=mv42hqhx"></script>
+  <script src="js/factures.js?b=mv42hqhx"></script>
+  <script src="js/fiscal.js?b=mv42hqhx"></script>
+  <script src="js/bilan.js?b=mv42hqhx"></script>
+  <script src="js/connections.js?b=mv42hqhx"></script>
+  <script src="js/agenda.js?b=mv42hqhx"></script>
+  <script src="js/signature.js?b=mv42hqhx"></script>
+  <script src="js/mailbox.js?b=mv42hqhx"></script>
+  <script src="js/perso.js?b=mv42hqhx"></script>
   <!-- Base FINESS figée (946 Ko) : chargée en <script> et non par fetch, car
        l'app de bureau tourne en file:// où fetch/XHR d'un fichier local est bloqué. -->
-  <script src="js/prospection-base.js?b=mv42d92a"></script>
-  <script src="js/prospection-jeunesse77.js?b=mv42d92a"></script>
-  <script src="js/prospection.js?b=mv42d92a"></script>
-  <script src="js/notes.js?b=mv42d92a"></script>
+  <script src="js/prospection-base.js?b=mv42hqhx"></script>
+  <script src="js/prospection-jeunesse77.js?b=mv42hqhx"></script>
+  <script src="js/prospection.js?b=mv42hqhx"></script>
+  <script src="js/notes.js?b=mv42hqhx"></script>
   <!-- Outils de bureau : chargés partout (ils ne coûtent rien), mais leurs
        onglets et leurs raccourcis ne s'activent que dans Electron. -->
-  <script src="js/coffre.js?b=mv42d92a"></script>
-  <script src="js/recherche.js?b=mv42d92a"></script>
-  <script src="js/today.js?b=mv42d92a"></script>
-  <script src="js/privacy.js?b=mv42d92a"></script>
-  <script src="js/storage.js?b=mv42d92a"></script>
-  <script src="js/rappels.js?b=mv42d92a"></script>
-  <script src="js/notifs.js?b=mv42d92a"></script>
-  <script src="js/app.js?b=mv42d92a"></script>
+  <script src="js/coffre.js?b=mv42hqhx"></script>
+  <script src="js/recherche.js?b=mv42hqhx"></script>
+  <script src="js/today.js?b=mv42hqhx"></script>
+  <script src="js/privacy.js?b=mv42hqhx"></script>
+  <script src="js/storage.js?b=mv42hqhx"></script>
+  <script src="js/rappels.js?b=mv42hqhx"></script>
+  <script src="js/notifs.js?b=mv42hqhx"></script>
+  <script src="js/app.js?b=mv42hqhx"></script>
 </body>
 </html>

@@ -245,24 +245,24 @@ CC.clients = {
       if (!c.fiche) badges.push('<span class="cl-tag muted">sans fiche</span>');
       else if (c.manques.length) badges.push(`<span class="cl-tag warn" title="À compléter : ${clEsc(c.manques.join(', '))}">à compléter</span>`);
       if (c.fiche && c.fiche.chorus) badges.push('<span class="cl-tag chorus">Chorus</span>');
-      const ville = c.fiche && c.fiche.ville ? `<span class="cl-sub">${clEsc(c.fiche.ville)}</span>` : '';
+      const sous = [c.fiche && c.fiche.ville ? clEsc(c.fiche.ville) : '', clEsc(c.categorie)].filter(Boolean).join(' · ');
       const du = c.attente + c.retard;
       const duTxt = du > 0
-        ? `<span class="${c.retard > 0 ? 'cl-retard' : 'cl-attente'}">${CC.util.eur0(du)}</span>`
-        : '<span class="muted">—</span>';
+        ? `<span class="cl-du ${c.retard > 0 ? 'retard' : 'attente'}">${CC.util.eur0(du)}</span>`
+        : '<span class="cl-vide">—</span>';
+      const tiret = '<span class="cl-vide">—</span>';
       const action = c.fiche
-        ? `<button class="mini-btn" data-cl-act="ouvrir" data-cl-id="${c.fiche.id}">Fiche</button>`
-        : `<button class="mini-btn go-green" data-cl-act="creer" data-cl-cle="${clEsc(c.cle)}">Créer la fiche</button>`;
-      return `<tr class="clrow" data-cl-row="${c.fiche ? 'id:' + c.fiche.id : 'cle:' + clEsc(c.cle)}">
-        <td class="client" data-label="Client"><div class="cl-nom">${clEsc(c.nom)} ${badges.join(' ')}</div>${ville}</td>
-        <td class="fmeta" data-label="Activité">${clEsc(c.categorie) || '<span class="muted">—</span>'}</td>
-        <td class="num" data-label="Factures">${c.n}</td>
-        <td class="num montant" data-label="CA total">${CC.util.eur0(c.total)}</td>
-        <td class="num" data-label="CA ${annee}">${c.annee ? CC.util.eur0(c.annee) : '<span class="muted">—</span>'}</td>
-        <td class="num" data-label="À encaisser">${duTxt}</td>
-        <td class="num" data-label="Délai réel" title="Délai moyen entre l'envoi et le paiement (factures datées des deux)">${c.delaiMoyen != null ? c.delaiMoyen + ' j' : '<span class="muted">—</span>'}</td>
-        <td class="fmeta" data-label="Dernière">${c.derniere ? CC.util.frDate(c.derniere) : '<span class="muted">—</span>'}</td>
-        <td class="col-actions">${action}</td>
+        ? `<button class="fx-btn fx-ic cl-ouvrir" data-cl-act="ouvrir" data-cl-id="${c.fiche.id}" title="Ouvrir la fiche" aria-label="Ouvrir la fiche"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`
+        : `<button class="fx-btn fx-quick cl-creer" data-cl-act="creer" data-cl-cle="${clEsc(c.cle)}">Créer la fiche</button>`;
+      return `<tr class="clrow${du > 0 ? ' a-encaisser' : ''}" data-cl-row="${c.fiche ? 'id:' + c.fiche.id : 'cle:' + clEsc(c.cle)}">
+        <td class="cl-client"><span class="cl-nom"><span class="cl-n-txt">${clEsc(c.nom)}</span>${badges.join('')}</span>${sous ? `<span class="fx-sous">${sous}</span>` : ''}</td>
+        <td class="cl-k cl-c-n" data-k="Factures">${c.n}</td>
+        <td class="cl-total">${CC.util.eur0(c.total)}</td>
+        <td class="cl-k cl-c-mt" data-k="CA ${annee}">${c.annee ? CC.util.eur0(c.annee) : tiret}</td>
+        <td class="cl-k cl-c-du" data-k="À encaisser">${duTxt}</td>
+        <td class="cl-k cl-c-delai" data-k="Délai" title="Délai moyen entre l'envoi et le paiement (factures datées des deux)">${c.delaiMoyen != null ? c.delaiMoyen + ' j' : tiret}</td>
+        <td class="cl-k cl-c-der" data-k="Dernière">${c.derniere ? CC.util.frDate(c.derniere) : tiret}</td>
+        <td class="cl-act">${action}</td>
       </tr>`;
     }).join('');
     document.getElementById('clientsEmpty').classList.toggle('hidden', list.length > 0);
