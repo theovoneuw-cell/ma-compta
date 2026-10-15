@@ -29,6 +29,15 @@ function pvHeures(h) {
   const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
   return mm ? `${hh} h ${String(mm).padStart(2, '0')}` : `${hh} h`;
 }
+// Intitulé d'un rendez-vous sans son préfixe ni ses parenthèses :
+// « AMU - IME Les Chênes (PASSERELLE-MATIS) » -> { cle: 'IME LES CHENES', nom: 'AMU · IME Les Chênes' }.
+// La clé sert de mot à reconnaître : c'est elle qui distingue deux lieux d'un même préfixe.
+function pvSous(titre) {
+  const brut = String(titre || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = brut.match(/^([^\s\-–—:·]+)[\s\-–—:·]+(.+)$/);
+  const reste = m ? m[2].trim() : '';
+  return { cle: pvNorm(reste || brut).trim(), nom: reste ? m[1] + ' · ' + reste : brut };
+}
 function pvHeure(iso) { const d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
 
 CC.previsions = {
@@ -136,6 +145,29 @@ CC.previsions = {
 
   // Regroupe les rendez-vous non reconnus par leur premier mot (« STM », « AMU »…).
   _groupe(titre) { return pvNorm(titre).trim().split(' ')[0] || ''; },
+
+  // Rendez-vous [{ e, heures }] regroupés par intitulé (lieu). Un intitulé qui en
+  // contient un autre s'y range : « Villa Les Lucioles » rejoint « Les Lucioles »,
+  // pour qu'un seul mot-clé attrape les deux.
+  _sousGroupes(items) {
+    const m = {};
+    items.forEach(({ e, heures }) => {
+      const s = pvSous(e.titre);
+      if (!s.cle) return;
+      const x = m[s.cle] = m[s.cle] || { cle: s.cle, noms: {}, n: 0, h: 0 };
+      x.n++; x.h += heures; x.noms[s.nom] = (x.noms[s.nom] || 0) + 1;
+    });
+    const liste = Object.values(m).sort((a, b) => a.cle.length - b.cle.length);
+    const gardes = [];
+    liste.forEach((x) => {
+      const hote = gardes.find((g) => (' ' + x.cle + ' ').includes(' ' + g.cle + ' '));
+      if (!hote) { gardes.push(x); return; }
+      hote.n += x.n; hote.h += x.h;
+      Object.keys(x.noms).forEach((k) => (hote.noms[k] = (hote.noms[k] || 0) + x.noms[k]));
+    });
+    gardes.forEach((g) => { g.nom = Object.keys(g.noms).sort((a, b) => g.noms[b] - g.noms[a])[0]; });
+    return gardes.sort((a, b) => b.n - a.n);
+  },
 
   async render() {
     const box = document.getElementById('pvBody');
@@ -260,37 +292,57 @@ CC.previsions = {
       </div>
     </div>`;
 
-    html += this._htmlTarifs(inconnus);
+    html += this._htmlTarifs(inconnus, lignes);
     box.innerHTML = html;
     if (this._edit) this._remplir();
   },
 
   // ---- Tarifs + rendez-vous non reconnus ----
-  _htmlTarifs(inconnus) {
+  _htmlTarifs(inconnus, lignes) {
     const tarifs = this.reglages().tarifs;
-    const liste = tarifs.map((t) => `<tr class="${this._edit === t.id ? 'pe-en-cours' : ''}">
-        <td class="client">${pvEsc(t.nom)}<div class="pv-mots">${pvEsc(t.mots || t.nom)}</div></td>
+    const bouton = (x, txt) => `<button class="mini-btn" data-pv-ajout="${pvEsc(x.cle)}" data-pv-nom="${pvEsc(x.nom)}">${txt}</button>`;
+    const liste = tarifs.map((t) => {
+      // Ce que ce tarif attrape dans l'agenda, lieu par lieu, avec de quoi en sortir un.
+      const pris = lignes.filter((l) => l.tarif === t);
+      const sous = this._sousGroupes(pris);
+      const mots = String(t.mots || t.nom).split(',').map((m) => pvNorm(m).trim());
+      const detail = sous.length > 1 ? `<details class="pv-capte"><summary>${pris.length} rendez-vous · ${sous.length} intitulés</summary>
+          ${sous.map((x) => `<div class="pv-capte-l"><span>${pvEsc(x.nom)} <small>${x.n} rdv</small></span>${mots.includes(x.cle) ? '' : bouton(x, 'Tarif à part')}</div>`).join('')}
+        </details>` : `<div class="pv-mots">${pris.length} rendez-vous</div>`;
+      return `<tr class="${this._edit === t.id ? 'pe-en-cours' : ''}">
+        <td class="client">${pvEsc(t.nom)}<div class="pv-mots">mots : ${pvEsc(t.mots || t.nom)}</div>${detail}</td>
         <td class="num montant">${CC.util.eur(+t.montant || 0)}<span class="pe-freq">${t.unite === 'seance' ? '/séance' : '/h'}</span></td>
         <td class="col-actions"><button class="mini-btn" data-pv-edit="${t.id}">Modifier</button> <button class="mini-btn" data-pv-del="${t.id}">Suppr.</button></td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     // Non reconnus, regroupés par premier mot, du plus fréquent au plus rare.
     const g = {};
     inconnus.forEach(({ e, heures }) => {
       const k = this._groupe(e.titre);
       if (!k) return;
-      const x = g[k] = g[k] || { k, n: 0, h: 0, ex: e.titre };
-      x.n++; x.h += heures;
+      const x = g[k] = g[k] || { k, n: 0, h: 0, ex: e.titre, items: [] };
+      x.n++; x.h += heures; x.items.push({ e, heures });
     });
     const groupes = Object.values(g).sort((a, b) => b.n - a.n);
+    groupes.forEach((x) => { x.sous = this._sousGroupes(x.items); });
     const sugg = groupes.length ? `<div class="pv-sugg">
         <h4>Pas encore reconnus</h4>
-        <p class="card-sub">Rendez-vous de ton agenda sans tarif. Un clic pour leur en donner un, ou les écarter (perso).</p>
-        ${groupes.map((x) => `<div class="pv-sugg-l">
-          <span class="pv-sugg-t"><b>${pvEsc(x.k)}</b> · ${x.n} rendez-vous, ${pvHeures(x.h)}<small>ex. ${pvEsc(x.ex)}</small></span>
-          <button class="mini-btn" data-pv-ajout="${pvEsc(x.k)}">Mettre un tarif</button>
-          <button class="mini-btn" data-pv-ign="${pvEsc(x.k)}">Ignorer</button>
-        </div>`).join('')}
+        <p class="card-sub">Rendez-vous de ton agenda sans tarif, rangés par préfixe puis par lieu. Un tarif par lieu, un pour tout le préfixe, ou « Ignorer » pour le perso.</p>
+        ${groupes.map((x) => {
+          const plusieurs = x.sous.length > 1;
+          return `<div class="pv-sugg-g">
+          <div class="pv-sugg-l">
+            <span class="pv-sugg-t"><b>${pvEsc(x.k)}</b> · ${x.n} rendez-vous, ${pvHeures(x.h)}<small>${plusieurs ? x.sous.length + ' intitulés différents' : 'ex. ' + pvEsc(x.ex)}</small></span>
+            <button class="mini-btn" data-pv-ajout="${pvEsc(x.k)}">${plusieurs ? 'Un tarif pour tout' : 'Mettre un tarif'}</button>
+            <button class="mini-btn" data-pv-ign="${pvEsc(x.k)}">Ignorer</button>
+          </div>
+          ${plusieurs ? `<div class="pv-sugg-sous">${x.sous.map((y) => `<div class="pv-sugg-l">
+            <span class="pv-sugg-t">${pvEsc(y.nom)}<small>${y.n} rendez-vous, ${pvHeures(y.h)}</small></span>
+            ${bouton(y, 'Mettre un tarif')}
+          </div>`).join('')}</div>` : ''}
+        </div>`;
+        }).join('')}
       </div>` : '';
     const nbIgn = this.reglages().ignores.length;
 
@@ -405,7 +457,7 @@ CC.previsions = {
         P._edit = null;
         P.paint();
         const k = aj.dataset.pvAjout;
-        P._remplir({ nom: k.charAt(0) + k.slice(1).toLowerCase(), mots: k, unite: 'heure' });
+        P._remplir({ nom: aj.dataset.pvNom || (k.charAt(0) + k.slice(1).toLowerCase()), mots: k, unite: 'heure' });
         P._focus('pv_montant');
         return;
       }
