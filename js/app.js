@@ -201,7 +201,7 @@ CC.switchTab = function (name, dir) {
   // Onglets "Compta" exposes via le menu (dashboard/factures/fiscal) -> ouvrir Compta + sous-onglet
   if (name === 'donnees') name = 'settings';            // Données : rangées dans Paramètres
   if (name === 'bilan') name = 'fiscal';                 // Bilan : fusionné dans « URSSAF & impôts »
-  if (name === 'dashboard' || name === 'factures' || name === 'fiscal' || name === 'coffre') {
+  if (name === 'dashboard' || name === 'previsions' || name === 'factures' || name === 'fiscal' || name === 'coffre') {
     CC.switchTab('compta');
     CC.switchSub(name);
     return;
@@ -243,6 +243,7 @@ CC.switchSub = function (sub) {
   document.querySelectorAll('#tab-compta .subtab').forEach((t) => t.classList.toggle('active', t.dataset.sub === sub));
   document.querySelectorAll('#tab-compta .subpanel').forEach((p) => p.classList.toggle('active', p.id === 'sub-' + sub));
   if (sub === 'dashboard') CC.renderDashboard();
+  if (sub === 'previsions' && CC.previsions) CC.previsions.render();
   if (sub === 'factures') CC.facturesView.render();
   if (sub === 'clients' && CC.clients) CC.clients.render();
   if (sub === 'fiscal') { CC.renderFiscal(); if (CC.renderBilan) CC.renderBilan(); }
@@ -459,6 +460,7 @@ async function init() {
   if (CC.mailbox) CC.mailbox.bind();
   if (CC.trajets) CC.trajets.bind();
   if (CC.perso) CC.perso.bind();
+  if (CC.previsions) CC.previsions.bind();
   if (CC.prospection) CC.prospection.bind();
   if (CC.notes) CC.notes.bind();
   // Outils réservés à l'ordinateur : sur téléphone, on retire leurs onglets et

@@ -3600,3 +3600,67 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
   .cal-jour { position: static; min-height: 0; }
 }
 @media (max-width: 720px) { .cj-nb { display: none; } }
+
+/* ===================== PRÉVISIONS : 15/10/2026 (Compta › Prévisions, previsions.js) ===================== */
+.pv-nav { display: flex; align-items: center; gap: 10px; margin-bottom: var(--gap); }
+.pv-nav h3 { margin: 0; min-width: 150px; text-align: center; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; color: var(--ink); }
+.pv-nav .btn-icon { width: 38px; height: 38px; padding: 0; font-size: 20px; line-height: 1; }
+.pv-nav .spacer { flex: 1; }
+.pv-plaque .hero-v { margin-bottom: 10px; }
+.pv-net { margin: 0 0 16px; font-size: 15px; color: #d7cff5; }
+.pv-net b { color: #fff; font-size: 19px; font-weight: 750; font-variant-numeric: tabular-nums; margin: 0 2px; }
+.pv-net span { white-space: nowrap; }
+body.privacy .pv-net b { filter: blur(6px); }
+.pv-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--gap); align-items: start; margin: var(--gap) 0; }
+.pv-grid > .card { margin-bottom: 0; }
+
+.pv-jours { display: flex; flex-direction: column; gap: 10px; }
+.pv-jour { padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); }
+:root[data-theme="dark"] .pv-jour { background: rgba(255,255,255,.04); }
+.pv-jour.passe { opacity: .55; }
+.pv-jour.auj { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.pv-jour-t { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 13.5px; font-weight: 650; color: var(--ink); }
+.pv-jour-t span::first-letter { text-transform: uppercase; }
+.pv-jour-t b { font-variant-numeric: tabular-nums; }
+.pv-rdv { display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 13.5px; }
+.pv-rdv + .pv-rdv { border-top: 1px solid var(--border); }
+.pv-rdv-h { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv-rdv-t { color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.pv-rdv-t small { display: block; margin-top: 1px; font-size: 12px; color: var(--muted); }
+.pv-rdv-m { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.pv-table.table { min-width: 0; }
+.pv-table tbody tr { cursor: pointer; }
+.pv-table tbody tr:hover td { background: var(--surface-2); }
+.pv-table tr.pv-sel td { background: rgba(107,76,230,.09); font-weight: 650; }
+.pv-table tfoot td { font-weight: 750; color: var(--ink); border-top: 1px solid var(--border-strong); }
+.pv-table td, .pv-table th { white-space: nowrap; }
+
+.pv-tarifs-g { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 24px; align-items: start; }
+.pv-form h4, .pv-sugg h4 { margin: 0 0 12px; font-size: 14px; font-weight: 650; color: var(--ink); }
+.pv-form .field { margin-bottom: 12px; }
+.pv-mots { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pv-tarifs-t.table { min-width: 0; }
+.pv-sugg { margin-top: 18px; }
+.pv-sugg .card-sub { margin-top: -6px; }
+.pv-sugg-l { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+.pv-sugg-t { flex: 1; min-width: 0; color: var(--ink); }
+.pv-sugg-t small { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-ign { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
+.pv-vide { text-align: center; padding: 36px 24px; }
+
+@media (max-width: 980px) {
+  .pv-grid, .pv-tarifs-g { grid-template-columns: 1fr; }
+  .pv-grid > .card:last-child { order: -1; }   /* le mois par mois d'abord : c'est le coup d'œil */
+}
+@media (max-width: 720px) {
+  .pv-nav { flex-wrap: wrap; gap: 8px; }
+  .pv-nav h3 { min-width: 0; flex: 1; font-size: 18px; }
+  .pv-nav .spacer { display: none; }
+  .pv-nav .lnk { order: 5; flex-basis: 100%; text-align: left; }
+  .pv-nav [data-pv="actualiser"] { height: 38px; }
+  .pv-table .pv-h { display: none; }
+  .pv-sugg-l { flex-wrap: wrap; }
+  .pv-sugg-t { flex-basis: 100%; }
+  .pv-sugg-l .mini-btn { min-height: 40px; }
+}

@@ -204,6 +204,7 @@ CC.recherche = {
     const a = [
       { titre: 'Accueil', mots: 'cockpit aujourd hui', run: () => CC.switchTab('today') },
       { titre: 'Tableau de bord', mots: 'compta kpi', run: () => CC.switchTab('dashboard') },
+      { titre: 'Prévisions', mots: 'ca net agenda tarif presta calculatrice mois', run: () => CC.switchTab('previsions') },
       { titre: 'Factures', mots: 'compta liste', run: () => CC.switchTab('factures') },
       { titre: 'URSSAF & impôts', mots: 'fiscal urssaf tva impot retraite trimestres bilan pdf', run: () => CC.switchTab('fiscal') },
       { titre: 'Données et sauvegardes', mots: 'import export excel csv sauvegarde', run: () => CC.switchTab('settings') },
