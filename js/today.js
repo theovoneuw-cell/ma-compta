@@ -88,6 +88,7 @@ CC.renderToday = function () {
   if (kg) kg.innerHTML = kpis.map((k) => `<div class="kpi ${k.cls}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="hint">${k.hint}</div></div>`).join('');
 
   // ---------- Relances ----------
+  renderAFacturer();
   renderRelances(impayes, settings);
 
   // ---------- Démarchage (Réseau) ----------
@@ -125,6 +126,30 @@ function renderReseau() {
       if (!b) return;
       CC.switchTab('reseau');
       setTimeout(() => CC.prospection.openFiche(b.dataset.psid), 60);
+    });
+    box._bound = true;
+  }
+}
+
+// Factures du mois prêtes à faire : la dernière séance du mois chez la structure
+// est passée (d'après l'agenda, voir CC.previsions.estAFacturer).
+function renderAFacturer() {
+  const bloc = document.getElementById('todayAFacturerCard');
+  const box = document.getElementById('todayAFacturer');
+  if (!bloc || !box || !CC.previsions) return;
+  const liste = CC.previsions.aFacturer();
+  bloc.classList.toggle('hidden', !liste.length);
+  box.innerHTML = liste.map((f) => `<div class="ck-row">
+      <div class="ck-main">
+        <div class="ck-t">${esc(CC.util.clientNom ? CC.util.clientNom(f.libelle) : f.libelle)} · ${esc(CC.previsions.moisTxt(f.pv.mois))}</div>
+        <div class="ck-s">${CC.util.eur(+f.montant || 0)}${f.pv.detail ? ' · ' + esc(f.pv.detail) : ''} · dernière séance le ${new Date(f.pv.fin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
+      </div>
+      <button type="button" class="btn btn-ghost ck-relancer" data-facturer="${esc(f.id)}" title="Ouvrir la fiche pour saisir le n° de facture">Facturer</button>
+    </div>`).join('');
+  if (!box._bound) {
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-facturer]');
+      if (b) CC.facturesView.emettre(b.dataset.facturer);
     });
     box._bound = true;
   }

@@ -152,6 +152,7 @@ CC.previsions = {
       const r2 = (x) => Math.round(x * 100) / 100;
       const cle = (n) => CC.util.clientKey(n);
       const res = { ajout: 0, maj: 0, suppr: 0 };
+      let touche = false;   // seule l'heure de fin a bougé : on enregistre sans l'annoncer
 
       const parClient = new Map();
       this._calcul().lignes.forEach((l) => {
@@ -177,7 +178,10 @@ CC.previsions = {
           if (!ls.length) return;
           const ht = r2(ls.reduce((a, l) => a + l.montant, 0));
           const tva = mk + '-01' >= tvaDepuis ? 20 : 0;
-          aPrevoir[mk] = { ht, tva, ttc: r2(ht * (1 + tva / 100)), detail: `${ls.length} rendez-vous, ${pvHeures(ls.reduce((a, l) => a + l.heures, 0))}` };
+          // Fin de la dernière séance du mois : passée elle, la facture du mois peut partir.
+          const finDe = (l) => new Date(l.e.fin || l.e.debut).getTime();
+          const fin = new Date(Math.max(...ls.map(finDe))).toISOString();
+          aPrevoir[mk] = { ht, tva, ttc: r2(ht * (1 + tva / 100)), fin, detail: `${ls.length} rendez-vous, ${pvHeures(ls.reduce((a, l) => a + l.heures, 0))}` };
         });
 
         const prevues = fs.filter((f) => CC.stats.isPrevu(f));
@@ -205,6 +209,7 @@ CC.previsions = {
         Object.keys(aPrevoir).forEach((mk) => {
           const a = aPrevoir[mk];
           let f = parMois[mk];
+          if (f && f.pv.fin !== a.fin) { f.pv.fin = a.fin; touche = true; }
           if (f && f.pv.fige) return;
           if (f && f.pv.calc != null && Math.abs((+f.montant || 0) - f.pv.calc) > 0.005) { f.pv.fige = true; res.maj++; return; }
           const [y, m] = mk.split('-').map(Number);
@@ -223,6 +228,7 @@ CC.previsions = {
           if (a.tva) f.tauxTva = a.tva; else delete f.tauxTva;
           f.pv.calc = a.ttc;
           f.pv.detail = a.detail;
+          f.pv.fin = a.fin;
         });
 
         // Mois sans plus rien à facturer (facturé, ou rendez-vous annulés) : la ligne s'en va.
@@ -241,9 +247,24 @@ CC.previsions = {
 
       if (retirer.size) { S.factures = S.factures.filter((f) => !retirer.has(f)); res.suppr = retirer.size; }
       this._dernier = res;
-      if (res.ajout || res.maj || res.suppr) { CC.markDirty(); CC.refreshYears(); CC.render(); }
+      if (res.ajout || res.maj || res.suppr || touche) { CC.markDirty(); CC.refreshYears(); CC.render(); }
       return res;
     } finally { this._sync = false; }
+  },
+
+  // Facture du mois prête à partir : toutes les séances du mois chez ce client
+  // sont passées (Théo facture une structure quand il a fini son mois chez elle).
+  estAFacturer(f, now) {
+    return !!(f && f.pv && f.pv.mois && f.pv.fin && CC.stats.isPrevu(f)
+      && new Date(f.pv.fin).getTime() <= (now || new Date()).getTime());
+  },
+  aFacturer(now) {
+    return (CC.state.factures || []).filter((f) => this.estAFacturer(f, now))
+      .sort((a, b) => String(a.pv.mois).localeCompare(String(b.pv.mois)) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+  },
+  moisTxt(mk) {
+    const [y, m] = String(mk).split('-').map(Number);
+    return PV_MOIS[m - 1] + (y !== new Date().getFullYear() ? ' ' + y : '');
   },
 
   // Au démarrage et à chaque lecture de l'agenda.

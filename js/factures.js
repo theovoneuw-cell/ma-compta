@@ -50,15 +50,17 @@ CC.facturesView = {
     const groupe = S.sort.key === 'statut' && S.sort.dir === 'asc';
     let html = '';
     if (groupe) {
-      const par = { retard: [], attente: [], prevu: [], recue: [] };
-      list.forEach((f) => par[CC.stats.statut(f, S.settings)].push(f));
+      const par = { retard: [], attente: [], afacturer: [], prevu: [], recue: [] };
+      const pret = (f) => CC.previsions && CC.previsions.estAFacturer(f);
+      list.forEach((f) => { const st = CC.stats.statut(f, S.settings); par[st === 'prevu' && pret(f) ? 'afacturer' : st].push(f); });
       const ech = (f) => f.dateEcheance || f.dateEnvoi || '';
       par.retard.sort((a, b) => ech(a).localeCompare(ech(b)));
       par.attente.sort((a, b) => ech(a).localeCompare(ech(b)));
       const per = (f) => (CC.stats.yearOf(f) || 0) * 10 + (CC.stats.trimOf(f) || 0);
       par.prevu.sort((a, b) => per(a) - per(b) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
       par.recue.sort((a, b) => String(b.dateEncaissement).localeCompare(String(a.dateEncaissement)));
-      [['retard', 'En retard'], ['attente', 'En attente'], ['prevu', 'Prévisionnelles']].forEach(([k, t]) => {
+      par.afacturer.sort((a, b) => String(a.pv.mois).localeCompare(String(b.pv.mois)) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+      [['retard', 'En retard'], ['attente', 'En attente'], ['afacturer', 'À facturer'], ['prevu', 'Prévisionnelles']].forEach(([k, t]) => {
         if (par[k].length) html += fxGroupe(t, par[k].length, k) + par[k].map(fxLigne).join('');
       });
       let mois = '';
@@ -252,6 +254,17 @@ CC.facturesView = {
     const f = { montant: ttc, tauxTva: taux };
     hint.textContent = `${CC.util.eur(ttc)} TTC = ${CC.util.eur(CC.stats.ht(f))} HT + ${CC.util.eur(CC.stats.tvaDe(f))} de TVA`;
     hint.classList.add('calc');
+  },
+
+  // Passer une prévisionnelle en « émise » : la fiche s'ouvre, il reste à saisir le n°.
+  // Sert aussi au bouton « Facturer » de l'Accueil.
+  emettre(id) {
+    const f = CC.state.factures.find((x) => x.id === id);
+    if (!f) return;
+    CC.facturesView.openModal(f);
+    document.getElementById('f_previsionnel').checked = false;
+    syncPrevisionnel();
+    document.getElementById('f_numFacture').focus();
   },
 
   closeModal() { document.getElementById('modalFacture').classList.add('hidden'); },
@@ -572,16 +585,7 @@ CC.facturesView = {
       else if (btn.dataset.act === 'recue') CC.facturesView.markRecue(btn.dataset.id);
       else if (btn.dataset.act === 'unrecue') CC.facturesView.undoRecue(btn.dataset.id);
       else if (btn.dataset.act === 'pj') { const f = CC.state.factures.find((x) => x.id === btn.dataset.id); if (f) CC.openPj(f.fichier); }
-      else if (btn.dataset.act === 'emise') {
-        const f = CC.state.factures.find((x) => x.id === btn.dataset.id);
-        if (f) {
-          CC.facturesView.openModal(f);
-          // Passer en « émise » = ce n'est plus du prévisionnel ; il reste à saisir le n°.
-          document.getElementById('f_previsionnel').checked = false;
-          syncPrevisionnel();
-          document.getElementById('f_numFacture').focus();
-        }
-      }
+      else if (btn.dataset.act === 'emise') CC.facturesView.emettre(btn.dataset.id);
     });
   }
 };
@@ -651,6 +655,7 @@ function fxGroupe(titre, n, st) {
 function fxLigne(f) {
   const S = CC.state;
   const st = CC.stats.statut(f, S.settings);
+  const pret = st === 'prevu' && CC.previsions && CC.previsions.estAFacturer(f);
   const cat = f.categorie || CC.util.categoryOf(f.libelle);
   const num = f.numFacture ? `n° ${esc(f.numFacture)}` : '';
   const sous = [esc(cat), num].filter(Boolean).join(' · ');
@@ -662,6 +667,7 @@ function fxLigne(f) {
     const [py, pm] = f.pv.mois.split('-').map(Number);
     d = new Date(py, pm - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
     dl = f.pv.fige ? 'retouchée à la main' : 'd’après l’agenda';
+    if (CC.previsions && CC.previsions.estAFacturer(f)) dl = 'mois terminé';
   }
   else if (st === 'prevu') { d = y ? `T${t || '?'} ${y}` : '—'; dl = ''; }
   else if (f.dateEcheance) { d = CC.util.frDate(f.dateEcheance); dl = st === 'retard' ? 'échéance passée' : 'échéance'; }
@@ -670,6 +676,7 @@ function fxLigne(f) {
 
   let quick = '';
   if (st === 'attente' || st === 'retard') quick = `<button class="fx-btn fx-quick ok" data-act="recue" data-id="${f.id}" title="Marquer comme reçue">${ICON_OK}<span>Reçue</span></button>`;
+  else if (pret) quick = `<button class="fx-btn fx-quick fx-facturer" data-act="emise" data-id="${f.id}" title="Toutes les séances du mois sont passées : fais la facture et donne son n°">Facturer</button>`;
   else if (st === 'prevu') quick = `<button class="fx-btn fx-quick" data-act="emise" data-id="${f.id}" title="Donner un n° = facture émise">Émise</button>`;
   else quick = `<button class="fx-btn fx-ic fx-undo" data-act="unrecue" data-id="${f.id}" title="Annuler l'encaissement (remettre en attente)" aria-label="Annuler l'encaissement">${ICON_UNDO}</button>`;
   const pj = f.fichier ? `<button class="fx-btn fx-ic fx-pj" data-act="pj" data-id="${f.id}" title="Ouvrir la facture PDF" aria-label="Ouvrir la facture PDF">${ICON_CLIP}</button>` : '';
@@ -678,7 +685,7 @@ function fxLigne(f) {
   return `<tr class="frow ${st}" data-id="${f.id}">
     <td class="fx-client"><span class="fx-nom">${esc(f.libelle)}</span><span class="fx-sous">${sous}</span></td>
     <td class="fx-date"><span class="fx-d">${d}</span><span class="fx-sous">${dl}</span></td>
-    <td class="fx-st"><span class="stpill ${st}">${FX_LIB[st]}</span></td>
+    <td class="fx-st"><span class="stpill ${pret ? 'afacturer' : st}">${pret ? 'À facturer' : FX_LIB[st]}</span></td>
     <td class="fx-mt">${CC.util.eur(+f.montant || 0)}</td>
     <td class="fx-act">${quick}${pj}${edit}</td>
   </tr>`;
