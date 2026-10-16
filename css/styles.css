@@ -721,7 +721,7 @@ main { flex: 1; overflow-y: auto; padding: 26px; }
 
 /* ===================== SETTINGS ===================== */
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; align-items: start; }
-@media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .settings-grid { grid-template-columns: minmax(0, 1fr); } .settings-grid > * { min-width: 0; } }
 .field { margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; }
 .field.full { grid-column: 1 / -1; }
 .field label { font-size: 12.5px; font-weight: 600; color: var(--ink); }
@@ -1205,8 +1205,6 @@ body:has(#tab-mails.active) main { overflow: hidden; display: flex; flex-directi
 /* Ascenseurs propres à chaque panneau : la place est réservée (pas de saut de
    mise en page) et le curseur reste visible sur le fond blanc des cartes. */
 .mail-list, .mail-reader { scrollbar-gutter: stable; }
-.mail-list::-webkit-scrollbar-thumb, .mail-reader::-webkit-scrollbar-thumb { background: var(--border-strong); border-color: var(--surface); }
-.mail-list::-webkit-scrollbar-thumb:hover, .mail-reader::-webkit-scrollbar-thumb:hover { background: var(--soft); }
 .mail-empty { color: var(--muted); text-align: center; padding: 46px 20px; font-size: 13px; }
 
 /* ----- Ligne de message : avatar + expéditeur/date + objet + aperçu ----- */
@@ -1705,10 +1703,11 @@ body.privacy .bilan-cat-fill { width: 100% !important; opacity: .3; filter: blur
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-thumb { background: #cfcae8; border-radius: 6px; border: 3px solid var(--paper); }
-::-webkit-scrollbar-thumb:hover { background: #b7b0db; }
-::-webkit-scrollbar-track { background: transparent; }
+/* Barres de défilement : celles du système (16/10/2026). Un ::-webkit-scrollbar
+   personnalisé oblige macOS à les afficher en permanence, 12 px, partout (page,
+   liste des mails, lecteur, champs…) et en lilas clair même en mode sombre.
+   Sans lui, le Mac les montre pendant le défilement seulement, et `color-scheme`
+   (posé par le thème sombre) les accorde au thème. Ne pas en remettre. */
 
 /* ===================== MOBILE / iPhone (PWA) ===================== */
 /* Calé sur l'iPhone 12 mini (~360 px) ; valable pour tous les iPhone. */
@@ -3492,7 +3491,8 @@ body.privacy .pe-jauge-barre span { width: 50% !important; filter: blur(3px); op
 .mc-sig-preview { opacity: 1; }
 :root[data-theme="dark"] .mc-sig-preview { background: #fff; border-top: none; border-radius: 12px; padding: 12px 14px; margin: 8px 18px 4px; }
 @media (max-width: 720px) {
-  .mc-sig-preview { overflow: hidden; zoom: .72; }
+  .mc-sig-preview, .sig-preview { overflow: hidden; zoom: .72; }
+  .sig-preview table { max-width: none; }
   .mc-sig-preview table { max-width: none; }
 }
 
@@ -3691,6 +3691,8 @@ body.privacy .pv-net b { filter: blur(6px); }
 .stpill.afacturer { color: #fff; background: var(--accent); }
 .frow.prevu .fx-quick.fx-facturer { opacity: 1; border-color: transparent; background: var(--accent); color: #fff; }
 .frow.prevu .fx-quick.fx-facturer:hover { background: var(--accent-strong); }
+/* Sombre : l'accent y est clair, le blanc dessus ne se lit pas. */
+:root[data-theme="dark"] .stpill.afacturer, :root[data-theme="dark"] .frow.prevu .fx-quick.fx-facturer { color: #1f1747; }
 
 /* ===================== BANDEAU « FACTURES À FAIRE » : 16/10/2026 (Accueil, en tête, renderAFacturer) ===================== */
 .af-bandeau { margin: 0 0 var(--gap); border: 2px solid var(--accent); background: var(--accent-soft); }
