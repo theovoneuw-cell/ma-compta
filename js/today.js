@@ -131,9 +131,12 @@ function renderReseau() {
   }
 }
 
+CC.renderAFacturer = function () { renderAFacturer(); };
+
 // Factures du mois prêtes à faire : la dernière séance du mois chez la structure
 // est passée (d'après l'agenda, voir CC.previsions.estAFacturer).
 function renderAFacturer() {
+  CC.previsions && (CC.previsions._vus = CC.previsions.aFacturer().map((f) => f.id).join());
   const bloc = document.getElementById('todayAFacturerCard');
   const box = document.getElementById('todayAFacturer');
   if (!bloc || !box || !CC.previsions) return;

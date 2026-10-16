@@ -247,7 +247,7 @@ CC.previsions = {
 
       if (retirer.size) { S.factures = S.factures.filter((f) => !retirer.has(f)); res.suppr = retirer.size; }
       this._dernier = res;
-      if (res.ajout || res.maj || res.suppr || touche) { CC.markDirty(); CC.refreshYears(); CC.render(); }
+      if (res.ajout || res.maj || res.suppr || touche) { CC.markDirty(); CC.refreshYears(); CC.render(); if (CC.renderAFacturer) CC.renderAFacturer(); }
       return res;
     } finally { this._sync = false; }
   },
@@ -269,6 +269,17 @@ CC.previsions = {
 
   // Au démarrage et à chaque lecture de l'agenda.
   async auto() {
+    // Une séance qui se termine app ouverte : la facture du mois passe « À facturer »
+    // sans attendre le prochain démarrage (contrôle toutes les 5 min).
+    if (!this._veille) {
+      this._veille = setInterval(() => {
+        const n = this.aFacturer().map((f) => f.id).join();
+        if (n === this._vus) return;
+        this._vus = n;
+        CC.facturesView.render();
+        if (CC.renderAFacturer) CC.renderAFacturer();
+      }, 5 * 60 * 1000);
+    }
     await this.charger();
     const r = this.synchroniser();
     if (r && (r.ajout || r.maj || r.suppr)) {
