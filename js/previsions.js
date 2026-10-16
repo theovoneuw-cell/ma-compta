@@ -154,6 +154,12 @@ CC.previsions = {
       const res = { ajout: 0, maj: 0, suppr: 0 };
       let touche = false;   // seule l'heure de fin a bougé : on enregistre sans l'annoncer
 
+      // 16/10/2026 : le Sessad de Carros de l'agenda est facturé « ABA Carros ». Le nom
+      // deviné « SESSAD CARROS » avait été figé dans le tarif par le formulaire.
+      this.reglages().tarifs.forEach((t) => {
+        if (pvNorm(t.mots).trim() === 'SESSAD CARROS' && (!t.client || pvNorm(t.client).trim() === 'SESSAD CARROS')) { t.client = 'ABA Carros'; touche = true; }
+      });
+
       const parClient = new Map();
       this._calcul().lignes.forEach((l) => {
         const nom = this.clientDe(l.tarif), k = cle(nom);
@@ -569,7 +575,10 @@ CC.previsions = {
     if (!$('pv_nom')) return;
     $('pv_nom').value = tf.nom || '';
     $('pv_mots').value = tf.mots || '';
-    $('pv_client').value = tf.client || (tf.nom ? this.clientDe(tf) : '');
+    // Le nom deviné reste une suggestion (grisée) : l'écrire dans le champ le figerait
+    // au premier enregistrement, même faux (« SESSAD CARROS » au lieu d'« ABA Carros »).
+    $('pv_client').value = tf.client || '';
+    $('pv_client').placeholder = tf.nom ? this.clientDe(tf) : 'ex. IME Val Paillon';
     $('pv_montant').value = tf.montant != null ? String(tf.montant).replace('.', ',') : '';
     $('pv_unite').value = tf.unite || 'heure';
     const edit = !!this._edit;
