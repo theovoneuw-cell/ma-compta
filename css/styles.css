@@ -3691,3 +3691,28 @@ body.privacy .pv-net b { filter: blur(6px); }
 .stpill.afacturer { color: #fff; background: var(--accent); }
 .frow.prevu .fx-quick.fx-facturer { opacity: 1; border-color: transparent; background: var(--accent); color: #fff; }
 .frow.prevu .fx-quick.fx-facturer:hover { background: var(--accent-strong); }
+
+/* ===================== BANDEAU « FACTURES À FAIRE » : 16/10/2026 (Accueil, en tête, renderAFacturer) ===================== */
+.af-bandeau { margin: 0 0 var(--gap); border: 2px solid var(--accent); background: var(--accent-soft); }
+.af-bandeau.hidden { display: none; }
+.af-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.af-tete h3 { margin: 0; font-size: 20px; color: var(--accent-strong); }
+.af-total { margin: 0; font-size: 22px; font-weight: 700; color: var(--accent-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.af-bandeau .card-sub { margin: 4px 0 10px; }
+.af-liste { display: flex; flex-direction: column; }
+.af-ligne { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; padding: 12px 0; border-top: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.af-ligne:first-child { border-top: none; }
+.af-client { font-size: 16px; font-weight: 600; color: var(--text); }
+.af-client span { font-weight: 500; color: var(--muted); }
+.af-detail { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.af-montant { font-size: 17px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.af-btn { white-space: nowrap; }
+:root[data-theme="dark"] .af-tete h3, :root[data-theme="dark"] .af-total { color: #fff; }
+@media (max-width: 720px) {
+  .af-ligne { grid-template-columns: 1fr auto; grid-template-areas: "main montant" "btn btn"; gap: 8px 12px; }
+  .af-main { grid-area: main; min-width: 0; }
+  .af-montant { grid-area: montant; }
+  .af-btn { grid-area: btn; width: 100%; min-height: 44px; }
+  .af-tete h3 { font-size: 18px; }
+  .af-total { font-size: 19px; }
+}

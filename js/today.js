@@ -142,12 +142,16 @@ function renderAFacturer() {
   if (!bloc || !box || !CC.previsions) return;
   const liste = CC.previsions.aFacturer();
   bloc.classList.toggle('hidden', !liste.length);
-  box.innerHTML = liste.map((f) => `<div class="ck-row">
-      <div class="ck-main">
-        <div class="ck-t">${esc(CC.util.clientNom ? CC.util.clientNom(f.libelle) : f.libelle)} · ${esc(CC.previsions.moisTxt(f.pv.mois))}</div>
-        <div class="ck-s">${CC.util.eur(+f.montant || 0)}${f.pv.detail ? ' · ' + esc(f.pv.detail) : ''} · dernière séance le ${new Date(f.pv.fin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
+  const n = liste.length;
+  document.getElementById('todayAFacturerTitre').textContent = n > 1 ? n + ' factures à faire' : 'Une facture à faire';
+  document.getElementById('todayAFacturerTotal').textContent = CC.util.eur0(liste.reduce((a, f) => a + (+f.montant || 0), 0));
+  box.innerHTML = liste.map((f) => `<div class="af-ligne">
+      <div class="af-main">
+        <div class="af-client">${esc(CC.util.clientNom ? CC.util.clientNom(f.libelle) : f.libelle)} <span>${esc(CC.previsions.moisTxt(f.pv.mois))}</span></div>
+        <div class="af-detail">${f.pv.detail ? esc(f.pv.detail) + ' · ' : ''}dernière séance le ${new Date(f.pv.fin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</div>
       </div>
-      <button type="button" class="btn btn-ghost ck-relancer" data-facturer="${esc(f.id)}" title="Ouvrir la fiche pour saisir le n° de facture">Facturer</button>
+      <div class="af-montant">${CC.util.eur(+f.montant || 0)}</div>
+      <button type="button" class="btn btn-primary af-btn" data-facturer="${esc(f.id)}" title="Ouvrir la fiche pour saisir le n° de facture">Faire la facture</button>
     </div>`).join('');
   if (!box._bound) {
     box.addEventListener('click', (e) => {
