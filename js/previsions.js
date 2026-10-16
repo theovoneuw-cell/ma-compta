@@ -231,6 +231,14 @@ CC.previsions = {
         });
       });
 
+      // Ligne créée par l'agenda pour un client qui n'a plus de tarif (tarif supprimé,
+      // ou client renommé : « SESSAD CARROS » -> « ABA Carros ») : elle ferait doublon.
+      // Les lignes saisies par Théo (pv.saisi) restent.
+      S.factures.forEach((f) => {
+        if (f.pv && f.pv.mois && f.pv.saisi == null && !f.pv.fige && CC.stats.isPrevu(f)
+          && !parClient.has(cle(f.libelle)) && dansFenetre(f.pv.mois)) retirer.add(f);
+      });
+
       if (retirer.size) { S.factures = S.factures.filter((f) => !retirer.has(f)); res.suppr = retirer.size; }
       this._dernier = res;
       if (res.ajout || res.maj || res.suppr) { CC.markDirty(); CC.refreshYears(); CC.render(); }
