@@ -657,6 +657,12 @@ function fxLigne(f) {
   const y = CC.stats.yearOf(f), t = CC.stats.trimOf(f);
   let d = '', dl = '';
   if (st === 'recue') { d = CC.util.frDate(f.dateEncaissement); dl = 'encaissée'; }
+  else if (st === 'prevu' && f.pv && f.pv.mois) {
+    // Ligne tenue par l'agenda (Compta › Prévisions) : on dit quel mois elle couvre.
+    const [py, pm] = f.pv.mois.split('-').map(Number);
+    d = new Date(py, pm - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+    dl = f.pv.fige ? 'retouchée à la main' : 'd’après l’agenda';
+  }
   else if (st === 'prevu') { d = y ? `T${t || '?'} ${y}` : '—'; dl = ''; }
   else if (f.dateEcheance) { d = CC.util.frDate(f.dateEcheance); dl = st === 'retard' ? 'échéance passée' : 'échéance'; }
   else if (f.dateEnvoi) { d = CC.util.frDate(f.dateEnvoi); dl = 'envoyée'; }

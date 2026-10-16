@@ -106,6 +106,149 @@ CC.previsions = {
     return best;
   },
 
+  // Nom du client sur la facture pour ce tarif. Écrit dans le tarif (`client`)
+  // ou, à défaut, deviné dans l'historique : le nom de facture le plus long que
+  // contient le nom du tarif (« Cours Studio M » -> « Studio M ») ou qui contient
+  // un de ses mots (« AMAPEI » -> « FdV - AMAPEI »).
+  clientDe(tf) {
+    if (tf.client && String(tf.client).trim()) return String(tf.client).trim();
+    const nom = pvNorm(tf.nom);
+    const mots = String(tf.mots || '').split(',').map(pvNorm).filter((m) => m.trim());
+    let best = null, lg = 0;
+    new Set(CC.state.factures.map((f) => CC.util.clientNom(f.libelle))).forEach((n) => {
+      const k = pvNorm(n);
+      if (k.trim().length < 3) return;
+      if ((nom.includes(k) || mots.some((m) => k.includes(m))) && k.length > lg) { best = n; lg = k.length; }
+    });
+    return best || String(tf.nom || '').replace(/^[^·]*·\s*/, '').trim() || tf.nom;
+  },
+
+  // -------------------------------------------------------------------------
+  // LE PRÉVISIONNEL TENU PAR L'AGENDA (16/10/2026)
+  //
+  // Une facture prévisionnelle par client et par mois, d'après les rendez-vous
+  // reconnus. Ce qui est déjà facturé ne compte plus : pour un client, tout
+  // rendez-vous jusqu'à sa dernière facture émise (date d'envoi, ou fin du mois
+  // couvert si elle vient d'une ligne de l'agenda) est considéré comme facturé.
+  //
+  // Les lignes saisies par Théo sont gardées, avec leur nom : chacune est
+  // rattachée au mois de son trimestre dont le montant est le plus proche, puis
+  // ajustée sur l'agenda. Une ligne retouchée à la main ensuite (montant différent
+  // du dernier calcul) est figée : on n'y touche plus.
+  //
+  // Tarifs hors taxe : à partir du 1er janvier 2027 (ou de tvaDepuis), la ligne
+  // porte 20 % de TVA et son montant est le TTC, comme toute facture de l'app.
+  // f.pv = { mois: 'AAAA-MM', calc: dernier montant calculé, saisi?: montant
+  //          d'origine d'une ligne de Théo, detail: '5 rendez-vous, 15 h', fige?: true }
+  // -------------------------------------------------------------------------
+  synchroniser() {
+    const S = CC.state;
+    if (this._sync || !this._events || !this._events.length || S.readOnly) return null;
+    this._sync = true;
+    try {
+      const { debut, fin } = this._bornes();
+      const dansFenetre = (mk) => mk >= pvMk(debut) && mk < pvMk(fin);
+      const tvaDepuis = S.settings.tvaDepuis || '2027-01-01';
+      const r2 = (x) => Math.round(x * 100) / 100;
+      const cle = (n) => CC.util.clientKey(n);
+      const res = { ajout: 0, maj: 0, suppr: 0 };
+
+      const parClient = new Map();
+      this._calcul().lignes.forEach((l) => {
+        const nom = this.clientDe(l.tarif), k = cle(nom);
+        const c = parClient.get(k) || { k, nom, mois: {} };
+        parClient.set(k, c);
+        (c.mois[l.mk] = c.mois[l.mk] || []).push(l);
+      });
+
+      const retirer = new Set();
+      parClient.forEach((c) => {
+        const fs = S.factures.filter((f) => cle(f.libelle) === c.k);
+        let couvert = '';
+        fs.forEach((f) => {
+          if (CC.stats.isPrevu(f)) return;
+          const x = f.pv && f.pv.mois ? f.pv.mois + '-31' : (f.dateEnvoi || f.dateEncaissement || '');
+          if (x > couvert) couvert = x;
+        });
+
+        const aPrevoir = {};
+        Object.keys(c.mois).forEach((mk) => {
+          const ls = c.mois[mk].filter((l) => l.jour > couvert);
+          if (!ls.length) return;
+          const ht = r2(ls.reduce((a, l) => a + l.montant, 0));
+          const tva = mk + '-01' >= tvaDepuis ? 20 : 0;
+          aPrevoir[mk] = { ht, tva, ttc: r2(ht * (1 + tva / 100)), detail: `${ls.length} rendez-vous, ${pvHeures(ls.reduce((a, l) => a + l.heures, 0))}` };
+        });
+
+        const prevues = fs.filter((f) => CC.stats.isPrevu(f));
+        const parMois = {};
+        prevues.forEach((f) => { if (f.pv && f.pv.mois && !parMois[f.pv.mois]) parMois[f.pv.mois] = f; });
+
+        // Lignes de Théo pas encore rattachées : au mois le plus proche, dans leur trimestre.
+        const paires = [];
+        prevues.filter((f) => !(f.pv && f.pv.mois)).forEach((f) => Object.keys(aPrevoir).forEach((mk) => {
+          if (parMois[mk]) return;
+          const [y, m] = mk.split('-').map(Number);
+          if (+f.annee !== y || +f.trimestre !== Math.floor((m - 1) / 3) + 1) return;
+          paires.push({ f, mk, ecart: Math.abs((+f.montant || 0) - aPrevoir[mk].ttc) });
+        }));
+        paires.sort((a, b) => a.ecart - b.ecart);
+        const pris = new Set();
+        paires.forEach(({ f, mk }) => {
+          if (pris.has(f) || parMois[mk]) return;
+          pris.add(f);
+          f.pv = { mois: mk, saisi: +f.montant || 0 };
+          parMois[mk] = f;
+        });
+
+        const modele = fs.slice().sort((a, b) => String(b.dateEnvoi || '').localeCompare(String(a.dateEnvoi || '')))[0] || {};
+        Object.keys(aPrevoir).forEach((mk) => {
+          const a = aPrevoir[mk];
+          let f = parMois[mk];
+          if (f && f.pv.fige) return;
+          if (f && f.pv.calc != null && Math.abs((+f.montant || 0) - f.pv.calc) > 0.005) { f.pv.fige = true; res.maj++; return; }
+          const [y, m] = mk.split('-').map(Number);
+          if (!f) {
+            f = {
+              id: 'pv-' + c.k.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + mk,
+              libelle: c.nom, montant: 0, numFacture: '', modePaiement: modele.modePaiement || 'Virement',
+              dateEncaissement: '', annee: y, trimestre: Math.floor((m - 1) / 3) + 1,
+              categorie: modele.categorie || CC.util.categoryOf(c.nom),
+              dateEnvoi: '', dateEcheance: '', notes: '', fichier: '', previsionnel: true, pv: { mois: mk }
+            };
+            S.factures.push(f);
+            res.ajout++;
+          } else if (Math.abs((+f.montant || 0) - a.ttc) > 0.005 || (+f.tauxTva || 0) !== a.tva) res.maj++;
+          f.montant = a.ttc;
+          if (a.tva) f.tauxTva = a.tva; else delete f.tauxTva;
+          f.pv.calc = a.ttc;
+          f.pv.detail = a.detail;
+        });
+
+        // Mois sans plus rien à facturer (facturé, ou rendez-vous annulés) : la ligne s'en va.
+        prevues.forEach((f) => {
+          if (f.pv && f.pv.mois && !f.pv.fige && !aPrevoir[f.pv.mois] && dansFenetre(f.pv.mois)) retirer.add(f);
+        });
+      });
+
+      if (retirer.size) { S.factures = S.factures.filter((f) => !retirer.has(f)); res.suppr = retirer.size; }
+      this._dernier = res;
+      if (res.ajout || res.maj || res.suppr) { CC.markDirty(); CC.refreshYears(); CC.render(); }
+      return res;
+    } finally { this._sync = false; }
+  },
+
+  // Au démarrage et à chaque lecture de l'agenda.
+  async auto() {
+    await this.charger();
+    const r = this.synchroniser();
+    if (r && (r.ajout || r.maj || r.suppr)) {
+      const p = [r.ajout && `${r.ajout} ajoutée(s)`, r.maj && `${r.maj} ajustée(s)`, r.suppr && `${r.suppr} retirée(s)`].filter(Boolean);
+      CC.toast(`Prévisionnel mis à jour d'après l'agenda : ${p.join(', ')}.`, 'ok');
+    }
+    return r;
+  },
+
   // Rendez-vous chiffrés : { e, jour, heures, tarif, montant }, et les non reconnus.
   _calcul() {
     const lignes = [], inconnus = [];
@@ -174,6 +317,7 @@ CC.previsions = {
     if (!box) return;
     if (!this._events) box.innerHTML = '<div class="ck-empty">Lecture de l\'agenda…</div>';
     await this.charger();
+    this.synchroniser();
     this.paint();
   },
 
@@ -283,7 +427,7 @@ CC.previsions = {
       </div>
       <div class="card">
         <h3>Mois par mois</h3>
-        <p class="card-sub">${moisListe.length > 1 ? `D'ici ${finTxt}, d'après ton agenda.` : 'Ce que dit ton agenda.'} Touche un mois pour le détail.</p>
+        <p class="card-sub">${moisListe.length > 1 ? `D'ici ${finTxt}, d'après ton agenda.` : 'Ce que dit ton agenda.'} Touche un mois pour le détail. Les factures prévisionnelles suivent toutes seules : une par client et par mois, sans ce qui est déjà facturé.</p>
         <div class="table-wrap"><table class="table pv-table">
           <thead><tr><th>Mois</th><th class="num pv-h">Heures</th><th class="num">CA</th><th class="num">Net</th></tr></thead>
           <tbody>${moisHtml}</tbody>
@@ -310,7 +454,7 @@ CC.previsions = {
           ${sous.map((x) => `<div class="pv-capte-l"><span>${pvEsc(x.nom)} <small>${x.n} rdv</small></span>${mots.includes(x.cle) ? '' : bouton(x, 'Tarif à part')}</div>`).join('')}
         </details>` : `<div class="pv-mots">${pris.length} rendez-vous</div>`;
       return `<tr class="${this._edit === t.id ? 'pe-en-cours' : ''}">
-        <td class="client">${pvEsc(t.nom)}<div class="pv-mots">mots : ${pvEsc(t.mots || t.nom)}</div>${detail}</td>
+        <td class="client">${pvEsc(t.nom)}<div class="pv-mots">mots : ${pvEsc(t.mots || t.nom)} · facturé à ${pvEsc(this.clientDe(t))}</div>${detail}</td>
         <td class="num montant">${CC.util.eur(+t.montant || 0)}<span class="pe-freq">${t.unite === 'seance' ? '/séance' : '/h'}</span></td>
         <td class="col-actions"><button class="mini-btn" data-pv-edit="${t.id}">Modifier</button> <button class="mini-btn" data-pv-del="${t.id}">Suppr.</button></td>
       </tr>`;
@@ -356,6 +500,9 @@ CC.previsions = {
             <input type="text" id="pv_nom" class="input" placeholder="ex. Studio M" maxlength="60"></div>
           <div class="field full"><label for="pv_mots">Mots dans le titre de l'agenda</label>
             <input type="text" id="pv_mots" class="input" placeholder="ex. STM (plusieurs : séparés par des virgules)" maxlength="200"></div>
+          <div class="field full"><label for="pv_client">Client sur la facture</label>
+            <input type="text" id="pv_client" class="input" list="pv_clients" placeholder="ex. IME Val Paillon" maxlength="80">
+            <datalist id="pv_clients">${[...new Set(CC.state.factures.map((f) => CC.util.clientNom(f.libelle)))].sort((a, b) => a.localeCompare(b, 'fr')).map((n) => `<option value="${pvEsc(n)}">`).join('')}</datalist></div>
           <div class="field-row">
             <div class="field"><label for="pv_montant">Tarif (€)</label>
               <input type="text" id="pv_montant" class="input mask-amount" inputmode="decimal" placeholder="ex. 45"></div>
@@ -382,6 +529,7 @@ CC.previsions = {
     if (!$('pv_nom')) return;
     $('pv_nom').value = tf.nom || '';
     $('pv_mots').value = tf.mots || '';
+    $('pv_client').value = tf.client || (tf.nom ? this.clientDe(tf) : '');
     $('pv_montant').value = tf.montant != null ? String(tf.montant).replace('.', ',') : '';
     $('pv_unite').value = tf.unite || 'heure';
     const edit = !!this._edit;
@@ -393,7 +541,7 @@ CC.previsions = {
   enregistrer() {
     const v = (id) => (document.getElementById(id).value || '').trim();
     const montant = parseFloat(v('pv_montant').replace(/\s/g, '').replace(',', '.'));
-    const t = { nom: v('pv_nom'), mots: v('pv_mots'), montant: Math.round(montant * 100) / 100, unite: v('pv_unite') === 'seance' ? 'seance' : 'heure' };
+    const t = { nom: v('pv_nom'), mots: v('pv_mots'), client: v('pv_client'), montant: Math.round(montant * 100) / 100, unite: v('pv_unite') === 'seance' ? 'seance' : 'heure' };
     if (!t.nom) { CC.toast('Donne un nom à la presta.', 'err'); document.getElementById('pv_nom').focus(); return; }
     if (!t.mots) t.mots = t.nom;
     if (!(t.montant > 0)) { CC.toast('Indique un tarif.', 'err'); document.getElementById('pv_montant').focus(); return; }
@@ -405,6 +553,7 @@ CC.previsions = {
     CC.toast(ex ? 'Tarif modifié.' : 'Tarif ajouté.', 'ok');
     this._edit = null;
     CC.markDirty();
+    this.synchroniser();
     this.paint();
   },
 
@@ -435,7 +584,7 @@ CC.previsions = {
         if (a === 'auj') P.cur = null;
         if (a === 'parametres') return CC.switchTab('settings');
         if (a === 'reprendre') { P.reglages().ignores = []; CC.markDirty(); }
-        if (a === 'actualiser') { b.disabled = true; return P.charger(true).then(() => P.paint()); }
+        if (a === 'actualiser') { b.disabled = true; return P.charger(true).then(() => { P.synchroniser(); P.paint(); }); }
         return P.paint();
       }
       const tr = e.target.closest('tr[data-pv-mois]');

@@ -518,6 +518,9 @@ async function init() {
   // Enregistrement automatique (toutes les 2 min si le document a changé)
   CC.storage.startAutosave();
 
+  // Prévisionnel : les factures prévues suivent l'agenda (Compta › Prévisions).
+  if (CC.previsions && !CC.state.readOnly) setTimeout(() => CC.previsions.auto().catch(() => {}), 4000);
+
   // Badge des mails non lus : au démarrage puis toutes les 2 minutes
   CC.updateMailBadge();
   setInterval(() => CC.updateMailBadge(), 120000);

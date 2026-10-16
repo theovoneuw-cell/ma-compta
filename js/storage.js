@@ -243,6 +243,9 @@ function normalize(f) {
     // Etat d'avant encaissement : sans lui, « Annuler l'encaissement » ne sait plus
     // quoi restaurer apres un redemarrage.
     ...(f._avantRecue ? { _avantRecue: f._avantRecue } : {}),
+    // Ligne du prévisionnel tenue par l'agenda (Compta › Prévisions) : le mois
+    // qu'elle couvre et le dernier montant calculé. Voir CC.previsions.synchroniser.
+    ...(f.pv && f.pv.mois ? { pv: f.pv } : {}),
     // Taux de TVA de CETTE facture. Absent = franchise (HT = TTC), ce qui est le
     // cas de toutes les factures anterieures a l assujettissement : elles ne
     // doivent jamais etre recalculees retroactivement.
