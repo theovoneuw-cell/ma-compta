@@ -32,6 +32,7 @@ CC.privacy = {
     btn.title = masked ? 'Afficher les chiffres' : 'Masquer les chiffres';
     btn.setAttribute('aria-label', btn.title);
     btn.innerHTML = masked ? EYE_OFF : EYE;
+    if (CC.majTouchBar) CC.majTouchBar();   // bouton « Discret » de la Touch Bar
   },
 
   // Clic sur l'œil : masquer = immédiat ; afficher = code requis si défini.

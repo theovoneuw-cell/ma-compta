@@ -142,6 +142,7 @@ function renderAFacturer() {
   if (!bloc || !box || !CC.previsions) return;
   const liste = CC.previsions.aFacturer();
   bloc.classList.toggle('hidden', !liste.length);
+  if (CC.majTouchBar) CC.majTouchBar();
   const n = liste.length;
   document.getElementById('todayAFacturerTitre').textContent = n > 1 ? n + ' factures à faire' : 'Une facture à faire';
   document.getElementById('todayAFacturerTotal').textContent = CC.util.eur0(liste.reduce((a, f) => a + (+f.montant || 0), 0));

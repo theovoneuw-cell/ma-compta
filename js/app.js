@@ -70,6 +70,31 @@ CC.render = function () {
   CC.facturesView.render();
   CC.renderFiscal();
   if (CC.perso) CC.perso.render();
+  CC.majTouchBar();
+};
+
+// Touch Bar (Mac seulement) : onglet ouvert + compteurs. Envoyé au process
+// principal seulement quand quelque chose change, au plus une fois par tour.
+CC.majTouchBar = function (maj) {
+  if (!window.api || !window.api.touchbar) return;
+  if (maj) CC._tb = Object.assign(CC._tb || {}, maj);
+  clearTimeout(CC._tbT);
+  CC._tbT = setTimeout(() => {
+    const S = CC.state;
+    const actif = document.querySelector('.tab.active');
+    let tab = actif ? actif.dataset.tab : 'today';
+    if (tab === 'compta') tab = S.subTab || 'dashboard';
+    const etat = Object.assign({ mails: 0 }, CC._tb || {}, {
+      tab,
+      aFacturer: CC.previsions ? CC.previsions.aFacturer().length : 0,
+      retard: (S.factures || []).filter((f) => CC.stats.statut(f, S.settings) === 'retard').length,
+      discret: !!S.privacy
+    });
+    const k = JSON.stringify(etat);
+    if (k === CC._tbK) return;
+    CC._tbK = k;
+    try { window.api.touchbar(etat); } catch (_) {}
+  }, 0);
 };
 
 // Ouvre une piece jointe (PDF) avec l'application par defaut du systeme
@@ -163,6 +188,7 @@ CC.updateMailBadge = async function () {
   if (!b && !mb) return;
   let r; try { r = await window.api.gmail.unread(); } catch (_) { r = {}; }
   const n = (r && !r.error && r.count) ? r.count : 0;
+  CC.majTouchBar({ mails: n });
   const txt = n > 99 ? '99+' : String(n);
   // Compteur du dossier "Boîte de réception" dans le rail des mails (comme Gmail)
   const fc = document.getElementById('gmInboxCount');
@@ -233,6 +259,7 @@ CC.switchTab = function (name, dir) {
   if (name === 'perso' && CC.perso) CC.perso.render();
   if (name === 'reseau' && CC.prospection) CC.prospection.render();
   if (name === 'settings') { if (CC.connections) CC.connections.render(); if (CC.notifs) CC.notifs.render(); }
+  CC.majTouchBar();
 };
 
 // Sous-onglets de la partie Compta
@@ -248,6 +275,7 @@ CC.switchSub = function (sub) {
   if (sub === 'clients' && CC.clients) CC.clients.render();
   if (sub === 'fiscal') { CC.renderFiscal(); if (CC.renderBilan) CC.renderBilan(); }
   if (sub === 'coffre' && CC.coffre) CC.coffre.render();
+  CC.majTouchBar();
 };
 
 CC.confirmIfDirty = async function () {
@@ -489,6 +517,7 @@ async function init() {
       case 'menu:export-csv': return CC.storage.exportCsv();
       case 'menu:export-pdf': return CC.storage.exportPdf();
       case 'menu:new-facture': return CC.facturesView.openModal(null);
+      case 'menu:privacy': return CC.privacy && CC.privacy.toggleFromButton().then(() => CC.majTouchBar());
       case 'menu:tab': return CC.switchTab(payload);
       case 'app:confirm-close': return CC.confirmClose();
     }
