@@ -3718,3 +3718,21 @@ body.privacy .pv-net b { filter: blur(6px); }
   .af-tete h3 { font-size: 18px; }
   .af-total { font-size: 19px; }
 }
+
+/* ===================== RÉPONDRE : MESSAGE D'ORIGINE (31/10/2026, mailbox.js _reply) =====================
+   Le message auquel on répond reste lisible au-dessus de la saisie. Affiché
+   seulement : il ne part pas avec la réponse (le fil Gmail le garde déjà). */
+.mc-orig { margin: 12px 0 4px; background: var(--surface-2); border-radius: var(--r-md); }
+.mc-orig summary { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; cursor: pointer; list-style: none; user-select: none; -webkit-user-select: none; }
+.mc-orig summary::-webkit-details-marker { display: none; }
+.mc-orig-qui { font-size: 13px; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-orig-date { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.mc-orig-plier { flex-shrink: 0; width: 8px; height: 8px; margin-left: 4px; border-right: 1.6px solid var(--muted); border-bottom: 1.6px solid var(--muted); transform: translateY(-2px) rotate(45deg); transition: transform .16s ease; }
+.mc-orig:not([open]) .mc-orig-plier { transform: translateY(1px) rotate(-45deg); }
+.mc-orig-txt { padding: 0 14px 12px; max-height: 30vh; overflow-y: auto; overscroll-behavior: contain; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.55; color: var(--text); }
+.mc-orig-txt a { color: var(--accent); }
+@media (max-width: 720px) {
+  .mc-orig summary { min-height: 44px; align-items: center; padding: 0 14px; }
+  .mc-orig-txt { max-height: 24vh; font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .mc-orig-plier { transition: none; } }

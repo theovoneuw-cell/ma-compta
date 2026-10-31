@@ -163,6 +163,9 @@ CC.mailbox = {
       m.addEventListener('click', (e) => {
         const rm = e.target.closest('[data-mrm]');
         if (rm) { CC.mailbox._removeAttachment(parseInt(rm.dataset.mrm, 10)); return; }
+        // Liens du message d'origine : navigateur externe, la réponse en cours reste ouverte.
+        const lien = e.target.closest('.mc-orig-txt a[href]');
+        if (lien) { e.preventDefault(); const h = lien.getAttribute('href') || ''; if (/^https?:/i.test(h)) window.api.openUrl(h); return; }
         if (CC.clicFond(e, m) || e.target.closest('[data-mclose]')) { CC.mailbox._closeCompose(); return; }
         if (e.target.closest('#mcSend')) { CC.mailbox._send(); return; }
         if (e.target.closest('#mcDraft')) { CC.mailbox._saveDraft(); return; }
@@ -744,6 +747,7 @@ CC.mailbox = {
         <label class="ev-f hidden" id="mc_ccRow"><span class="mc-lbl">Cc</span><span class="mc-ac"><input id="mc_cc" type="text" autocomplete="off" placeholder="copie@exemple.fr (séparer par des virgules)"><div class="ac-list hidden" id="mc_ccAC"></div></span></label>
         <label class="ev-f hidden" id="mc_bccRow"><span class="mc-lbl">Cci</span><span class="mc-ac"><input id="mc_bcc" type="text" autocomplete="off" placeholder="copie cachée@exemple.fr"><div class="ac-list hidden" id="mc_bccAC"></div></span></label>
         <label class="ev-f"><span class="mc-lbl">Objet</span><input id="mc_subject" type="text" placeholder="Objet du message" lang="fr" spellcheck="true" value="${esc(pre.subject || '')}"></label>
+        ${pre.orig ? `<details class="mc-orig" open><summary><span class="mc-orig-qui">${esc(pre.orig.qui)}</span><span class="mc-orig-date">${esc(pre.orig.date)}</span><span class="mc-orig-plier" aria-hidden="true"></span></summary><div class="mc-orig-txt">${lienifier(pre.orig.texte)}</div></details>` : ''}
         <div class="mc-body-wrap"><textarea id="mc_body" rows="12" lang="fr" spellcheck="true" placeholder="Écris ton message…">${esc(pre.body || '')}</textarea><button type="button" class="mc-emoji-btn" id="mcEmoji" title="Insérer un emoji" aria-label="Insérer un emoji">🙂</button><div class="mc-emoji-pop hidden" id="mcEmojiPop"></div></div>
         <input type="file" id="mc_files" multiple hidden>
         <div id="mc_attachList" class="mc-attach-list"></div>
@@ -798,7 +802,7 @@ CC.mailbox = {
       document.getElementById('mc_bccRow').classList.remove('hidden');
       if (ccBtn) ccBtn.classList.add('hidden');
     }
-    setTimeout(() => { const el = document.getElementById(pre.to ? 'mc_subject' : 'mc_to'); if (el) el.focus(); }, 60);
+    setTimeout(() => { const el = document.getElementById(pre.orig ? 'mc_body' : (pre.to ? 'mc_subject' : 'mc_to')); if (el) el.focus(); }, 60);
     CC.mailbox._attachContactAC('mc_to', 'mc_toAC');
     CC.mailbox._attachContactAC('mc_cc', 'mc_ccAC');
     CC.mailbox._attachContactAC('mc_bcc', 'mc_bccAC');
@@ -940,7 +944,10 @@ CC.mailbox = {
     // Message envoye par moi (pas encore de reponse) : on relance les
     // destinataires d'origine, pas sa propre adresse.
     const deMoi = m.envoye || this._folder === 'envoyes';
+    // Le message d'origine reste lisible dans le composeur (affiche, jamais envoye).
+    const texte = sansHistorique((m.text || stripHtml(m.html) || '').trim());
     this._openCompose({
+      orig: texte ? { qui: deMoi ? 'Ton message' : persona(m.de), date: longDate(m.date), texte } : null,
       titre: 'Répondre',
       to: deMoi ? (m.a || '') : emailOnly(m.de),
       cc: deMoi ? (m.cc || '') : '',
@@ -1167,6 +1174,21 @@ function sansSignature(t) {
   const sig = (window.CC && CC.signature && CC.signature.actif()) ? String(CC.signature.texte() || '').trim() : '';
   const s = String(t || '').replace(/\s+$/, '');
   return sig && s.endsWith(sig) ? s.slice(0, -sig.length).replace(/\s+$/, '') : t;
+}
+// Garde seulement le dernier message d'un fil : coupe a « Le … a écrit : »,
+// « On … wrote: », l'en-tete Outlook (De : / Envoyé :) ou la 1re ligne citee (>).
+function sansHistorique(t) {
+  const s = String(t || '');
+  const re = [
+    /^[ \t]*(?:Le|On)\s[^\n]{0,200}(?:\n[^\n]{0,80})?\s(?:a\s+écrit|wrote)\s*:/m,
+    /^[ \t]*(?:De|From)\s*:[^\n]*\n[ \t]*(?:Envoyé|Sent|Date)\s*:/m,
+    /^[ \t]*-{2,}\s*(?:Message d'origine|Original Message|Message transféré)/mi,
+    /^[ \t]*>/m
+  ];
+  let fin = s.length;
+  re.forEach((r) => { const m = r.exec(s); if (m && m.index < fin) fin = m.index; });
+  const court = s.slice(0, fin).trim();
+  return court || s;   // tout est cite : on montre tout plutot que rien
 }
 function emailOnly(addr) {
   if (!addr) return '';
