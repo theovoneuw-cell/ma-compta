@@ -9,8 +9,13 @@ window.CC = window.CC || {};
 // même raison que les fiches clients : une ancienne version de l'app iPhone ne
 // réécrit que les rubriques racines qu'elle connaît, mais recopie `settings` en
 // entier. Une mensualité :
-//   { id, libelle, montant, frequence: 'mois'|'trimestre'|'an', jour, categorie }
+//   { id, libelle, montant, frequence: 'mois'|'trimestre'|'an', jour, categorie,
+//     debut?, fin? }
 // `montant` est ce qui part à chaque prélèvement ; l'équivalent mensuel en découle.
+// `debut` et `fin` ('AAAA-MM', facultatifs, mois inclus) bornent la mensualité :
+// un crédit qui se termine, un abonnement qui démarre plus tard… Sans eux elle
+// court tous les mois. Hors de sa période, elle reste dans la liste mais ne
+// compte plus dans les totaux.
 // ---------------------------------------------------------------------------
 
 const PE_FREQ = {
@@ -31,6 +36,62 @@ CC.perso = {
 
   parMois(d) { return (+d.montant || 0) / ((PE_FREQ[d.frequence] || PE_FREQ.mois).div); },
 
+  // ---- Durée limitée ----
+  _idx(date) { return date.getFullYear() * 12 + date.getMonth(); },
+  _nomMois(i) { return new Date(Math.floor(i / 12), i % 12, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); },
+
+  _lireMois(v) {
+    const m = /^(\d{4})-(\d{2})$/.exec(v || '');
+    return m ? +m[1] * 12 + (+m[2] - 1) : null;
+  },
+
+  // Premier et dernier mois (indices) d'une mensualité bornée ; null = tous les mois.
+  periode(d) {
+    const deb = CC.perso._lireMois(d.debut), fin = CC.perso._lireMois(d.fin);
+    if (deb == null && fin == null) return null;
+    return { deb: deb == null ? -Infinity : deb, fin: fin == null ? Infinity : fin, aDebut: deb != null, aFin: fin != null };
+  },
+
+  // La mensualité court-elle pendant le mois de `date` ?
+  active(d, date) {
+    const p = CC.perso.periode(d);
+    if (!p) return true;
+    const i = CC.perso._idx(date || new Date());
+    return i >= p.deb && i <= p.fin;
+  },
+
+  enCours(now) { return CC.perso.liste().filter((d) => CC.perso.active(d, now)); },
+
+  // Ce que coûteront vraiment les 12 prochains mois (mois en cours compris),
+  // en tenant compte des mensualités qui s'arrêtent ou commencent entre-temps.
+  surDouzeMois(now) {
+    let t = 0;
+    for (let k = 0; k < 12; k++) {
+      const m = new Date(now.getFullYear(), now.getMonth() + k, 1);
+      CC.perso.liste().forEach((d) => { if (CC.perso.active(d, m)) t += CC.perso.parMois(d); });
+    }
+    return t;
+  },
+
+  // Ligne d'explication sous le nom : « Jusqu'en décembre 2026 · 2 prélèvements restants ».
+  duree(d, now) {
+    const p = CC.perso.periode(d);
+    if (!p) return '';
+    const i = CC.perso._idx(now);
+    const nom = CC.perso._nomMois;
+    if (i > p.fin) return `Terminée en ${nom(p.fin)}`;
+    if (i < p.deb) return `Commence en ${nom(p.deb)}` + (p.aFin ? `, jusqu’en ${nom(p.fin)}` : '');
+    if (!p.aFin) return `Depuis ${nom(p.deb)}`;
+    let txt = `Jusqu’en ${nom(p.fin)}`;
+    if ((d.frequence || 'mois') === 'mois') {
+      // Le prélèvement du mois compte tant qu'il n'est pas passé.
+      const passe = +d.jour >= 1 && CC.perso.jourCeMois(d, now) <= now.getDate();
+      const n = p.fin - i + (passe ? 0 : 1);
+      txt += n ? ` · ${n} prélèvement${n > 1 ? 's' : ''} restant${n > 1 ? 's' : ''}` : ' · dernier prélèvement passé';
+    }
+    return txt;
+  },
+
   // Jour réel du prélèvement ce mois-ci (un « 31 » tombe le 30 en avril).
   jourCeMois(d, now) {
     const dernier = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -48,8 +109,8 @@ CC.perso = {
   renderHero() {
     const box = document.getElementById('peHero');
     if (!box) return;
-    const liste = CC.perso.liste();
     const now = new Date();
+    const liste = CC.perso.enCours(now);
     const total = liste.reduce((s, d) => s + CC.perso.parMois(d), 0);
     // « Ce mois-ci » : seules les mensualités avec un jour connu se placent dans le mois.
     let passe = 0, reste = 0, nPasse = 0, nReste = 0, sansJour = 0;
@@ -73,8 +134,8 @@ CC.perso = {
         </div>
       </div>` : '';
     const details = liste.length
-      ? [`soit ${CC.util.eur0(total * 12)} par an`, sansJour ? `${sansJour} sans jour de prélèvement, hors jauge` : ''].filter(Boolean).join(' · ')
-      : 'Ajoute ta première mensualité ci-dessous.';
+      ? [`soit ${CC.util.eur0(CC.perso.surDouzeMois(now))} sur les 12 prochains mois`, sansJour ? `${sansJour} sans jour de prélèvement, hors jauge` : ''].filter(Boolean).join(' · ')
+      : CC.perso.liste().length ? 'Aucune mensualité en cours ce mois-ci.' : 'Ajoute ta première mensualité ci-dessous.';
     box.innerHTML = `<div class="hero-plaque">
       <p class="hero-l"><span class="hero-voyant" aria-hidden="true"></span>Tes mensualités · ${prel(liste.length)}</p>
       <p class="hero-v"><span class="hero-n">${CC.util.eur0(total).replace(/\s?€$/, '')}</span><span class="hero-e">€ / mois</span></p>
@@ -108,9 +169,9 @@ CC.perso = {
   renderReste() {
     const box = document.getElementById('peReste');
     if (!box) return;
-    const liste = CC.perso.liste();
-    if (!liste.length) { box.innerHTML = ''; return; }
     const now = new Date();
+    const liste = CC.perso.enCours(now);
+    if (!liste.length) { box.innerHTML = ''; return; }
     const mensualites = liste.reduce((s, d) => s + CC.perso.parMois(d), 0);
     const ceMois = CC.perso._net(new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 1));
     // Repère stable : les 12 derniers mois complets (le mois en cours n'est jamais fini).
@@ -139,7 +200,7 @@ CC.perso = {
     const box = document.getElementById('peCats');
     if (!box) return;
     const parCat = {};
-    CC.perso.liste().forEach((d) => {
+    CC.perso.enCours(new Date()).forEach((d) => {
       const c = d.categorie || 'Autre';
       parCat[c] = (parCat[c] || 0) + CC.perso.parMois(d);
     });
@@ -160,14 +221,22 @@ CC.perso = {
     const empty = document.getElementById('peEmpty');
     if (!body) return;
     const now = new Date();
-    // Tri par jour de prélèvement ; les mensualités sans jour ferment la marche.
+    // Tri par jour de prélèvement ; les mensualités sans jour ferment la marche,
+    // celles qui ne courent pas ce mois-ci (terminées ou pas commencées) aussi.
+    const actif = (d) => CC.perso.active(d, now);
     const liste = CC.perso.liste().slice().sort((a, b) =>
-      ((+a.jour || 99) - (+b.jour || 99)) || (a.libelle || '').localeCompare(b.libelle || '', 'fr'));
+      (actif(b) - actif(a)) || ((+a.jour || 99) - (+b.jour || 99)) || (a.libelle || '').localeCompare(b.libelle || '', 'fr'));
     body.innerHTML = liste.map((d) => {
       const f = PE_FREQ[d.frequence] || PE_FREQ.mois;
       const mensuel = (d.frequence || 'mois') === 'mois';
+      const enCours = actif(d);
+      const p = CC.perso.periode(d);
       let etat = '';
-      if (mensuel && +d.jour >= 1) {
+      if (!enCours) {
+        etat = CC.perso._idx(now) > p.fin
+          ? '<span class="pe-etat fini">terminée</span>'
+          : '<span class="pe-etat plus-tard">pas commencée</span>';
+      } else if (mensuel && +d.jour >= 1) {
         etat = CC.perso.jourCeMois(d, now) <= now.getDate()
           ? '<span class="pe-etat passe">passé</span>'
           : '<span class="pe-etat avenir">à venir</span>';
@@ -175,18 +244,23 @@ CC.perso = {
       const jour = +d.jour >= 1 ? 'le ' + (+d.jour) : '';
       const montant = `${CC.util.eur(+d.montant || 0)}<span class="pe-freq">${f.court}</span>`;
       // .pe-sous ne s'affiche que sur téléphone, où les colonnes Jour et Montant sont masquées.
-      return `<tr class="${CC.perso._edit === d.id ? 'pe-en-cours' : ''}">
+      const duree = CC.perso.duree(d, now);
+      // Grisées comme les jours passés de Prévisions : déjà prélevées ce mois-ci, ou hors période.
+      const passee = enCours && mensuel && +d.jour >= 1 && CC.perso.jourCeMois(d, now) <= now.getDate();
+      const classes = [CC.perso._edit === d.id ? 'pe-en-cours' : '', enCours ? '' : 'pe-inactive', passee ? 'pe-passee' : ''].filter(Boolean).join(' ');
+      return `<tr class="${classes}">
         <td class="fmeta pe-jour">${jour || '—'}</td>
         <td class="client pe-lib">${peEsc(d.libelle)} <span class="cat-chip">${peEsc(d.categorie || 'Autre')}</span> ${etat}
+          ${duree ? `<div class="pe-duree">${duree}</div>` : ''}
           <div class="pe-sous">${[jour, mensuel ? '' : montant].filter(Boolean).join(' · ')}</div></td>
         <td class="num pe-mt">${montant}</td>
-        <td class="num montant pe-par">${CC.util.eur(CC.perso.parMois(d))}</td>
+        <td class="num montant pe-par">${enCours ? CC.util.eur(CC.perso.parMois(d)) : '—'}</td>
         <td class="col-actions"><button class="mini-btn" data-edit="${d.id}">Modifier</button> <button class="mini-btn" data-del="${d.id}">Suppr.</button></td>
       </tr>`;
     }).join('');
     const foot = document.getElementById('peFoot');
     if (foot) foot.innerHTML = liste.length
-      ? `<tr><td class="pe-jour"></td><td class="client pe-lib">Total par mois</td><td class="pe-mt"></td><td class="num montant pe-par">${CC.util.eur(liste.reduce((s, d) => s + CC.perso.parMois(d), 0))}</td><td class="col-actions"></td></tr>`
+      ? `<tr><td class="pe-jour"></td><td class="client pe-lib">Total par mois</td><td class="pe-mt"></td><td class="num montant pe-par">${CC.util.eur(liste.filter(actif).reduce((s, d) => s + CC.perso.parMois(d), 0))}</td><td class="col-actions"></td></tr>`
       : '';
     if (empty) empty.classList.toggle('hidden', liste.length > 0);
   },
@@ -196,12 +270,17 @@ CC.perso = {
     const v = (id) => (document.getElementById(id).value || '').trim();
     const montant = parseFloat(v('pe_montant').replace(/\s/g, '').replace(',', '.'));
     const jour = parseInt(v('pe_jour'), 10);
+    const mois = (id) => (/^\d{4}-\d{2}$/.test(v(id)) ? v(id) : null);
+    let debut = mois('pe_debut'), fin = mois('pe_fin');
+    if (debut && fin && fin < debut) [debut, fin] = [fin, debut];
     return {
       libelle: v('pe_libelle'),
       montant: isNaN(montant) ? NaN : Math.round(montant * 100) / 100,
       frequence: PE_FREQ[v('pe_frequence')] ? v('pe_frequence') : 'mois',
       jour: jour >= 1 && jour <= 31 ? jour : null,
-      categorie: v('pe_categorie') || 'Autre'
+      categorie: v('pe_categorie') || 'Autre',
+      debut,
+      fin
     };
   },
 
@@ -212,10 +291,26 @@ CC.perso = {
     document.getElementById('pe_frequence').value = d.frequence || 'mois';
     document.getElementById('pe_jour').value = d.jour || '';
     document.getElementById('pe_categorie').value = d.categorie || 'Logement';
+    document.getElementById('pe_debut').value = d.debut || '';
+    document.getElementById('pe_fin').value = d.fin || '';
+    CC.perso.aide();
     const edit = !!CC.perso._edit;
     document.getElementById('pe_titre').textContent = edit ? 'Modifier la mensualité' : 'Ajouter une mensualité';
     document.getElementById('pe_save').textContent = edit ? 'Enregistrer' : 'Ajouter';
     document.getElementById('pe_cancel').classList.toggle('hidden', !edit);
+  },
+
+  // Sous les champs Début / Fin : ce que la période veut dire, recalculé à la saisie.
+  aide() {
+    const box = document.getElementById('pe_aide');
+    if (!box) return;
+    const p = CC.perso.periode({ debut: document.getElementById('pe_debut').value, fin: document.getElementById('pe_fin').value });
+    const nom = CC.perso._nomMois;
+    let txt = 'Laisse vide pour un prélèvement tous les mois, sans date de fin.';
+    if (p && p.aDebut && p.aFin) txt = `De ${nom(Math.min(p.deb, p.fin))} à ${nom(Math.max(p.deb, p.fin))} inclus.`;
+    else if (p && p.aFin) txt = `Dernier prélèvement en ${nom(p.fin)}, inclus.`;
+    else if (p) txt = `À partir de ${nom(p.deb)}, sans date de fin.`;
+    box.textContent = txt;
   },
 
   enregistrer() {
@@ -274,6 +369,7 @@ CC.perso = {
     CC.perso.remplirForm(null);
     document.getElementById('pe_form').addEventListener('submit', (e) => { e.preventDefault(); CC.perso.enregistrer(); });
     document.getElementById('pe_cancel').addEventListener('click', () => CC.perso.annuler());
+    ['pe_debut', 'pe_fin'].forEach((id) => document.getElementById(id).addEventListener('input', () => CC.perso.aide()));
     document.getElementById('peBody').addEventListener('click', (e) => {
       const ed = e.target.closest('button[data-edit]');
       if (ed) return CC.perso.modifier(ed.dataset.edit);

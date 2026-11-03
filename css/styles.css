@@ -3736,3 +3736,11 @@ body.privacy .pv-net b { filter: blur(6px); }
   .mc-orig-txt { max-height: 24vh; font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .mc-orig-plier { transition: none; } }
+
+/* ---- DÉPENSES PERSO : DURÉE LIMITÉE (03/11/2026) ---- */
+.pe-aide { margin: -4px 0 12px; font-size: 12px; color: var(--soft); }
+.pe-duree { margin-top: 3px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.pe-etat.fini, .pe-etat.plus-tard { color: var(--muted); background: var(--surface-2); }
+.pe-table tr.pe-passee td, .pe-table tr.pe-inactive td { opacity: .55; }
+.pe-table tr.pe-passee td.col-actions, .pe-table tr.pe-inactive td.col-actions { opacity: 1; }
+.pe-facultatif { font-weight: 400; color: var(--soft); }

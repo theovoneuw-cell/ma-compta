@@ -296,7 +296,7 @@ function ajouterPrelevements(now) {
   const lignes = [];
   [[now, 'Auj.'], [demain, 'Demain']].forEach(([jour, quand]) => {
     CC.perso.liste()
-      .filter((d) => (d.frequence || 'mois') === 'mois' && +d.jour >= 1 && CC.perso.jourCeMois(d, jour) === jour.getDate())
+      .filter((d) => (d.frequence || 'mois') === 'mois' && +d.jour >= 1 && CC.perso.active(d, jour) && CC.perso.jourCeMois(d, jour) === jour.getDate())
       .sort((a, b) => (+b.montant || 0) - (+a.montant || 0))
       .forEach((d) => lignes.push(`<div class="ck-row ck-row-ev ck-prel" style="--evc:var(--coral)">
         <div class="ck-time">${quand}</div>
