@@ -3744,3 +3744,13 @@ body.privacy .pv-net b { filter: blur(6px); }
 .pe-table tr.pe-passee td, .pe-table tr.pe-inactive td { opacity: .55; }
 .pe-table tr.pe-passee td.col-actions, .pe-table tr.pe-inactive td.col-actions { opacity: 1; }
 .pe-facultatif { font-weight: 400; color: var(--soft); }
+/* Début / Fin au téléphone : Safari iOS impose aux champs « mois » une largeur
+   propre plus grande que la demi-colonne, ils débordaient l'un sur l'autre. */
+.pe-form .pe-periode { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.pe-form .pe-periode .field { min-width: 0; }
+.pe-periode input[type="month"] { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+@media (max-width: 720px) {
+  .pe-form .pe-periode { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .pe-periode input[type="month"] { -webkit-appearance: none; appearance: none; min-height: 44px; text-align: left; }
+  .pe-periode input[type="month"]::-webkit-date-and-time-value { text-align: left; }
+}
