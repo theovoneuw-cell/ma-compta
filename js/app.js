@@ -232,9 +232,10 @@ CC.switchTab = function (name, dir) {
     CC.switchSub(name);
     return;
   }
+  if (!document.getElementById('tab-' + name)) name = 'today';   // onglet retiré (ex. perso) : repli Accueil
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   const plus = document.getElementById('tabPlusBtn');
-  if (plus) plus.classList.toggle('active', name === 'perso' || name === 'trajets' || name === 'redaction');
+  if (plus) plus.classList.toggle('active', name === 'trajets' || name === 'redaction');
   if (CC.fermerPlus) CC.fermerPlus();
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + name));
   // Animation directionnelle si on arrive par un swipe (dir = 'next' | 'prev').
@@ -256,7 +257,6 @@ CC.switchTab = function (name, dir) {
   if (name === 'mails' && CC.mailbox) CC.mailbox.render();
   if (name === 'redaction' && CC.ai) CC.ai.render();
   if (name === 'trajets' && CC.trajets) CC.trajets.render();
-  if (name === 'perso' && CC.perso) CC.perso.render();
   if (name === 'reseau' && CC.prospection) CC.prospection.render();
   if (name === 'settings') { if (CC.connections) CC.connections.render(); if (CC.notifs) CC.notifs.render(); }
   CC.majTouchBar();
